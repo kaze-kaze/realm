@@ -43,8 +43,13 @@ pub fn associate(raddr: &SocketAddr, conn_opts: &ConnectOpts) -> Result<UdpSocke
 
     let socket = new_udp_socket(raddr)?;
 
-    // ignore error
-    let _ = socket.set_reuse_address(true);
+    // A fixed source port (`through = ip:port`) is shared by every association, which
+    // needs SO_REUSEADDR. Never set it otherwise: with it the kernel may auto-assign a
+    // port that another association already holds, and replies reach the wrong client.
+    if bind_address.is_some_and(|addr| addr.port() != 0) {
+        // ignore error
+        let _ = socket.set_reuse_address(true);
+    }
 
     if let Some(addr) = *bind_address {
         socket.bind(&addr.into())?;

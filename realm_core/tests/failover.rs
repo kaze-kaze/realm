@@ -206,3 +206,50 @@ async fn udp_move_sticky_and_drop_late_replies() {
     assert_eq!(udp_recv(&d, 500).await.as_deref(), Some(&b"data:5"[..]));
     assert_eq!(hits_a.load(SeqCst), 3);
 }
+
+#[tokio::test]
+async fn udp_all_down_keeps_associations() {
+    let _ = env_logger::try_init();
+    let relay = addr("127.0.0.1:31030");
+    let (hits_a, hits_b) = (Arc::<AtomicUsize>::default(), Arc::<AtomicUsize>::default());
+    // health echoes on their own ports: a huge delay makes a peer look dead while its data port works
+    let (mute_a, mute_b) = (Arc::new(AtomicU32::new(0)), Arc::new(AtomicU32::new(0)));
+    tokio::spawn(udp_echo("127.0.0.1:31031", Default::default(), hits_a.clone()));
+    tokio::spawn(udp_echo("127.0.0.1:31032", Default::default(), hits_b.clone()));
+    tokio::spawn(udp_echo("127.0.0.1:31033", mute_a.clone(), Default::default()));
+    tokio::spawn(udp_echo("127.0.0.1:31034", mute_b.clone(), Default::default()));
+    tokio::spawn(run_udp(endpoint(
+        "127.0.0.1:31030",
+        &["127.0.0.1:31031", "127.0.0.1:31032"],
+        FailoverOpts {
+            probe: vec![addr("127.0.0.1:31033"), addr("127.0.0.1:31034")],
+            ..opts(100, 150)
+        },
+    )));
+    sleep(ms(300)).await;
+
+    let c = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+    c.connect(relay).await.unwrap();
+    c.send(b"data:1").await.unwrap();
+    assert_eq!(udp_recv(&c, 500).await.as_deref(), Some(&b"data:1"[..]));
+    assert_eq!((hits_a.load(SeqCst), hits_b.load(SeqCst)), (1, 0));
+
+    // primary looks dead: the association moves to the backup
+    mute_a.store(60_000, SeqCst);
+    sleep(ms(800)).await;
+    c.send(b"data:2").await.unwrap();
+    assert_eq!(udp_recv(&c, 500).await.as_deref(), Some(&b"data:2"[..]));
+    assert_eq!((hits_a.load(SeqCst), hits_b.load(SeqCst)), (1, 1));
+
+    // primary is back and active again, the association stays on the backup
+    mute_a.store(0, SeqCst);
+    sleep(ms(1000)).await;
+
+    // now every peer looks dead: nothing better to move to, so it must not be shuffled
+    mute_a.store(60_000, SeqCst);
+    mute_b.store(60_000, SeqCst);
+    sleep(ms(800)).await;
+    c.send(b"data:3").await.unwrap();
+    assert_eq!(udp_recv(&c, 500).await.as_deref(), Some(&b"data:3"[..]));
+    assert_eq!((hits_a.load(SeqCst), hits_b.load(SeqCst)), (1, 2));
+}

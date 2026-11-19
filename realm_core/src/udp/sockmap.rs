@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 use std::sync::{Arc, RwLock};
-use std::sync::atomic::{AtomicU8, Ordering::Relaxed};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering::Relaxed};
 use std::collections::HashMap;
 
 use tokio::net::UdpSocket;
@@ -42,11 +42,18 @@ impl Assoc {
     }
 }
 
-pub struct SockMap(RwLock<HashMap<SocketAddr, Arc<Assoc>>>);
+pub struct SockMap(RwLock<HashMap<SocketAddr, Arc<Assoc>>>, AtomicBool);
 
 impl SockMap {
     pub fn new() -> Self {
-        Self(RwLock::new(HashMap::new()))
+        Self(RwLock::new(HashMap::new()), AtomicBool::new(false))
+    }
+
+    /// Set once the endpoint has carried a datagram longer than one ethernet frame.
+    /// Its sockets then read every datagram with room for a large one.
+    #[inline]
+    pub fn seen_large(&self) -> &AtomicBool {
+        &self.1
     }
 
     #[inline]

@@ -553,6 +553,8 @@ It will dynamically allocate local endpoints and establish udp associations. Onc
 
 Due to the receiver side not limiting access to the association, the relay works like a full-cone NAT.
 
+Datagrams of any size are relayed whole, including those that exceed one ethernet frame and travel as IP fragments (up to 65507 bytes of payload over IPv4).
+
 default: false
 
 #### network.ipv6_only: bool

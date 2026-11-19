@@ -20,7 +20,8 @@ use std::fmt::{Display, Formatter};
 use std::io::{Error, ErrorKind};
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU32, AtomicU64, Ordering::Relaxed};
+// no 64-bit atomics: 32-bit mips targets lack them
+use std::sync::atomic::{AtomicU32, Ordering::Relaxed};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use futures::future::join_all;
@@ -503,14 +504,12 @@ async fn probe_udp(target: SocketAddr, opts: &FailoverOpts, conn_opts: &ConnectO
 
 /// Unique per probe round within this process.
 fn nonce() -> [u8; 16] {
-    static SEQ: AtomicU64 = AtomicU64::new(0);
+    static SEQ: AtomicU32 = AtomicU32::new(0);
     let seq = SEQ.fetch_add(1, Relaxed);
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |d| d.as_nanos() as u64);
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_nanos());
     let mut b = [0u8; 16];
-    b[..8].copy_from_slice(&now.to_le_bytes());
-    b[8..].copy_from_slice(&seq.to_le_bytes());
+    b[..12].copy_from_slice(&now.to_le_bytes()[..12]);
+    b[12..].copy_from_slice(&seq.to_le_bytes());
     b
 }
 

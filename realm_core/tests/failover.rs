@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering::SeqCst};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering::SeqCst};
 use std::time::Duration;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -74,21 +74,27 @@ async fn tcp_ask(relay: &str) -> Option<Vec<u8>> {
     let mut s = TcpStream::connect(relay).await.ok()?;
     s.write_all(b"ping").await.ok()?;
     let mut buf = vec![0u8; 16];
-    let n = timeout(Duration::from_secs(1), s.read(&mut buf)).await.ok()?.ok()?;
+    // windows retries a refused connect for ~2s, so the relay may spend
+    // half of its 2s dial budget on a refused primary before the retry
+    let n = timeout(Duration::from_secs(3), s.read(&mut buf)).await.ok()?.ok()?;
     Some(buf[..n].to_vec())
 }
 
 /// Echo every datagram after `delay` ms, count those starting with `data:`.
-async fn udp_echo(listen: &str, delay: Arc<AtomicU64>, hits: Arc<AtomicUsize>) {
+async fn udp_echo(listen: &str, delay: Arc<AtomicU32>, hits: Arc<AtomicUsize>) {
     let sock = Arc::new(UdpSocket::bind(listen).await.unwrap());
     let mut buf = [0u8; 1500];
     loop {
-        let (n, peer) = sock.recv_from(&mut buf).await.unwrap();
+        // windows reports an icmp unreachable (late echo to a closed probe socket)
+        // as WSAECONNRESET on the next recv, skip it
+        let Ok((n, peer)) = sock.recv_from(&mut buf).await else {
+            continue;
+        };
         let data = buf[..n].to_vec();
         if data.starts_with(b"data:") {
             hits.fetch_add(1, SeqCst);
         }
-        let d = delay.load(SeqCst);
+        let d = delay.load(SeqCst) as u64;
         let sock = sock.clone();
         tokio::spawn(async move {
             if d > 0 {
@@ -153,7 +159,7 @@ async fn udp_move_sticky_and_drop_late_replies() {
     let _ = env_logger::try_init();
     let relay = addr("127.0.0.1:31020");
     let (delay_a, hits_a, hits_b) = (
-        Arc::new(AtomicU64::new(0)),
+        Arc::new(AtomicU32::new(0)),
         Arc::<AtomicUsize>::default(),
         Arc::<AtomicUsize>::default(),
     );

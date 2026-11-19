@@ -365,7 +365,7 @@ The weight of [a, b, c] is [4, 2, 1] in turn.
 
 #### endpoint.failover: table
 
-Active-standby failover for both TCP and UDP. `remote` is the primary, `extra_remotes` are backups in priority order (at most 7). Mutually exclusive with `balance`. Peers must be `ip:port` literals; for UDP they must share one address family.
+Active-standby failover for both TCP and UDP. `remote` is the primary, `extra_remotes` are backups in priority order (at most 7). Peers must be `ip:port` literals; for UDP they must share one address family. Together with `balance`, the peers share the load instead, see [below](#failover-with-balance).
 
 A background task probes every peer per protocol. Traffic only moves on probe results, never on user traffic:
 
@@ -382,7 +382,8 @@ Behavior:
 Probes (from this host, with the same `interface` and `through` ip; a port in `through` is never used by probes):
 
 - TCP: connect, send `tcp_send` (optional), require a reply starting with `tcp_expect`. Without `tcp_expect` a completed handshake counts as success. While nothing has answered, another connection is started at each third of `timeout`, at most 3 per round, so one lost SYN does not fail the round. A refusal or an unexpected reply fails the round at once.
-- UDP: send `udp_send` plus a per-round nonce, require the exact datagram echoed back. Resend only while unanswered, at most 3 datagrams within `timeout`. The target must be an echo responder: against a service that does not echo, every peer is marked down and UDP simply stays on its current peer.
+- UDP, `udp_probe = "echo"` (default): send `udp_send` plus a per-round nonce, require the exact datagram echoed back. Resend only while unanswered, at most 3 datagrams within `timeout`. The target must be an echo responder: against a service that does not echo, every peer is marked down and UDP simply stays on its current peer.
+- UDP, `udp_probe = "quic"`: send a QUIC packet of a version no server speaks and require the Version Negotiation packet that every QUIC server answers with. This probes a QUIC service (Hysteria 2, TUIC, HTTP/3) on its own port, without an echo responder next to it. It does not work for services that hide from unauthenticated packets, such as WireGuard or Hysteria with obfuscation: those need an echo responder.
 
 To detect failures behind the next hop, point `probe` at a health port on the far end that is relayed along the same path (e.g. a tiny HTTP 204 responder and a UDP echo).
 
@@ -391,7 +392,8 @@ To detect failures behind the next hop, point `probe` at a health port on the fa
 | probe | data addresses | health targets, one per peer, same order as `[remote, extra_remotes...]` |
 | tcp_send | none | bytes sent by the TCP probe |
 | tcp_expect | none | expected prefix of the TCP probe reply |
-| udp_send | empty | prefix of the UDP probe datagram |
+| udp_send | empty | prefix of the UDP probe datagram (`echo` only) |
+| udp_probe | echo | `echo` or `quic` |
 | interval | 3 | seconds between probe rounds |
 | timeout | 1.5 | seconds per probe |
 | fall / window | 3 / 5 | failures within the last rounds to mark a peer down (window <= 8) |
@@ -413,6 +415,30 @@ network = { use_udp = true, tcp_timeout = 4 }
 probe = ["10.0.0.4:3001", "10.0.0.5:3001"]
 tcp_send = "GET / HTTP/1.0\r\n\r\n"
 tcp_expect = "HTTP/1.1 204"
+```
+
+##### failover with balance
+
+With both `balance` and `failover` on an endpoint, the peers are not primary and backups: the balancer spreads new TCP connections and new UDP associations over them, and the probes take dead ones out.
+
+- A new session goes to the peer the balancer picks. If that peer is down, it goes to the next peer after it that is alive. One failed probe does not move anything, so `iphash` keeps a client on its peer.
+- TCP: if the dial fails and another peer is ready, the same client connection retries once on it, as above.
+- UDP: associations are balanced too (with `balance` alone, UDP only uses `remote`). An association keeps its peer until that peer is down, then moves to another one that is alive.
+- A peer that comes back takes new sessions again after `rise` successes. `hold` is not used.
+- `balance` needs one weight per peer.
+
+Prefer `iphash` when a client's session spans several connections or carries state kept by one server (XHTTP, 0-RTT resumption): `roundrobin` sends those connections to different servers.
+
+```toml
+[[endpoints]]
+listen = "0.0.0.0:5000"
+remote = "10.0.0.4:3000"
+extra_remotes = ["10.0.0.5:3000", "10.0.0.6:3000"]
+balance = "iphash: 1, 1, 1"
+network = { use_udp = true, tcp_timeout = 4 }
+
+[endpoints.failover]
+probe = ["10.0.0.4:3001", "10.0.0.5:3001", "10.0.0.6:3001"]
 ```
 
 #### endpoint.through: string

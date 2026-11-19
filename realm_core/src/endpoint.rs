@@ -56,7 +56,8 @@ pub struct ConnectOpts {
     #[cfg(feature = "balance")]
     pub balancer: Balancer,
 
-    /// Active-standby failover over `[raddr, extra_raddrs..]`, exclusive with balance.
+    /// Health checked failover over `[raddr, extra_raddrs..]`: active-standby, or
+    /// with a balancer, shared by the peers that are alive.
     pub failover: Option<FailoverOpts>,
 }
 

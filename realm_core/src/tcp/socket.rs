@@ -130,15 +130,28 @@ pub async fn connect(raddr: &RemoteAddr, conn_opts: &ConnectOpts) -> Result<TcpS
     Err(last_err.unwrap_or_else(|| Error::new(ErrorKind::InvalidInput, "could not connect to any address")))
 }
 
-/// Dial the active failover peer; if that fails, retry once on the next ready peer.
+/// Dial the active failover peer, or with `balance` the peer picked for `want`; if
+/// that fails, retry once on the next ready peer.
 ///
 /// Both attempts share one deadline of `connect_timeout` (0 = none). When a retry is
 /// possible the first attempt only gets half of it, so the retry always has time left.
 /// Nothing has been read from the client at this point, so retrying is lossless.
-pub async fn connect_failover(fo: &Failover, conn_opts: &ConnectOpts) -> Result<(TcpStream, usize)> {
+pub async fn connect_failover(
+    fo: &Failover,
+    conn_opts: &ConnectOpts,
+    want: Option<usize>,
+) -> Result<(TcpStream, usize)> {
     let snap = fo.snapshot();
-    let first = snap.active();
-    let next = fo.fallback(snap, first);
+    let (first, next) = match want {
+        Some(want) => {
+            let first = fo.pick(snap, want);
+            (first, fo.next_ready(snap, first))
+        }
+        None => {
+            let first = snap.active();
+            (first, fo.fallback(snap, first))
+        }
+    };
 
     let keepalive = keepalive::build(conn_opts);
     let total = Duration::from_secs(conn_opts.connect_timeout as u64);

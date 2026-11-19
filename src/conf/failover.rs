@@ -2,9 +2,10 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 use serde::{Serialize, Deserialize};
-use realm_core::failover::{FailoverOpts, MAX_PEERS};
+use realm_core::failover::{FailoverOpts, UdpProbe, MAX_PEERS};
 
-/// Active-standby failover: `remote` is the primary, `extra_remotes` are backups in priority order.
+/// Health checked failover: `remote` is the primary and `extra_remotes` are backups in priority
+/// order, or with `balance`, all of them share new sessions while they are alive.
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct FailoverConf {
     /// Health check targets, one per peer; empty probes the data addresses.
@@ -23,6 +24,11 @@ pub struct FailoverConf {
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub udp_send: Option<String>,
+
+    /// `echo` (default) or `quic`.
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub udp_probe: Option<String>,
 
     /// Seconds.
     #[serde(default)]
@@ -87,6 +93,12 @@ impl FailoverConf {
             ));
         }
 
+        let udp_probe = match self.udp_probe.as_deref() {
+            None | Some("echo") => UdpProbe::Echo,
+            Some("quic") => UdpProbe::Quic,
+            Some(x) => fail(format!("udp_probe must be \"echo\" or \"quic\", got {:?}", x)),
+        };
+
         let df = FailoverOpts::default();
         let bytes = |v: &Option<String>| v.as_deref().unwrap_or_default().as_bytes().to_vec();
         let opts = FailoverOpts {
@@ -94,6 +106,7 @@ impl FailoverConf {
             tcp_send: bytes(&self.tcp_send),
             tcp_expect: bytes(&self.tcp_expect),
             udp_send: bytes(&self.udp_send),
+            udp_probe,
             interval: secs("interval", self.interval, df.interval),
             timeout: secs("timeout", self.timeout, df.timeout),
             fall: self.fall.unwrap_or(df.fall),
@@ -124,10 +137,30 @@ mod tests {
         let conf: FailoverConf = toml::from_str("").unwrap();
         let opts = conf.build("l", &["10.0.0.1:1", "10.0.0.2:1"], true);
         assert!(opts.probe.is_empty() && opts.tcp_send.is_empty() && opts.udp_send.is_empty());
+        assert_eq!(opts.udp_probe, UdpProbe::Echo);
         assert_eq!(opts.interval, Duration::from_secs(3));
         assert_eq!(opts.timeout, Duration::from_millis(1500));
         assert_eq!((opts.fall, opts.window, opts.rise), (3, 5, 5));
         assert_eq!(opts.hold, Duration::from_secs(30));
+    }
+
+    #[test]
+    fn udp_probe_kinds() {
+        let build = |s: &str| {
+            toml::from_str::<FailoverConf>(s)
+                .unwrap()
+                .build("l", &["10.0.0.1:1", "10.0.0.2:1"], true)
+                .udp_probe
+        };
+        assert_eq!(build(r#"udp_probe = "echo""#), UdpProbe::Echo);
+        assert_eq!(build(r#"udp_probe = "quic""#), UdpProbe::Quic);
+    }
+
+    #[test]
+    #[should_panic(expected = "udp_probe must be")]
+    fn reject_unknown_udp_probe() {
+        let conf: FailoverConf = toml::from_str(r#"udp_probe = "ping""#).unwrap();
+        conf.build("l", &["10.0.0.1:1", "10.0.0.2:1"], true);
     }
 
     #[test]
@@ -208,16 +241,38 @@ mod tests {
         }
     }
 
+    /// `balance` and `failover` together: balancing over the peers that are alive.
+    #[cfg(feature = "balance")]
     #[test]
-    #[should_panic(expected = "mutually exclusive")]
-    fn reject_with_balance() {
+    fn with_balance() {
         use crate::conf::{Config, EndpointConf};
+        use realm_core::balance::Strategy;
         let ep: EndpointConf = toml::from_str(
             r#"
             listen = "127.0.0.1:1"
             remote = "10.0.0.1:1"
             extra_remotes = ["10.0.0.2:1"]
             balance = "roundrobin: 1, 1"
+            failover = {}
+            "#,
+        )
+        .unwrap();
+        let conn_opts = ep.build().endpoint.conn_opts;
+        assert!(conn_opts.failover.is_some());
+        assert_eq!(conn_opts.balancer.strategy(), Strategy::RoundRobin);
+    }
+
+    #[cfg(feature = "balance")]
+    #[test]
+    #[should_panic(expected = "one weight per peer")]
+    fn reject_balance_weight_count() {
+        use crate::conf::{Config, EndpointConf};
+        let ep: EndpointConf = toml::from_str(
+            r#"
+            listen = "127.0.0.1:1"
+            remote = "10.0.0.1:1"
+            extra_remotes = ["10.0.0.2:1"]
+            balance = "roundrobin: 1, 1, 1"
             failover = {}
             "#,
         )

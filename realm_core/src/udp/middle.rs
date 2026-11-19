@@ -211,16 +211,21 @@ pub async fn associate_and_relay(
 
         registry.group_by_addr();
         for pkts in registry.group_iter() {
-            let laddr = pkts[0].addr.clone().into();
-
-            // peer for a new association
-            let (peer, raddr) = match (route, fixed) {
-                (Some((fo, snap)), _) => (snap.active(), fo.peer(snap.active())),
-                (None, Some(raddr)) => (0, raddr),
-                (None, None) => unreachable!(),
-            };
+            let laddr: SocketAddr = pkts[0].addr.clone().into();
 
             let assoc = sockmap.find_or_insert(&laddr, || {
+                // peer for a new association: the active one, or the balancer's choice
+                let (peer, raddr) = match (route, fixed) {
+                    (Some((fo, snap)), _) => {
+                        let peer = match fo.balanced_peer(&conn_opts, &laddr.ip()) {
+                            Some(want) => fo.pick(snap, want),
+                            None => snap.active(),
+                        };
+                        (peer, fo.peer(peer))
+                    }
+                    (None, Some(raddr)) => (0, raddr),
+                    (None, None) => unreachable!(),
+                };
                 let assoc = Arc::new(Assoc::new(socket::associate(&raddr, &conn_opts)?, peer));
                 tokio::spawn(send_back(lis, laddr, assoc.clone(), conn_opts, sockmap, failover));
                 match route {
@@ -231,10 +236,17 @@ pub async fn associate_and_relay(
             })?;
 
             // an existing association sticks to its peer until that peer is down
-            let raddr = match route {
-                Some((fo, snap)) => {
+            let raddr = match (route, fixed) {
+                (Some((fo, snap)), _) => {
                     let cur = assoc.peer();
-                    let next = Failover::repick(snap, cur);
+                    let next = if snap.is_up(cur) {
+                        cur
+                    } else {
+                        match fo.balanced_peer(&conn_opts, &laddr.ip()) {
+                            Some(want) => fo.repick_balanced(snap, cur, want),
+                            None => Failover::repick(snap, cur),
+                        }
+                    };
                     if next != cur {
                         assoc.move_to(next);
                         log::info!(
@@ -247,7 +259,8 @@ pub async fn associate_and_relay(
                     }
                     fo.peer(next)
                 }
-                None => raddr,
+                (None, Some(raddr)) => raddr,
+                (None, None) => unreachable!(),
             };
 
             let raddr: SockAddrStore = raddr.into();

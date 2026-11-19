@@ -1,6 +1,8 @@
 //! Active-standby failover.
 //!
 //! `remote` is the primary peer and `extra_remotes` are backups in priority order.
+//! Together with `balance`, new sessions are spread over the peers that are alive
+//! instead (see [`Failover::pick`]).
 //!
 //! The control plane is one probe task per endpoint and protocol. It publishes a
 //! packed [`Snapshot`] into a single atomic. The data plane only loads that atomic
@@ -48,6 +50,8 @@ pub struct FailoverOpts {
     pub tcp_expect: Vec<u8>,
     /// Udp: payload prefix. A per-round nonce is appended and the peer must echo the datagram.
     pub udp_send: Vec<u8>,
+    /// Udp: what to send and which answer counts.
+    pub udp_probe: UdpProbe,
     pub interval: Duration,
     pub timeout: Duration,
     /// A peer goes down after `fall` failures in the last `window` probes.
@@ -66,6 +70,7 @@ impl Default for FailoverOpts {
             tcp_send: Vec::new(),
             tcp_expect: Vec::new(),
             udp_send: Vec::new(),
+            udp_probe: UdpProbe::Echo,
             interval: Duration::from_secs(3),
             timeout: Duration::from_millis(1500),
             fall: 3,
@@ -82,8 +87,24 @@ impl Display for FailoverOpts {
             f,
             "interval={:?}, timeout={:?}, fall={}/{}, rise={}, hold={:?}",
             self.interval, self.timeout, self.fall, self.window, self.rise, self.hold
-        )
+        )?;
+        if self.udp_probe == UdpProbe::Quic {
+            write!(f, ", udp-probe=quic")?;
+        }
+        Ok(())
     }
+}
+
+/// What the udp probe sends and which answer counts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum UdpProbe {
+    /// `udp_send` plus a nonce; the target must echo the datagram.
+    #[default]
+    Echo,
+    /// A QUIC packet of a version no server speaks. Every QUIC server answers it with
+    /// a Version Negotiation packet, so a QUIC service is probed on its own port and
+    /// needs no echo responder next to it.
+    Quic,
 }
 
 /// Protocol a failover state serves.
@@ -134,6 +155,9 @@ impl Snapshot {
 pub struct Failover {
     peers: Box<[SocketAddr]>,
     state: Arc<AtomicU32>,
+    /// `balance` is on: peers share new sessions, none of them stands by.
+    #[cfg(feature = "balance")]
+    balanced: bool,
 }
 
 impl Failover {
@@ -164,6 +188,11 @@ impl Failover {
             label
         );
 
+        #[cfg(feature = "balance")]
+        let balanced = conn_opts.balancer.strategy() != realm_lb::Strategy::Off;
+        #[cfg(not(feature = "balance"))]
+        let balanced = false;
+
         // probes leave from the `through` ip but never from its fixed port (udp may pin
         // one): sharing that port would take replies away from the associations
         let mut conn_opts = conn_opts.clone();
@@ -184,11 +213,17 @@ impl Failover {
                 opts: opts.clone(),
                 conn_opts,
                 state: state.clone(),
+                balanced,
             },
             fsm,
         ));
 
-        Self { peers, state }
+        Self {
+            peers,
+            state,
+            #[cfg(feature = "balance")]
+            balanced,
+        }
     }
 
     #[inline]
@@ -220,11 +255,68 @@ impl Failover {
         }
     }
 
+    /// With `balance` on: the peer the balancer assigns to a new session from `src`.
+    #[inline]
+    pub(crate) fn balanced_peer(&self, conn_opts: &ConnectOpts, src: &std::net::IpAddr) -> Option<usize> {
+        #[cfg(feature = "balance")]
+        if self.balanced {
+            let ctx = realm_lb::BalanceCtx { src_ip: src };
+            return conn_opts.balancer.next(ctx).map(|t| t.0 as usize);
+        }
+        let _ = (conn_opts, src);
+        None
+    }
+
+    /// Peer for a new session the balancer assigned to `want`: `want` while it is
+    /// alive, otherwise the next peer after it that is ready, or at least alive.
+    /// A peer is not left for one failed probe, so `iphash` stays sticky. With no
+    /// peer alive, `want` is as good as any.
+    #[inline]
+    pub fn pick(&self, snap: Snapshot, want: usize) -> usize {
+        pick_among(self.peers.len(), snap, want)
+    }
+
+    /// Balanced counterpart of [`Failover::fallback`]: the next ready peer after `skip`.
+    #[inline]
+    pub fn next_ready(&self, snap: Snapshot, skip: usize) -> Option<usize> {
+        let n = self.peers.len();
+        (1..n).map(|k| (skip + k) % n).find(|&i| snap.is_ready(i))
+    }
+
+    /// Balanced counterpart of [`Failover::repick`]: an association stays on its
+    /// peer until that peer is down, then follows [`Failover::pick`]. With no peer
+    /// alive it stays where it is.
+    #[inline]
+    pub fn repick_balanced(&self, snap: Snapshot, cur: usize, want: usize) -> usize {
+        if snap.is_up(cur) {
+            return cur;
+        }
+        let next = self.pick(snap, want);
+        if snap.is_up(next) {
+            next
+        } else {
+            cur
+        }
+    }
+
     /// `src` is a peer other than `cur`, i.e. a late reply after the association moved.
     #[inline]
     pub fn is_stale(&self, src: &SocketAddr, cur: usize) -> bool {
         self.peers.iter().enumerate().any(|(i, p)| i != cur && p == src)
     }
+}
+
+fn pick_among(n: usize, snap: Snapshot, want: usize) -> usize {
+    let want = want % n;
+    if snap.is_up(want) {
+        return want;
+    }
+    let after = |k: usize| (want + k) % n;
+    (1..n)
+        .map(after)
+        .find(|&i| snap.is_ready(i))
+        .or_else(|| (1..n).map(after).find(|&i| snap.is_up(i)))
+        .unwrap_or(want)
 }
 
 /// Collect `[raddr, extra_raddrs..]` as socket addresses.
@@ -362,6 +454,7 @@ struct Monitor {
     opts: FailoverOpts,
     conn_opts: ConnectOpts,
     state: Arc<AtomicU32>,
+    balanced: bool,
 }
 
 async fn monitor(m: Monitor, mut fsm: Fsm) {
@@ -373,6 +466,7 @@ async fn monitor(m: Monitor, mut fsm: Fsm) {
         opts,
         conn_opts,
         state,
+        balanced,
     } = m;
 
     let mut tick = interval(opts.interval);
@@ -395,7 +489,8 @@ async fn monitor(m: Monitor, mut fsm: Fsm) {
                     log::warn!("[failover][{}]{} peer#{} {} is {}", proto, label, i, peer, state);
                 }
             }
-            if before.active() != after.active() {
+            // balanced peers have no active one to switch
+            if !balanced && before.active() != after.active() {
                 let (from, to) = (before.active(), after.active());
                 log::warn!(
                     "[failover][{}]{} switch peer#{} {} => peer#{} {}",
@@ -490,8 +585,41 @@ fn is_local(e: &Error) -> bool {
     matches!(e.kind(), ErrorKind::AddrNotAvailable | ErrorKind::AddrInUse)
 }
 
-/// Send `udp_send + nonce` and require it echoed back. Resend only while unanswered,
-/// at most [`TRIES`] datagrams within `timeout`.
+/// Version field of the QUIC probe: `0x?a?a?a?a` is reserved for forcing version
+/// negotiation (RFC 9000, 15), no server ever speaks it.
+const QUIC_PROBE_VERSION: [u8; 4] = [0x1a, 0x2a, 0x3a, 0x4a];
+/// Servers ignore smaller datagrams of an unknown version (RFC 9000, 14.1).
+const QUIC_PROBE_SIZE: usize = 1200;
+
+/// A QUIC long header packet (RFC 8999, 5.1) of [`QUIC_PROBE_VERSION`] with the
+/// nonce as its two connection ids.
+fn quic_probe(nonce: &[u8; 16]) -> Vec<u8> {
+    let mut pkt = Vec::with_capacity(QUIC_PROBE_SIZE);
+    pkt.push(0xc0);
+    pkt.extend_from_slice(&QUIC_PROBE_VERSION);
+    pkt.push(8);
+    pkt.extend_from_slice(&nonce[..8]);
+    pkt.push(8);
+    pkt.extend_from_slice(&nonce[8..]);
+    pkt.resize(QUIC_PROBE_SIZE, 0);
+    pkt
+}
+
+/// `reply` is the Version Negotiation packet (RFC 8999, 6) for this probe: a long
+/// header of version 0 that returns both connection ids, swapped.
+fn is_quic_version_negotiation(reply: &[u8], nonce: &[u8; 16]) -> bool {
+    reply.len() >= 23
+        && reply[0] & 0x80 != 0
+        && reply[1..5] == [0u8; 4]
+        && reply[5] == 8
+        && reply[6..14] == nonce[8..]
+        && reply[14] == 8
+        && reply[15..23] == nonce[..8]
+}
+
+/// Send a probe datagram and wait for its answer: `udp_send + nonce` that must come
+/// back as is, or a QUIC packet that draws a Version Negotiation. Resend only while
+/// unanswered, at most [`TRIES`] datagrams within `timeout`.
 async fn probe_udp(target: SocketAddr, opts: &FailoverOpts, conn_opts: &ConnectOpts) -> Probe {
     let sock = match crate::udp::socket::associate(&target, conn_opts) {
         Ok(x) => x,
@@ -505,11 +633,25 @@ async fn probe_udp(target: SocketAddr, opts: &FailoverOpts, conn_opts: &ConnectO
         return if is_local(&e) { Probe::Unknown } else { Probe::Fail };
     }
 
-    let mut msg = Vec::with_capacity(opts.udp_send.len() + 16);
-    msg.extend_from_slice(&opts.udp_send);
-    msg.extend_from_slice(&nonce());
-    // one extra byte so that a longer datagram never matches
-    let mut buf = vec![0u8; msg.len() + 1];
+    let nonce = nonce();
+    let quic = opts.udp_probe == UdpProbe::Quic;
+    let msg = if quic {
+        quic_probe(&nonce)
+    } else {
+        let mut msg = Vec::with_capacity(opts.udp_send.len() + 16);
+        msg.extend_from_slice(&opts.udp_send);
+        msg.extend_from_slice(&nonce);
+        msg
+    };
+    // echo: one extra byte so that a longer datagram never matches
+    let mut buf = vec![0u8; if quic { 256 } else { msg.len() + 1 }];
+    let answered = |reply: &[u8]| {
+        if quic {
+            is_quic_version_negotiation(reply, &nonce)
+        } else {
+            reply == &msg[..]
+        }
+    };
 
     let start = Instant::now();
     for k in 1..=TRIES {
@@ -517,7 +659,7 @@ async fn probe_udp(target: SocketAddr, opts: &FailoverOpts, conn_opts: &ConnectO
         let until = start + opts.timeout * k / TRIES;
         loop {
             match timeout_at(until, sock.recv(&mut buf)).await {
-                Ok(Ok(n)) if buf[..n] == msg[..] => return Probe::Ok,
+                Ok(Ok(n)) if answered(&buf[..n]) => return Probe::Ok,
                 // stale or foreign datagram
                 Ok(Ok(_)) => continue,
                 // e.g. icmp unreachable, wait for the next try
@@ -530,7 +672,7 @@ async fn probe_udp(target: SocketAddr, opts: &FailoverOpts, conn_opts: &ConnectO
             }
         }
     }
-    log::debug!("[failover][udp]probe {}: no echo", target);
+    log::debug!("[failover][udp]probe {}: no answer", target);
     Probe::Fail
 }
 
@@ -568,6 +710,60 @@ mod tests {
             *t += Duration::from_secs(1);
             fsm.update(r, *t);
         }
+    }
+
+    #[test]
+    fn quic_probe_and_its_answer() {
+        let nonce: [u8; 16] = std::array::from_fn(|i| i as u8 + 1);
+        let pkt = quic_probe(&nonce);
+        assert_eq!(pkt.len(), 1200);
+        assert_eq!(pkt[0] & 0xc0, 0xc0);
+        assert_eq!(pkt[1..5], QUIC_PROBE_VERSION);
+        assert_eq!((pkt[5], &pkt[6..14]), (8, &nonce[..8]));
+        assert_eq!((pkt[14], &pkt[15..23]), (8, &nonce[8..]));
+
+        // version negotiation: version 0, both connection ids swapped, then the versions offered
+        let mut vn = vec![0x8f, 0, 0, 0, 0, 8];
+        vn.extend_from_slice(&nonce[8..]);
+        vn.push(8);
+        vn.extend_from_slice(&nonce[..8]);
+        vn.extend_from_slice(&[0, 0, 0, 1]);
+        assert!(is_quic_version_negotiation(&vn, &nonce));
+
+        // not an answer to this probe
+        let mut other = nonce;
+        other[0] ^= 1;
+        assert!(!is_quic_version_negotiation(&vn, &other));
+        // an echo of the probe is not a quic server
+        assert!(!is_quic_version_negotiation(&pkt, &nonce));
+        // short header, wrong version, truncated
+        let mut bad = vn.clone();
+        bad[0] = 0x4f;
+        assert!(!is_quic_version_negotiation(&bad, &nonce));
+        let mut bad = vn.clone();
+        bad[4] = 1;
+        assert!(!is_quic_version_negotiation(&bad, &nonce));
+        assert!(!is_quic_version_negotiation(&vn[..22], &nonce));
+    }
+
+    #[test]
+    fn balanced_pick() {
+        let snap = |up: u8, ready: u8| Snapshot::pack(0, up, ready);
+        // the wanted peer while it is alive, even right after one failed probe
+        assert_eq!(pick_among(3, snap(0b111, 0b111), 1), 1);
+        assert_eq!(pick_among(3, snap(0b111, 0b101), 1), 1);
+        // down: the next ready peer after it, wrapping around
+        assert_eq!(pick_among(3, snap(0b101, 0b101), 1), 2);
+        assert_eq!(pick_among(3, snap(0b011, 0b011), 2), 0);
+        assert_eq!(pick_among(3, snap(0b100, 0b100), 0), 2);
+        // a ready peer wins over one that is only alive
+        assert_eq!(pick_among(3, snap(0b110, 0b100), 0), 2);
+        // nothing ready: at least an alive one
+        assert_eq!(pick_among(3, snap(0b100, 0b000), 0), 2);
+        // nothing alive: keep the wanted one
+        assert_eq!(pick_among(3, snap(0b000, 0b000), 1), 1);
+        // a weight list longer than the peers cannot index out of range
+        assert_eq!(pick_among(2, snap(0b11, 0b11), 5), 1);
     }
 
     #[test]
@@ -786,6 +982,8 @@ mod tests {
         let fo = Failover {
             peers: vec!["127.0.0.1:1".parse().unwrap(), "127.0.0.1:2".parse().unwrap()].into(),
             state: Arc::new(AtomicU32::new(0)),
+            #[cfg(feature = "balance")]
+            balanced: false,
         };
         let both_up = Snapshot::pack(0, 0b11, 0b11);
         let primary_down = Snapshot::pack(1, 0b10, 0b10);

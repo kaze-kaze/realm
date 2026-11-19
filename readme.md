@@ -298,6 +298,7 @@ remote = "www.google.com:443"
     ├── remote
     ├── extra_remotes
     ├── balance
+    ├── failover->
     ├── through
     ├── interface
     ├── listen_interface
@@ -361,6 +362,58 @@ balance = "roundrobin: 4, 2, 1"
 ```
 
 The weight of [a, b, c] is [4, 2, 1] in turn.
+
+#### endpoint.failover: table
+
+Active-standby failover for both TCP and UDP. `remote` is the primary, `extra_remotes` are backups in priority order (at most 7). Mutually exclusive with `balance`. Peers must be `ip:port` literals; for UDP they must share one address family.
+
+A background task probes every peer per protocol. Traffic only moves on probe results, never on user traffic:
+
+- a peer goes down after `fall` failed probes in the last `window` rounds; two consecutive successes forgive earlier failures;
+- a down peer comes back after `rise` consecutive successes;
+- traffic only moves to a peer whose latest probe succeeded; if no peer is usable, the current one is kept;
+- failing back to a higher priority peer waits `hold` seconds after the last switch, unless the current peer is down.
+
+Behavior:
+
+- TCP: new connections dial the active peer. If that dial fails and another peer is ready, the same client connection retries once on it before any data is relayed. Both attempts share `tcp_timeout`, the first one gets half of it when a retry is possible. Established connections are never moved.
+- UDP: new associations use the active peer. An existing association keeps its peer until that peer is down, then its next datagram goes to the active peer through the same upstream socket (client and relay ports stay the same). After such a move, late replies from the old peer are dropped.
+
+Probes (from this host, with the same `through`/`interface`):
+
+- TCP: connect, send `tcp_send` (optional), require a reply starting with `tcp_expect`. Without `tcp_expect` a completed handshake counts as success.
+- UDP: send `udp_send` plus a per-round nonce, require the exact datagram echoed back. Resend only while unanswered, at most 3 datagrams within `timeout`.
+
+To detect failures behind the next hop, point `probe` at a health port on the far end that is relayed along the same path (e.g. a tiny HTTP 204 responder and a UDP echo).
+
+| field | default | meaning |
+| --- | --- | --- |
+| probe | data addresses | health targets, one per peer, same order as `[remote, extra_remotes...]` |
+| tcp_send | none | bytes sent by the TCP probe |
+| tcp_expect | none | expected prefix of the TCP probe reply |
+| udp_send | empty | prefix of the UDP probe datagram |
+| interval | 3 | seconds between probe rounds |
+| timeout | 1.5 | seconds per probe |
+| fall / window | 3 / 5 | failures within the last rounds to mark a peer down (window <= 8) |
+| rise | 5 | consecutive successes to mark a peer up again |
+| hold | 30 | seconds before failing back |
+
+With the defaults, a silently failing primary is detected in about 7.5-10.5s. Keep `tcp_timeout` at 3-5s on failover endpoints.
+
+Example:
+
+```toml
+[[endpoints]]
+listen = "0.0.0.0:5000"
+remote = "10.0.0.4:3000"
+extra_remotes = ["10.0.0.5:3000"]
+network = { use_udp = true, tcp_timeout = 4 }
+
+[endpoints.failover]
+probe = ["10.0.0.4:3001", "10.0.0.5:3001"]
+tcp_send = "GET / HTTP/1.0\r\n\r\n"
+tcp_expect = "HTTP/1.1 204"
+```
 
 #### endpoint.through: string
 

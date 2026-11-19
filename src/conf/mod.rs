@@ -17,6 +17,9 @@ pub use net::{NetConf, NetInfo};
 mod endpoint;
 pub use endpoint::{EndpointConf, EndpointInfo};
 
+mod failover;
+pub use failover::FailoverConf;
+
 mod legacy;
 pub use legacy::LegacyConf;
 

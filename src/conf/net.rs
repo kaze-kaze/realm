@@ -120,6 +120,9 @@ impl Config for NetConf {
             #[cfg(feature = "balance")]
             balancer: Default::default(),
 
+            // from endpoint
+            failover: None,
+
             #[cfg(feature = "transport")]
             transport: None,
 

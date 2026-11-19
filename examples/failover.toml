@@ -1,0 +1,29 @@
+[log]
+level = "warn"
+output = "realm.log"
+
+[network]
+no_tcp = false
+use_udp = true
+tcp_timeout = 4
+
+[[endpoints]]
+listen = "0.0.0.0:5000"
+# primary, then backups in priority order
+remote = "10.0.0.4:3000"
+extra_remotes = ["10.0.0.5:3000"]
+
+[endpoints.failover]
+# health ports relayed to the far end along the same path, one per peer
+probe = ["10.0.0.4:3001", "10.0.0.5:3001"]
+# tcp: request and expected reply prefix
+tcp_send = "GET / HTTP/1.0\r\n\r\n"
+tcp_expect = "HTTP/1.1 204"
+# udp: probe datagrams are this prefix plus a nonce, and must be echoed back
+udp_send = "realm-hc:"
+interval = 3
+timeout = 1.5
+fall = 3
+window = 5
+rise = 5
+hold = 30

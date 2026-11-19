@@ -9,6 +9,8 @@ use kaminari::mix::{MixAccept, MixConnect};
 #[cfg(feature = "balance")]
 use realm_lb::Balancer;
 
+use crate::failover::FailoverOpts;
+
 /// Remote address.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RemoteAddr {
@@ -53,6 +55,9 @@ pub struct ConnectOpts {
 
     #[cfg(feature = "balance")]
     pub balancer: Balancer,
+
+    /// Active-standby failover over `[raddr, extra_raddrs..]`, exclusive with balance.
+    pub failover: Option<FailoverOpts>,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -129,6 +134,8 @@ impl Display for ConnectOpts {
 
             #[cfg(feature = "balance")]
             balancer,
+
+            failover,
         } = self;
 
         if let Some(iface) = bind_interface {
@@ -169,6 +176,12 @@ impl Display for ConnectOpts {
 
         #[cfg(feature = "balance")]
         write!(f, "balance={}", balancer.strategy())?;
+
+        if let Some(failover) = failover {
+            #[cfg(feature = "balance")]
+            write!(f, "; ")?;
+            write!(f, "failover: {}", failover)?;
+        }
         Ok(())
     }
 }

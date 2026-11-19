@@ -9,7 +9,7 @@ use realm_core::balance::Balancer;
 #[cfg(feature = "transport")]
 use realm_core::kaminari::mix::{MixAccept, MixConnect};
 
-use super::{Config, NetConf, NetInfo};
+use super::{Config, NetConf, NetInfo, FailoverConf};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EndpointConf {
@@ -24,6 +24,10 @@ pub struct EndpointConf {
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub balance: Option<String>,
+
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub failover: Option<FailoverConf>,
 
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -171,6 +175,26 @@ impl Config for EndpointConf {
             conn_opts.balancer = self.build_balancer();
         }
 
+        if let Some(failover) = &self.failover {
+            if self.balance.is_some() {
+                panic!("endpoint {}: failover and balance are mutually exclusive", self.listen);
+            }
+            let remotes: Vec<&str> = std::iter::once(self.remote.as_str())
+                .chain(self.extra_remotes.iter().map(String::as_str))
+                .collect();
+            conn_opts.failover = Some(failover.build(&self.listen, &remotes, use_udp));
+
+            // the dial deadline is shared by the primary attempt and the one retry
+            let t = conn_opts.connect_timeout;
+            if !no_tcp && (t == 0 || t > 10) {
+                log::warn!(
+                    "endpoint {}: failover with tcp_timeout={}s, a blackholed peer stalls new connections that long; 3-5s is recommended",
+                    self.listen,
+                    t
+                );
+            }
+        }
+
         #[cfg(feature = "transport")]
         {
             conn_opts.transport = self.build_transport();
@@ -222,6 +246,7 @@ impl Config for EndpointConf {
             network: Default::default(),
             extra_remotes: Vec::new(),
             balance: None,
+            failover: None,
         }
     }
 }

@@ -1,0 +1,237 @@
+use std::net::SocketAddr;
+use std::time::Duration;
+
+use serde::{Serialize, Deserialize};
+use realm_core::failover::{FailoverOpts, MAX_PEERS};
+
+/// Active-standby failover: `remote` is the primary, `extra_remotes` are backups in priority order.
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct FailoverConf {
+    /// Health check targets, one per peer; empty probes the data addresses.
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub probe: Vec<String>,
+
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tcp_send: Option<String>,
+
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tcp_expect: Option<String>,
+
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub udp_send: Option<String>,
+
+    /// Seconds.
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub interval: Option<f64>,
+
+    /// Seconds.
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timeout: Option<f64>,
+
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fall: Option<u8>,
+
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub window: Option<u8>,
+
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rise: Option<u8>,
+
+    /// Seconds.
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hold: Option<f64>,
+}
+
+impl FailoverConf {
+    /// Validate against the endpoint and build core options. Panics on invalid config.
+    pub fn build(&self, listen: &str, remotes: &[&str], use_udp: bool) -> FailoverOpts {
+        let fail = |msg: String| -> ! { panic!("endpoint {}: failover: {}", listen, msg) };
+        let literal = |s: &str| {
+            s.parse::<SocketAddr>()
+                .unwrap_or_else(|_| fail(format!("{} must be an ip:port literal", s)))
+        };
+        let secs = |name: &str, v: Option<f64>, default: Duration| match v {
+            None => default,
+            Some(x) if x.is_finite() && x > 0.0 => Duration::from_secs_f64(x),
+            Some(x) => fail(format!("{} must be a positive number of seconds, got {}", name, x)),
+        };
+
+        let peers: Vec<SocketAddr> = remotes.iter().map(|r| literal(r)).collect();
+        if !(2..=MAX_PEERS).contains(&peers.len()) {
+            fail(format!(
+                "needs remote plus 1..={} extra_remotes, got {} peer(s)",
+                MAX_PEERS - 1,
+                peers.len()
+            ));
+        }
+        if use_udp && peers.iter().any(|p| p.is_ipv4() != peers[0].is_ipv4()) {
+            fail("udp peers must share one address family".into());
+        }
+
+        let probe: Vec<SocketAddr> = self.probe.iter().map(|p| literal(p)).collect();
+        if !probe.is_empty() && probe.len() != peers.len() {
+            fail(format!(
+                "probe has {} target(s), expect one per peer ({})",
+                probe.len(),
+                peers.len()
+            ));
+        }
+
+        let df = FailoverOpts::default();
+        let bytes = |v: &Option<String>| v.as_deref().unwrap_or_default().as_bytes().to_vec();
+        let opts = FailoverOpts {
+            probe,
+            tcp_send: bytes(&self.tcp_send),
+            tcp_expect: bytes(&self.tcp_expect),
+            udp_send: bytes(&self.udp_send),
+            interval: secs("interval", self.interval, df.interval),
+            timeout: secs("timeout", self.timeout, df.timeout),
+            fall: self.fall.unwrap_or(df.fall),
+            window: self.window.unwrap_or(df.window),
+            rise: self.rise.unwrap_or(df.rise),
+            hold: secs("hold", self.hold, df.hold),
+        };
+
+        if !(1..=8).contains(&opts.window) {
+            fail(format!("window must be 1..=8, got {}", opts.window));
+        }
+        if !(1..=opts.window).contains(&opts.fall) {
+            fail(format!("fall must be 1..=window({}), got {}", opts.window, opts.fall));
+        }
+        if opts.rise == 0 {
+            fail("rise must be at least 1".into());
+        }
+        opts
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn defaults() {
+        let conf: FailoverConf = toml::from_str("").unwrap();
+        let opts = conf.build("l", &["10.0.0.1:1", "10.0.0.2:1"], true);
+        assert!(opts.probe.is_empty() && opts.tcp_send.is_empty() && opts.udp_send.is_empty());
+        assert_eq!(opts.interval, Duration::from_secs(3));
+        assert_eq!(opts.timeout, Duration::from_millis(1500));
+        assert_eq!((opts.fall, opts.window, opts.rise), (3, 5, 5));
+        assert_eq!(opts.hold, Duration::from_secs(30));
+    }
+
+    #[test]
+    fn full() {
+        let conf: FailoverConf = toml::from_str(
+            r#"
+            probe = ["10.0.0.1:9", "10.0.0.2:9"]
+            tcp_send = "GET / HTTP/1.0\r\n\r\n"
+            tcp_expect = "HTTP/1.1 204"
+            udp_send = "hc"
+            interval = 0.5
+            timeout = 0.25
+            fall = 2
+            window = 3
+            rise = 4
+            hold = 10
+            "#,
+        )
+        .unwrap();
+        let opts = conf.build("l", &["10.0.0.1:1", "10.0.0.2:1"], true);
+        assert_eq!(opts.probe.len(), 2);
+        assert_eq!(opts.tcp_send, b"GET / HTTP/1.0\r\n\r\n");
+        assert_eq!(opts.tcp_expect, b"HTTP/1.1 204");
+        assert_eq!(opts.udp_send, b"hc");
+        assert_eq!(opts.interval, Duration::from_millis(500));
+        assert_eq!(opts.timeout, Duration::from_millis(250));
+        assert_eq!((opts.fall, opts.window, opts.rise), (2, 3, 4));
+        assert_eq!(opts.hold, Duration::from_secs(10));
+    }
+
+    #[test]
+    #[should_panic(expected = "ip:port literal")]
+    fn reject_domain() {
+        FailoverConf::default().build("l", &["a.com:1", "10.0.0.2:1"], false);
+    }
+
+    #[test]
+    #[should_panic(expected = "extra_remotes")]
+    fn reject_single_peer() {
+        FailoverConf::default().build("l", &["10.0.0.1:1"], false);
+    }
+
+    #[test]
+    #[should_panic(expected = "address family")]
+    fn reject_mixed_family_udp() {
+        FailoverConf::default().build("l", &["10.0.0.1:1", "[::1]:1"], true);
+    }
+
+    #[test]
+    fn mixed_family_tcp_ok() {
+        FailoverConf::default().build("l", &["10.0.0.1:1", "[::1]:1"], false);
+    }
+
+    #[test]
+    #[should_panic(expected = "one per peer")]
+    fn reject_probe_count() {
+        let conf = FailoverConf {
+            probe: vec!["10.0.0.1:9".into()],
+            ..Default::default()
+        };
+        conf.build("l", &["10.0.0.1:1", "10.0.0.2:1"], false);
+    }
+
+    #[test]
+    fn example_configs() {
+        use crate::conf::{Config, FullConf};
+        for file in ["examples/failover.toml", "examples/failover.json"] {
+            let path = format!("{}/{}", env!("CARGO_MANIFEST_DIR"), file);
+            let mut conf = FullConf::from_conf_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+            conf.apply_global_opts();
+            let info = conf.endpoints.pop().unwrap().build();
+            let opts = info.endpoint.conn_opts.failover.expect(file);
+            assert!(info.use_udp);
+            assert_eq!(info.endpoint.conn_opts.connect_timeout, 4);
+            assert_eq!(opts.probe.len(), 2);
+            assert_eq!(opts.tcp_send, b"GET / HTTP/1.0\r\n\r\n");
+            assert_eq!(opts.udp_send, b"realm-hc:");
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "mutually exclusive")]
+    fn reject_with_balance() {
+        use crate::conf::{Config, EndpointConf};
+        let ep: EndpointConf = toml::from_str(
+            r#"
+            listen = "127.0.0.1:1"
+            remote = "10.0.0.1:1"
+            extra_remotes = ["10.0.0.2:1"]
+            balance = "roundrobin: 1, 1"
+            failover = {}
+            "#,
+        )
+        .unwrap();
+        ep.build();
+    }
+
+    #[test]
+    #[should_panic(expected = "fall must be")]
+    fn reject_fall_over_window() {
+        let conf = FailoverConf {
+            fall: Some(6),
+            ..Default::default()
+        };
+        conf.build("l", &["10.0.0.1:1", "10.0.0.2:1"], false);
+    }
+}

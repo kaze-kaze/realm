@@ -15,12 +15,15 @@ use super::transport;
 
 use crate::trick::Ref;
 use crate::endpoint::{RemoteAddr, ConnectOpts};
+use crate::failover::Failover;
+
 #[allow(unused)]
 pub async fn connect_and_relay(
     mut local: TcpStream,
     raddr: Ref<RemoteAddr>,
     conn_opts: Ref<ConnectOpts>,
     extra_raddrs: Ref<Vec<RemoteAddr>>,
+    failover: Ref<Option<Failover>>,
 ) -> Result<()> {
     let ConnectOpts {
         #[cfg(feature = "proxy")]
@@ -36,46 +39,60 @@ pub async fn connect_and_relay(
         ..
     } = conn_opts.as_ref();
 
-    // before connect:
-    // - pre-connect hook
-    // - load balance
-    // ..
-    let raddr = {
-        #[cfg(feature = "hook")]
-        {
-            // accept or deny connection.
-            #[cfg(feature = "balance")]
-            {
-                hook::pre_connect_hook(&mut local, raddr.as_ref(), extra_raddrs.as_ref()).await?;
-            }
+    let mut remote = match failover.as_ref() {
+        // failover: the hook may still reject, peer selection belongs to failover.
+        Some(fo) => {
+            #[cfg(feature = "hook")]
+            hook::pre_connect_hook(&mut local, raddr.as_ref(), extra_raddrs.as_ref()).await?;
 
-            // accept or deny connection, or select a remote peer.
-            #[cfg(not(feature = "balance"))]
-            {
-                hook::pre_connect_hook(&mut local, raddr.as_ref(), extra_raddrs.as_ref()).await?
-            }
+            let (remote, idx) = socket::connect_failover(fo, conn_opts.as_ref()).await?;
+            log::info!("[tcp]{} => peer#{} {}", local.peer_addr()?, idx, fo.peer(idx));
+            remote
         }
+        None => {
+            // before connect:
+            // - pre-connect hook
+            // - load balance
+            // ..
+            let raddr = {
+                #[cfg(feature = "hook")]
+                {
+                    // accept or deny connection.
+                    #[cfg(feature = "balance")]
+                    {
+                        hook::pre_connect_hook(&mut local, raddr.as_ref(), extra_raddrs.as_ref()).await?;
+                    }
 
-        #[cfg(feature = "balance")]
-        {
-            use realm_lb::{Token, BalanceCtx};
-            let token = balancer.next(BalanceCtx {
-                src_ip: &local.peer_addr()?.ip(),
-            });
-            log::debug!("[tcp]select remote peer, token: {:?}", token);
-            match token {
-                None | Some(Token(0)) => raddr.as_ref(),
-                Some(Token(idx)) => &extra_raddrs.as_ref()[idx as usize - 1],
-            }
+                    // accept or deny connection, or select a remote peer.
+                    #[cfg(not(feature = "balance"))]
+                    {
+                        hook::pre_connect_hook(&mut local, raddr.as_ref(), extra_raddrs.as_ref()).await?
+                    }
+                }
+
+                #[cfg(feature = "balance")]
+                {
+                    use realm_lb::{Token, BalanceCtx};
+                    let token = balancer.next(BalanceCtx {
+                        src_ip: &local.peer_addr()?.ip(),
+                    });
+                    log::debug!("[tcp]select remote peer, token: {:?}", token);
+                    match token {
+                        None | Some(Token(0)) => raddr.as_ref(),
+                        Some(Token(idx)) => &extra_raddrs.as_ref()[idx as usize - 1],
+                    }
+                }
+
+                #[cfg(not(any(feature = "hook", feature = "balance")))]
+                raddr.as_ref()
+            };
+
+            // connect!
+            let remote = socket::connect(raddr, conn_opts.as_ref()).await?;
+            log::info!("[tcp]{} => {} as {}", local.peer_addr()?, raddr, remote.peer_addr()?);
+            remote
         }
-
-        #[cfg(not(any(feature = "hook", feature = "balance")))]
-        raddr.as_ref()
     };
-
-    // connect!
-    let mut remote = socket::connect(raddr, conn_opts.as_ref()).await?;
-    log::info!("[tcp]{} => {} as {}", local.peer_addr()?, raddr, remote.peer_addr()?);
 
     // after connected
     // ..

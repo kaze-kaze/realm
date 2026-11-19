@@ -4,12 +4,14 @@ use std::sync::Arc;
 use tokio::net::UdpSocket;
 
 use super::SockMap;
+use super::sockmap::Assoc;
 use super::{socket, batched};
 
 use crate::trick::Ref;
 use crate::time::timeoutfut;
 use crate::dns::resolve_addr;
 use crate::endpoint::{RemoteAddr, ConnectOpts};
+use crate::failover::Failover;
 
 use batched::{Packet, SockAddrStore};
 use registry::Registry;
@@ -54,6 +56,21 @@ mod registry {
 
         pub fn iter(&self) -> std::slice::Iter<'_, Packet> {
             self.pkts[..self.cursor as usize].iter()
+        }
+
+        /// Keep received packets matching `keep`, in order.
+        pub fn retain<F: Fn(&Packet) -> bool>(&mut self, keep: F) {
+            let n = self.cursor as usize;
+            let mut w = 0;
+            for r in 0..n {
+                if keep(&self.pkts[r]) {
+                    if w != r {
+                        self.pkts.swap(w, r);
+                    }
+                    w += 1;
+                }
+            }
+            self.cursor = w as u16;
         }
 
         pub const fn count(&self) -> usize {
@@ -111,26 +128,67 @@ pub async fn associate_and_relay(
     rname: Ref<RemoteAddr>,
     conn_opts: Ref<ConnectOpts>,
     sockmap: Ref<SockMap>,
+    failover: Ref<Option<Failover>>,
 ) -> Result<()> {
     let mut registry = Registry::new(batched::MAX_PACKETS);
 
     loop {
         registry.batched_recv_on(&lis).await?;
         log::debug!("[udp]entry batched recvfrom[{}]", registry.count());
-        let raddr = resolve_addr(&rname).await?.iter().next().unwrap();
-        log::debug!("[udp]{} resolved as {}", *rname, raddr);
+
+        // one snapshot per batch with failover, otherwise resolve `rname` as before
+        let (route, fixed) = match failover.as_ref() {
+            Some(fo) => (Some((fo, fo.snapshot())), None),
+            None => {
+                let raddr = resolve_addr(&rname).await?.iter().next().unwrap();
+                log::debug!("[udp]{} resolved as {}", *rname, raddr);
+                (None, Some(raddr))
+            }
+        };
 
         registry.group_by_addr();
         for pkts in registry.group_iter() {
             let laddr = pkts[0].addr.clone().into();
-            let rsock = sockmap.find_or_insert(&laddr, || {
-                let s = Arc::new(socket::associate(&raddr, &conn_opts)?);
-                tokio::spawn(send_back(lis, laddr, s.clone(), conn_opts, sockmap));
-                log::info!("[udp]new association {} => {} as {}", laddr, *rname, raddr);
-                Result::Ok(s)
+
+            // peer for a new association
+            let (peer, raddr) = match (route, fixed) {
+                (Some((fo, snap)), _) => (snap.active(), fo.peer(snap.active())),
+                (None, Some(raddr)) => (0, raddr),
+                (None, None) => unreachable!(),
+            };
+
+            let assoc = sockmap.find_or_insert(&laddr, || {
+                let assoc = Arc::new(Assoc::new(socket::associate(&raddr, &conn_opts)?, peer));
+                tokio::spawn(send_back(lis, laddr, assoc.clone(), conn_opts, sockmap, failover));
+                match route {
+                    Some(_) => log::info!("[udp]new association {} => peer#{} {}", laddr, peer, raddr),
+                    None => log::info!("[udp]new association {} => {} as {}", laddr, *rname, raddr),
+                }
+                Result::Ok(assoc)
             })?;
+
+            // an existing association sticks to its peer until that peer is down
+            let raddr = match route {
+                Some((fo, snap)) => {
+                    let cur = assoc.peer();
+                    let next = Failover::repick(snap, cur);
+                    if next != cur {
+                        assoc.move_to(next);
+                        log::info!(
+                            "[udp]{} moved from peer#{} to peer#{} {}",
+                            laddr,
+                            cur,
+                            next,
+                            fo.peer(next)
+                        );
+                    }
+                    fo.peer(next)
+                }
+                None => raddr,
+            };
+
             let raddr: SockAddrStore = raddr.into();
-            batched::send_all(&rsock, pkts.iter().map(|x| x.ref_with_addr(&raddr))).await?;
+            batched::send_all(&assoc.sock, pkts.iter().map(|x| x.ref_with_addr(&raddr))).await?;
         }
     }
 }
@@ -138,16 +196,17 @@ pub async fn associate_and_relay(
 async fn send_back(
     lsock: Ref<UdpSocket>,
     laddr: SocketAddr,
-    rsock: Arc<UdpSocket>,
+    assoc: Arc<Assoc>,
     conn_opts: Ref<ConnectOpts>,
     sockmap: Ref<SockMap>,
+    failover: Ref<Option<Failover>>,
 ) {
     let mut registry = Registry::new(batched::MAX_PACKETS);
     let timeout = conn_opts.associate_timeout;
     let laddr_s: SockAddrStore = laddr.into();
 
     loop {
-        match timeoutfut(registry.batched_recv_on(&rsock), timeout).await {
+        match timeoutfut(registry.batched_recv_on(&assoc.sock), timeout).await {
             Err(_) => {
                 log::debug!("[udp]rear recvfrom timeout");
                 break;
@@ -160,6 +219,14 @@ async fn send_back(
                 log::debug!("[udp]rear batched recvfrom[{}]", registry.count())
             }
         };
+
+        // after a move, drop late replies from the peer(s) this association left
+        if let (Some(fo), Some(cur)) = (failover.as_ref(), assoc.moved_peer()) {
+            registry.retain(|pkt| !fo.is_stale(&pkt.addr.to_socket_addr(), cur));
+            if registry.count() == 0 {
+                continue;
+            }
+        }
 
         let pkts = registry.iter().map(|pkt| pkt.ref_with_addr(&laddr_s));
         if let Err(e) = batched::send_all(&lsock, pkts).await {

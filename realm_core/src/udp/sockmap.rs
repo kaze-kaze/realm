@@ -1,10 +1,48 @@
 use std::net::SocketAddr;
 use std::sync::{Arc, RwLock};
+use std::sync::atomic::{AtomicU8, Ordering::Relaxed};
 use std::collections::HashMap;
 
 use tokio::net::UdpSocket;
 
-pub struct SockMap(RwLock<HashMap<SocketAddr, Arc<UdpSocket>>>);
+/// Upstream association of one client.
+pub struct Assoc {
+    pub sock: UdpSocket,
+    /// Failover peer index, `MOVED` once the association left its first peer.
+    /// Written only by the client-side task, so one relaxed atomic is enough.
+    route: AtomicU8,
+}
+
+impl Assoc {
+    const MOVED: u8 = 0x80;
+
+    pub fn new(sock: UdpSocket, peer: usize) -> Self {
+        Self {
+            sock,
+            route: AtomicU8::new(peer as u8),
+        }
+    }
+
+    #[inline]
+    pub fn peer(&self) -> usize {
+        (self.route.load(Relaxed) & !Self::MOVED) as usize
+    }
+
+    /// Point the association to another peer.
+    #[inline]
+    pub fn move_to(&self, peer: usize) {
+        self.route.store(peer as u8 | Self::MOVED, Relaxed);
+    }
+
+    /// Current peer, only if the association has ever moved.
+    #[inline]
+    pub fn moved_peer(&self) -> Option<usize> {
+        let route = self.route.load(Relaxed);
+        (route & Self::MOVED != 0).then_some((route & !Self::MOVED) as usize)
+    }
+}
+
+pub struct SockMap(RwLock<HashMap<SocketAddr, Arc<Assoc>>>);
 
 impl SockMap {
     pub fn new() -> Self {
@@ -12,7 +50,7 @@ impl SockMap {
     }
 
     #[inline]
-    pub fn find(&self, addr: &SocketAddr) -> Option<Arc<UdpSocket>> {
+    pub fn find(&self, addr: &SocketAddr) -> Option<Arc<Assoc>> {
         // fetch the lock
 
         let sockmap = self.0.read().unwrap();
@@ -23,26 +61,26 @@ impl SockMap {
     }
 
     #[inline]
-    pub fn insert(&self, addr: SocketAddr, socket: Arc<UdpSocket>) {
+    pub fn insert(&self, addr: SocketAddr, assoc: Arc<Assoc>) {
         // fetch the lock
         let mut sockmap = self.0.write().unwrap();
 
-        let _ = sockmap.insert(addr, socket);
+        let _ = sockmap.insert(addr, assoc);
 
         // drop the lock
     }
 
     #[inline]
-    pub fn find_or_insert<E, F>(&self, addr: &SocketAddr, f: F) -> Result<Arc<UdpSocket>, E>
+    pub fn find_or_insert<E, F>(&self, addr: &SocketAddr, f: F) -> Result<Arc<Assoc>, E>
     where
-        F: Fn() -> Result<Arc<UdpSocket>, E>,
+        F: Fn() -> Result<Arc<Assoc>, E>,
     {
         match self.find(addr) {
             Some(x) => Ok(x),
             None => {
-                let socket = f()?;
-                self.insert(*addr, Arc::clone(&socket));
-                Ok(socket)
+                let assoc = f()?;
+                self.insert(*addr, Arc::clone(&assoc));
+                Ok(assoc)
             }
         }
     }

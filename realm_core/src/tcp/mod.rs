@@ -1,6 +1,6 @@
 //! TCP relay entrance.
 
-mod socket;
+pub(crate) mod socket;
 mod middle;
 mod plain;
 
@@ -17,6 +17,7 @@ use std::io::{ErrorKind, Result};
 
 use crate::trick::Ref;
 use crate::endpoint::Endpoint;
+use crate::failover::{Failover, Proto, literal_peers};
 
 use middle::connect_and_relay;
 
@@ -30,12 +31,18 @@ pub async fn run_tcp(endpoint: Endpoint) -> Result<()> {
         extra_raddrs,
     } = endpoint;
 
+    let lis = socket::bind(&laddr, bind_opts).unwrap_or_else(|e| panic!("[tcp]failed to bind {}: {}", laddr, e));
+    let keepalive = socket::keepalive::build(&conn_opts);
+
+    let failover = conn_opts.failover.as_ref().map(|opts| {
+        let peers = literal_peers(&raddr, &extra_raddrs);
+        Failover::start(Proto::Tcp, laddr.to_string(), peers, opts, &conn_opts)
+    });
+
     let raddr = Ref::new(&raddr);
     let conn_opts = Ref::new(&conn_opts);
     let extra_raddrs = Ref::new(&extra_raddrs);
-
-    let lis = socket::bind(&laddr, bind_opts).unwrap_or_else(|e| panic!("[tcp]failed to bind {}: {}", laddr, e));
-    let keepalive = socket::keepalive::build(&conn_opts);
+    let failover = Ref::new(&failover);
 
     loop {
         let (local, addr) = match lis.accept().await {
@@ -59,7 +66,7 @@ pub async fn run_tcp(endpoint: Endpoint) -> Result<()> {
         }
 
         tokio::spawn(async move {
-            match connect_and_relay(local, raddr, conn_opts, extra_raddrs).await {
+            match connect_and_relay(local, raddr, conn_opts, extra_raddrs, failover).await {
                 Ok(..) => log::debug!("[tcp]{} => {}, finish", addr, raddr.as_ref()),
                 Err(e) => log::error!("[tcp]{} => {}, error: {}", addr, raddr.as_ref(), e),
             }

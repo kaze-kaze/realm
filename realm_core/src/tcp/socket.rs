@@ -4,10 +4,12 @@ use std::time::Duration;
 
 use realm_syscall::socket2::Socket;
 use tokio::net::{TcpSocket, TcpStream, TcpListener};
+use tokio::time::{Instant, timeout_at};
 
 use crate::dns::resolve_addr;
 use crate::time::timeoutfut;
 use crate::endpoint::{RemoteAddr, BindOpts, ConnectOpts};
+use crate::failover::{Failover, timed_out};
 
 fn new_socket(addr: &SocketAddr, mptcp: bool) -> Result<Socket> {
     #[cfg(target_os = "linux")]
@@ -54,10 +56,14 @@ pub fn bind(laddr: &SocketAddr, bind_opts: BindOpts) -> Result<TcpListener> {
     TcpListener::from_std(socket.into())
 }
 
-pub async fn connect(raddr: &RemoteAddr, conn_opts: &ConnectOpts) -> Result<TcpStream> {
+/// Create an outbound socket for `addr` with the configured egress options.
+pub fn prepare(
+    addr: &SocketAddr,
+    conn_opts: &ConnectOpts,
+    keepalive: Option<&keepalive::TcpKeepalive>,
+) -> Result<TcpSocket> {
     let ConnectOpts {
         send_mptcp,
-        connect_timeout,
         bind_address,
 
         #[cfg(target_os = "linux")]
@@ -65,34 +71,40 @@ pub async fn connect(raddr: &RemoteAddr, conn_opts: &ConnectOpts) -> Result<TcpS
         ..
     } = conn_opts;
 
+    let socket = new_socket(addr, *send_mptcp)?;
+
+    // ignore error
+    let _ = socket.set_tcp_nodelay(true);
+    let _ = socket.set_reuse_address(true);
+
+    if let Some(addr) = *bind_address {
+        socket.bind(&addr.into())?;
+    }
+
+    #[cfg(target_os = "linux")]
+    if let Some(iface) = bind_interface {
+        realm_syscall::bind_to_device(&socket, iface)?;
+    }
+
+    if let Some(kpa) = keepalive {
+        socket.set_tcp_keepalive(kpa)?;
+    }
+
+    Ok(TcpSocket::from_std_stream(socket.into()))
+}
+
+pub async fn connect(raddr: &RemoteAddr, conn_opts: &ConnectOpts) -> Result<TcpStream> {
+    let connect_timeout = conn_opts.connect_timeout;
+
     let mut last_err = None;
     let keepalive = keepalive::build(conn_opts);
 
     for addr in resolve_addr(raddr).await?.iter() {
         log::debug!("[tcp]{} resolved as {}", raddr, addr);
 
-        let socket = new_socket(&addr, *send_mptcp)?;
+        let socket = prepare(&addr, conn_opts, keepalive.as_ref())?;
 
-        // ignore error
-        let _ = socket.set_tcp_nodelay(true);
-        let _ = socket.set_reuse_address(true);
-
-        if let Some(addr) = *bind_address {
-            socket.bind(&addr.into())?;
-        }
-
-        #[cfg(target_os = "linux")]
-        if let Some(iface) = bind_interface {
-            realm_syscall::bind_to_device(&socket, iface)?;
-        }
-
-        if let Some(kpa) = &keepalive {
-            socket.set_tcp_keepalive(kpa)?;
-        }
-
-        let socket = TcpSocket::from_std_stream(socket.into());
-
-        match timeoutfut(socket.connect(addr), *connect_timeout).await {
+        match timeoutfut(socket.connect(addr), connect_timeout).await {
             Ok(Ok(stream)) => {
                 log::debug!("[tcp]connect to {} as {}", raddr, addr,);
                 return Ok(stream);
@@ -108,7 +120,57 @@ pub async fn connect(raddr: &RemoteAddr, conn_opts: &ConnectOpts) -> Result<TcpS
     Err(last_err.unwrap_or_else(|| Error::new(ErrorKind::InvalidInput, "could not connect to any address")))
 }
 
-pub(super) mod keepalive {
+/// Dial the active failover peer; if that fails, retry once on the next ready peer.
+///
+/// Both attempts share one deadline of `connect_timeout` (0 = none). When a retry is
+/// possible the first attempt only gets half of it, so the retry always has time left.
+/// Nothing has been read from the client at this point, so retrying is lossless.
+pub async fn connect_failover(fo: &Failover, conn_opts: &ConnectOpts) -> Result<(TcpStream, usize)> {
+    let snap = fo.snapshot();
+    let first = snap.active();
+    let next = fo.fallback(snap, first);
+
+    let keepalive = keepalive::build(conn_opts);
+    let total = Duration::from_secs(conn_opts.connect_timeout as u64);
+    let start = Instant::now();
+    let deadline = |budget: Duration| (!total.is_zero()).then(|| start + budget);
+
+    let budget = if next.is_some() { total / 2 } else { total };
+    let err = match dial(fo.peer(first), conn_opts, keepalive.as_ref(), deadline(budget)).await {
+        Ok(stream) => return Ok((stream, first)),
+        Err(e) => e,
+    };
+
+    let Some(next) = next else { return Err(err) };
+    log::warn!(
+        "[tcp]connect to peer#{} {}: {}, retry peer#{} {}",
+        first,
+        fo.peer(first),
+        err,
+        next,
+        fo.peer(next)
+    );
+    dial(fo.peer(next), conn_opts, keepalive.as_ref(), deadline(total))
+        .await
+        .map(|stream| (stream, next))
+}
+
+async fn dial(
+    addr: SocketAddr,
+    conn_opts: &ConnectOpts,
+    keepalive: Option<&keepalive::TcpKeepalive>,
+    deadline: Option<Instant>,
+) -> Result<TcpStream> {
+    let socket = prepare(&addr, conn_opts, keepalive)?;
+    match deadline {
+        Some(deadline) => timeout_at(deadline, socket.connect(addr))
+            .await
+            .map_err(|_| timed_out())?,
+        None => socket.connect(addr).await,
+    }
+}
+
+pub(crate) mod keepalive {
     use super::*;
     pub use realm_syscall::socket2::{SockRef, TcpKeepalive};
     pub fn build(conn_opts: &ConnectOpts) -> Option<TcpKeepalive> {

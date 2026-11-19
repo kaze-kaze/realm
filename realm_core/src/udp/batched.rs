@@ -30,6 +30,14 @@ impl SockAddrStore {
     }
 }
 
+impl SockAddrStore {
+    /// Decode a kernel-filled address.
+    #[inline]
+    pub fn to_socket_addr(&self) -> SocketAddr {
+        self.inner.clone().into()
+    }
+}
+
 impl Default for SockAddrStore {
     fn default() -> Self {
         Self::new()

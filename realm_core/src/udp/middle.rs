@@ -19,23 +19,47 @@ mod registry {
     use super::*;
     type Range = std::ops::Range<u16>;
 
+    /// Slots of a per-association registry before it grows on demand.
+    const MIN_PACKETS: usize = 8;
+
     pub struct Registry {
-        pkts: Box<[Packet]>,
+        pkts: Vec<Packet>,
         groups: Vec<Range>,
         cursor: u16,
+        max: usize,
     }
 
     impl Registry {
         pub fn new(npkts: usize) -> Self {
             debug_assert!(npkts <= batched::MAX_PACKETS);
             Self {
-                pkts: vec![Packet::new(); npkts].into_boxed_slice(),
+                pkts: vec![Packet::new(); npkts],
                 groups: Vec::with_capacity(npkts),
                 cursor: 0u16,
+                max: npkts,
+            }
+        }
+
+        /// A registry that starts small and doubles up to `max` slots while batches
+        /// come back full. There is one per udp association and most of them are
+        /// light, so a full-size one each (~200 KiB) adds up with many clients.
+        pub fn growing(max: usize) -> Self {
+            debug_assert!(max <= batched::MAX_PACKETS);
+            Self {
+                pkts: vec![Packet::new(); MIN_PACKETS.min(max)],
+                groups: Vec::new(),
+                cursor: 0u16,
+                max,
             }
         }
 
         pub async fn batched_recv_on(&mut self, sock: &UdpSocket) -> Result<()> {
+            // the previous batch used every slot, so more may be queued:
+            // read more per syscall from now on
+            let len = self.pkts.len();
+            if self.cursor as usize == len && len < self.max {
+                self.pkts.resize((len * 2).min(self.max), Packet::new());
+            }
             let n = batched::recv_some(sock, &mut self.pkts).await?;
             self.cursor = n as u16;
             Ok(())
@@ -201,7 +225,7 @@ async fn send_back(
     sockmap: Ref<SockMap>,
     failover: Ref<Option<Failover>>,
 ) {
-    let mut registry = Registry::new(batched::MAX_PACKETS);
+    let mut registry = Registry::growing(batched::MAX_PACKETS);
     let timeout = conn_opts.associate_timeout;
     let laddr_s: SockAddrStore = laddr.into();
 

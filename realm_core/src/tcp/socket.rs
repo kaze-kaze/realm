@@ -88,6 +88,16 @@ pub fn prepare(
 
     if let Some(kpa) = keepalive {
         socket.set_tcp_keepalive(kpa)?;
+
+        // Keepalive only detects a dead peer on an idle connection. With data in
+        // flight the kernel keeps retransmitting for about 15 minutes, and the client
+        // never reconnects to the peer that took over. Give up after the same time
+        // keepalive would. This also ends a connection whose peer stops reading for
+        // that long while data is pending. Best effort, e.g. not on mptcp sockets.
+        #[cfg(target_os = "linux")]
+        if conn_opts.failover.is_some() {
+            let _ = socket.set_tcp_user_timeout(Some(keepalive::dead_after(conn_opts)));
+        }
     }
 
     Ok(TcpSocket::from_std_stream(socket.into()))
@@ -195,5 +205,11 @@ pub(crate) mod keepalive {
         }
 
         Some(kpa)
+    }
+
+    /// Time until keepalive declares an idle peer dead: one idle period plus all probes.
+    #[cfg(target_os = "linux")]
+    pub fn dead_after(conn_opts: &ConnectOpts) -> Duration {
+        Duration::from_secs(conn_opts.tcp_keepalive as u64) * (conn_opts.tcp_keepalive_probe as u32 + 1)
     }
 }

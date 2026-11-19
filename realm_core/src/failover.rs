@@ -9,8 +9,7 @@
 //!
 //! Decisions are made on probe results only, never on user traffic:
 //! - a peer goes down after `fall` failures in the last `window` probes;
-//!   two consecutive successes forgive earlier failures;
-//! - a down peer comes back after `rise` consecutive successes;
+//! - a down peer comes back after `rise` consecutive successes, with a clean record;
 //! - traffic only moves to a peer whose latest probe succeeded;
 //! - failing back to a higher priority peer waits `hold` after the last switch,
 //!   unless the current peer is down;
@@ -25,6 +24,7 @@ use std::sync::atomic::{AtomicU32, Ordering::Relaxed};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use futures::future::join_all;
+use futures::stream::{FuturesUnordered, StreamExt};
 use tokio::time::{Instant, MissedTickBehavior, interval, sleep_until, timeout_at};
 
 use crate::endpoint::{ConnectOpts, RemoteAddr};
@@ -32,11 +32,9 @@ use crate::endpoint::{ConnectOpts, RemoteAddr};
 /// Max peers, `remote` included. Bounded by the packed snapshot.
 pub const MAX_PEERS: usize = 8;
 
-/// Consecutive successes that forgive earlier failures.
-const CLEAR_AFTER: u8 = 2;
-
-/// Udp probe sends at most this many datagrams per round.
-const UDP_TRIES: u32 = 3;
+/// A probe round makes at most this many attempts (tcp connections, udp datagrams),
+/// spread evenly over `timeout` and only while nothing has answered.
+const TRIES: u32 = 3;
 
 /// Failover options.
 #[derive(Debug, Clone)]
@@ -166,6 +164,13 @@ impl Failover {
             label
         );
 
+        // probes leave from the `through` ip but never from its fixed port (udp may pin
+        // one): sharing that port would take replies away from the associations
+        let mut conn_opts = conn_opts.clone();
+        if let Some(addr) = conn_opts.bind_address.as_mut() {
+            addr.set_port(0);
+        }
+
         let fsm = Fsm::new(peers.len(), opts);
         let state = Arc::new(AtomicU32::new(fsm.snapshot().0));
         let peers: Box<[SocketAddr]> = peers.into();
@@ -177,7 +182,7 @@ impl Failover {
                 peers: peers.clone(),
                 targets,
                 opts: opts.clone(),
-                conn_opts: conn_opts.clone(),
+                conn_opts,
                 state: state.clone(),
             },
             fsm,
@@ -202,13 +207,16 @@ impl Failover {
         (0..self.peers.len()).find(|&i| i != skip && snap.is_ready(i))
     }
 
-    /// Peer an existing udp association should use: stay unless its peer is down.
+    /// Peer an existing udp association should use: stay unless its peer is down
+    /// and the active peer is alive. When every peer is down there is nothing
+    /// better to move to, so the association stays where it is.
     #[inline]
     pub const fn repick(snap: Snapshot, cur: usize) -> usize {
-        if snap.is_up(cur) {
+        let active = snap.active();
+        if snap.is_up(cur) || !snap.is_up(active) {
             cur
         } else {
-            snap.active()
+            active
         }
     }
 
@@ -295,11 +303,11 @@ impl Fsm {
                     p.fails = (p.fails << 1) & self.mask;
                     p.streak = p.streak.saturating_add(1);
                     p.fresh = true;
-                    if p.streak >= CLEAR_AFTER {
-                        p.fails = 0;
-                    }
                     if !p.up && p.streak >= self.rise {
                         p.up = true;
+                        // `rise` may be shorter than `window`: do not let the
+                        // failures that took it down count against it again
+                        p.fails = 0;
                     }
                 }
                 Probe::Fail => {
@@ -412,10 +420,28 @@ async fn probe(proto: Proto, target: SocketAddr, opts: &FailoverOpts, conn_opts:
 }
 
 /// Connect, optionally send a request, and require the expected reply prefix.
+///
+/// A lost syn is only retransmitted after a second. So while nothing has answered,
+/// another connection is started at each third of `timeout`, at most [`TRIES`] per
+/// round. The first answer decides, be it a reply, a refusal or a local error.
 async fn probe_tcp(target: SocketAddr, opts: &FailoverOpts, conn_opts: &ConnectOpts) -> Probe {
+    let start = Instant::now();
+    let mut attempts = FuturesUnordered::new();
+    for k in 1..=TRIES {
+        attempts.push(tcp_attempt(target, opts, conn_opts));
+        let until = start + opts.timeout * k / TRIES;
+        if let Ok(Some(res)) = timeout_at(until, attempts.next()).await {
+            return res;
+        }
+    }
+    log::debug!("[failover][tcp]probe {}: timeout", target);
+    Probe::Fail
+}
+
+/// One probe connection, without a deadline of its own.
+async fn tcp_attempt(target: SocketAddr, opts: &FailoverOpts, conn_opts: &ConnectOpts) -> Probe {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-    let deadline = Instant::now() + opts.timeout;
     let socket = match crate::tcp::socket::prepare(&target, conn_opts, None) {
         Ok(x) => x,
         Err(e) => {
@@ -441,25 +467,31 @@ async fn probe_tcp(target: SocketAddr, opts: &FailoverOpts, conn_opts: &ConnectO
         Ok::<_, Error>(&buf[..n] == want)
     };
 
-    match timeout_at(deadline, run).await {
-        Ok(Ok(true)) => Probe::Ok,
-        Ok(Ok(false)) => {
+    match run.await {
+        Ok(true) => Probe::Ok,
+        Ok(false) => {
             log::debug!("[failover][tcp]probe {}: unexpected reply", target);
             Probe::Fail
         }
-        Ok(Err(e)) => {
-            log::debug!("[failover][tcp]probe {}: {}", target, e);
-            Probe::Fail
+        Err(e) if is_local(&e) => {
+            log::debug!("[failover][tcp]probe {}: local error: {}", target, e);
+            Probe::Unknown
         }
-        Err(_) => {
-            log::debug!("[failover][tcp]probe {}: timeout", target);
+        Err(e) => {
+            log::debug!("[failover][tcp]probe {}: {}", target, e);
             Probe::Fail
         }
     }
 }
 
+/// This host ran out of local ports towards the target. That says nothing about the
+/// peer, and new connections still spill over to the next peer one by one.
+fn is_local(e: &Error) -> bool {
+    matches!(e.kind(), ErrorKind::AddrNotAvailable | ErrorKind::AddrInUse)
+}
+
 /// Send `udp_send + nonce` and require it echoed back. Resend only while unanswered,
-/// at most [`UDP_TRIES`] datagrams within `timeout`.
+/// at most [`TRIES`] datagrams within `timeout`.
 async fn probe_udp(target: SocketAddr, opts: &FailoverOpts, conn_opts: &ConnectOpts) -> Probe {
     let sock = match crate::udp::socket::associate(&target, conn_opts) {
         Ok(x) => x,
@@ -470,7 +502,7 @@ async fn probe_udp(target: SocketAddr, opts: &FailoverOpts, conn_opts: &ConnectO
     };
     if let Err(e) = sock.connect(target).await {
         log::debug!("[failover][udp]probe {}: {}", target, e);
-        return Probe::Fail;
+        return if is_local(&e) { Probe::Unknown } else { Probe::Fail };
     }
 
     let mut msg = Vec::with_capacity(opts.udp_send.len() + 16);
@@ -480,9 +512,9 @@ async fn probe_udp(target: SocketAddr, opts: &FailoverOpts, conn_opts: &ConnectO
     let mut buf = vec![0u8; msg.len() + 1];
 
     let start = Instant::now();
-    for k in 1..=UDP_TRIES {
+    for k in 1..=TRIES {
         let _ = sock.send(&msg).await;
-        let until = start + opts.timeout * k / UDP_TRIES;
+        let until = start + opts.timeout * k / TRIES;
         loop {
             match timeout_at(until, sock.recv(&mut buf)).await {
                 Ok(Ok(n)) if buf[..n] == msg[..] => return Probe::Ok,
@@ -569,16 +601,44 @@ mod tests {
     }
 
     #[test]
-    fn two_successes_forgive_earlier_failures() {
-        // pure 3-of-5 would trip on F F O O F
+    fn successes_in_between_do_not_forgive() {
+        // a flapping peer: never 3 failures in a row, still 3 of the last 5
         let mut fsm = Fsm::new(2, &opts());
         let mut t = Instant::now();
-        run(&mut fsm, &mut t, &[[F, O], [F, O], [O, O], [O, O], [F, O]]);
-        assert_eq!(fsm.snapshot().active(), 0);
-        // without a double success in between it trips
-        run(&mut fsm, &mut t, &[[O, O], [F, O], [F, O]]);
+        run(&mut fsm, &mut t, &[[F, O], [F, O], [O, O], [O, O]]);
+        assert!(fsm.snapshot().is_up(0));
+        run(&mut fsm, &mut t, &[[F, O]]);
         assert!(!fsm.snapshot().is_up(0));
         assert_eq!(fsm.snapshot().active(), 1);
+    }
+
+    #[test]
+    fn failures_age_out_of_the_window() {
+        let mut fsm = Fsm::new(2, &opts());
+        let mut t = Instant::now();
+        // F F O O O: the next failure sees only F O O O F
+        run(
+            &mut fsm,
+            &mut t,
+            &[[F, O], [F, O], [O, O], [O, O], [O, O], [F, O], [O, O]],
+        );
+        assert!(fsm.snapshot().is_up(0));
+        assert_eq!(fsm.snapshot().active(), 0);
+    }
+
+    #[test]
+    fn rise_starts_with_a_clean_record() {
+        let mut fsm = Fsm::new(2, &FailoverOpts { rise: 2, ..opts() });
+        let mut t = Instant::now();
+        run(&mut fsm, &mut t, &[[F, O], [F, O], [F, O]]);
+        assert!(!fsm.snapshot().is_up(0));
+        // back after 2 successes; the 3 old failures are still inside the window
+        run(&mut fsm, &mut t, &[[O, O], [O, O]]);
+        assert!(fsm.snapshot().is_up(0));
+        run(&mut fsm, &mut t, &[[F, O], [F, O]]);
+        assert!(fsm.snapshot().is_up(0));
+        run(&mut fsm, &mut t, &[[F, O]]);
+        assert!(!fsm.snapshot().is_up(0));
     }
 
     #[test]
@@ -650,6 +710,77 @@ mod tests {
         assert_eq!(fsm.snapshot().active(), 1);
     }
 
+    fn probe_opts(timeout: u64) -> FailoverOpts {
+        FailoverOpts {
+            tcp_send: b"ping".to_vec(),
+            tcp_expect: b"OK".to_vec(),
+            timeout: Duration::from_millis(timeout),
+            ..Default::default()
+        }
+    }
+
+    /// Hold the first `silent` connections without answering, answer the rest.
+    async fn probe_server(silent: u32) -> (SocketAddr, Arc<AtomicU32>) {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+        let lis = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = lis.local_addr().unwrap();
+        let accepted = Arc::new(AtomicU32::new(0));
+        let count = accepted.clone();
+        tokio::spawn(async move {
+            let mut held = Vec::new();
+            loop {
+                let (mut s, _) = lis.accept().await.unwrap();
+                if count.fetch_add(1, Relaxed) < silent {
+                    held.push(s);
+                    continue;
+                }
+                tokio::spawn(async move {
+                    let mut buf = [0u8; 4];
+                    if s.read_exact(&mut buf).await.is_ok() {
+                        let _ = s.write_all(b"OK").await;
+                    }
+                });
+            }
+        });
+        (addr, accepted)
+    }
+
+    #[tokio::test]
+    async fn tcp_probe_retries_only_while_silent() {
+        let conn_opts = ConnectOpts::default();
+
+        // answered at once: one connection
+        let (addr, accepted) = probe_server(0).await;
+        assert_eq!(probe_tcp(addr, &probe_opts(900), &conn_opts).await, O);
+        assert_eq!(accepted.load(Relaxed), 1);
+
+        // the first connection stays silent: the second one, started at a third of the timeout, answers
+        let (addr, accepted) = probe_server(1).await;
+        let t = Instant::now();
+        assert_eq!(probe_tcp(addr, &probe_opts(900), &conn_opts).await, O);
+        assert!(t.elapsed() >= Duration::from_millis(290));
+        assert_eq!(accepted.load(Relaxed), 2);
+
+        // nobody answers: all tries are used and the round fails at the timeout
+        let (addr, accepted) = probe_server(u32::MAX).await;
+        let t = Instant::now();
+        assert_eq!(probe_tcp(addr, &probe_opts(900), &conn_opts).await, F);
+        assert!(t.elapsed() >= Duration::from_millis(890));
+        assert_eq!(accepted.load(Relaxed), TRIES);
+    }
+
+    #[tokio::test]
+    async fn tcp_probe_refusal_is_an_answer() {
+        let lis = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = lis.local_addr().unwrap();
+        drop(lis);
+        let t = Instant::now();
+        assert_eq!(probe_tcp(addr, &probe_opts(6000), &ConnectOpts::default()).await, F);
+        // no waiting for further tries (windows itself retries a refused connect for ~2s)
+        assert!(t.elapsed() < Duration::from_millis(4000));
+    }
+
     #[test]
     fn repick_and_stale() {
         let fo = Failover {
@@ -661,6 +792,10 @@ mod tests {
         // sticky while up, move only off a down peer
         assert_eq!(Failover::repick(both_up, 1), 1);
         assert_eq!(Failover::repick(primary_down, 0), 1);
+        // every peer down: an association on the non-active peer does not move
+        let all_down = Snapshot::pack(0, 0b00, 0b00);
+        assert_eq!(Failover::repick(all_down, 1), 1);
+        assert_eq!(Failover::repick(all_down, 0), 0);
         assert_eq!(fo.fallback(both_up, 0), Some(1));
         assert_eq!(fo.fallback(primary_down, 1), None);
 

@@ -369,20 +369,20 @@ Active-standby failover for both TCP and UDP. `remote` is the primary, `extra_re
 
 A background task probes every peer per protocol. Traffic only moves on probe results, never on user traffic:
 
-- a peer goes down after `fall` failed probes in the last `window` rounds; two consecutive successes forgive earlier failures;
+- a peer goes down after `fall` failed probes in the last `window` rounds, consecutive or not;
 - a down peer comes back after `rise` consecutive successes;
 - traffic only moves to a peer whose latest probe succeeded; if no peer is usable, the current one is kept;
 - failing back to a higher priority peer waits `hold` seconds after the last switch, unless the current peer is down.
 
 Behavior:
 
-- TCP: new connections dial the active peer. If that dial fails and another peer is ready, the same client connection retries once on it before any data is relayed. Both attempts share `tcp_timeout`, the first one gets half of it when a retry is possible. Established connections are never moved.
+- TCP: new connections dial the active peer. If that dial fails and another peer is ready, the same client connection retries once on it before any data is relayed. Both attempts share `tcp_timeout`, the first one gets half of it when a retry is possible. Established connections are never moved. On Linux, a connection whose peer stops acknowledging (or stops reading while data is pending) is closed after `tcp_keepalive` x (`tcp_keepalive_probe` + 1) seconds (60 by default), idle or not, so its client can reconnect to the active peer. Without this, a connection with data in flight to a dead peer hangs for about 15 minutes. `tcp_keepalive = 0` turns both off.
 - UDP: new associations use the active peer. An existing association keeps its peer until that peer is down, then its next datagram goes to the active peer through the same upstream socket (client and relay ports stay the same). After such a move, late replies from the old peer are dropped.
 
-Probes (from this host, with the same `through`/`interface`):
+Probes (from this host, with the same `interface` and `through` ip; a port in `through` is never used by probes):
 
-- TCP: connect, send `tcp_send` (optional), require a reply starting with `tcp_expect`. Without `tcp_expect` a completed handshake counts as success.
-- UDP: send `udp_send` plus a per-round nonce, require the exact datagram echoed back. Resend only while unanswered, at most 3 datagrams within `timeout`.
+- TCP: connect, send `tcp_send` (optional), require a reply starting with `tcp_expect`. Without `tcp_expect` a completed handshake counts as success. While nothing has answered, another connection is started at each third of `timeout`, at most 3 per round, so one lost SYN does not fail the round. A refusal or an unexpected reply fails the round at once.
+- UDP: send `udp_send` plus a per-round nonce, require the exact datagram echoed back. Resend only while unanswered, at most 3 datagrams within `timeout`. The target must be an echo responder: against a service that does not echo, every peer is marked down and UDP simply stays on its current peer.
 
 To detect failures behind the next hop, point `probe` at a health port on the far end that is relayed along the same path (e.g. a tiny HTTP 204 responder and a UDP echo).
 

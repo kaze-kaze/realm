@@ -28,6 +28,10 @@ hickory-resolver = "0.26"
 tokio = { version = "1.9", features = ["rt", "net", "time", "io-util"] }
 proxy-protocol = { version = "0.5", optional = true }
 
+[target.'cfg(target_os = "linux")'.dependencies]
+# recvmmsg with a spill area, see udp/batched.rs
+libc = "0.2"
+
 [features]
 default = []
 hook = ["realm_hook"]

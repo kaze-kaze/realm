@@ -104,7 +104,41 @@ async fn udp_large_datagrams() {
     }
 
     // several large ones in a row share a batch
-    for round in 0..3u8 {
+    burst(&sock, relay, 3).await;
+}
+
+/// Large datagrams as the very first traffic of an endpoint, many at once: none is lost
+/// or cut while buffers adapt, because there is nothing to adapt.
+#[tokio::test]
+async fn udp_large_burst_first() {
+    let _ = env_logger::try_init();
+    let relay: SocketAddr = "127.0.0.1:10002".parse().unwrap();
+    let echo = UdpSocket::bind("127.0.0.1:20002").await.unwrap();
+
+    tokio::spawn(run_udp(Endpoint {
+        laddr: relay,
+        raddr: RemoteAddr::SocketAddr("127.0.0.1:20002".parse().unwrap()),
+        conn_opts: Default::default(),
+        bind_opts: Default::default(),
+        extra_raddrs: Vec::new(),
+    }));
+    tokio::spawn(async move {
+        let mut buf = vec![0u8; 1 << 16];
+        loop {
+            let (n, peer) = echo.recv_from(&mut buf).await.unwrap();
+            echo.send_to(&buf[..n], peer).await.unwrap();
+        }
+    });
+    sleep(Duration::from_millis(500)).await;
+
+    let sock = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+    burst(&sock, relay, 2).await;
+}
+
+/// Send bursts of 5000 byte datagrams and require every one back, unaltered.
+async fn burst(sock: &UdpSocket, relay: SocketAddr, rounds: u8) {
+    let mut buf = vec![0u8; 1 << 16];
+    for round in 0..rounds {
         const BURST: u8 = 12;
         for i in 0..BURST {
             sock.send_to(&pattern(5000, round * BURST + i), relay).await.unwrap();

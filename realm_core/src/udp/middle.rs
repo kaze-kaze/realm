@@ -1,7 +1,6 @@
 use std::io::Result;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 use tokio::net::UdpSocket;
 
 use super::SockMap;
@@ -28,7 +27,7 @@ mod registry {
         groups: Vec<Range>,
         cursor: u16,
         max: usize,
-        /// Every slot takes datagrams longer than `PACKET_SIZE`, not only the first.
+        /// Some slot holds a large datagram, see [`Packet::release`].
         large: bool,
     }
 
@@ -58,12 +57,7 @@ mod registry {
             }
         }
 
-        /// Receive a batch. Datagrams longer than one ethernet frame need a spill.
-        /// The first slot always has one, so a lone large datagram gets through; every
-        /// slot gets one once this socket, or (`seen_large`) any socket of the
-        /// endpoint, has carried a large datagram. Until then a large datagram that
-        /// lands in a later slot would be cut short: it is dropped, never forwarded.
-        pub async fn batched_recv_on(&mut self, sock: &UdpSocket, seen_large: &AtomicBool) -> Result<()> {
+        pub async fn batched_recv_on(&mut self, sock: &UdpSocket) -> Result<()> {
             // the previous batch used every slot, so more may be queued:
             // read more per syscall from now on
             let len = self.pkts.len();
@@ -71,33 +65,16 @@ mod registry {
                 self.pkts.resize_with((len * 2).min(self.max), Packet::new);
             }
 
-            self.large |= seen_large.load(Relaxed);
+            // the previous batch has been forwarded: do not sit on its large
+            // datagrams while waiting for the next one
             if self.large {
-                self.pkts.iter_mut().for_each(Packet::add_spill);
-            } else if !self.pkts[0].has_spill() {
-                // reordering may have moved it away
-                match self.pkts.iter().position(Packet::has_spill) {
-                    Some(i) => self.pkts.swap(0, i),
-                    None => self.pkts[0].add_spill(),
-                }
+                self.pkts.iter_mut().for_each(Packet::release);
+                self.large = false;
             }
 
             let n = batched::recv_some(sock, &mut self.pkts).await?;
             self.cursor = n as u16;
-
-            let pkts = &self.pkts[..n];
-            let cut = pkts.iter().filter(|p| p.maybe_cut()).count();
-            if cut != 0 || pkts.iter().any(Packet::is_large) {
-                self.large = true;
-                seen_large.store(true, Relaxed);
-            }
-            if cut != 0 {
-                log::warn!(
-                    "[udp]dropped {} large datagram(s) that did not fit, buffers enlarged",
-                    cut
-                );
-                self.retain(|p| !p.maybe_cut());
-            }
+            self.large = self.pkts[..n].iter().any(Packet::is_large);
             Ok(())
         }
 
@@ -193,11 +170,8 @@ pub async fn associate_and_relay(
     let mut registry = Registry::new(batched::MAX_PACKETS);
 
     loop {
-        registry.batched_recv_on(&lis, sockmap.seen_large()).await?;
+        registry.batched_recv_on(&lis).await?;
         log::debug!("[udp]entry batched recvfrom[{}]", registry.count());
-        if registry.count() == 0 {
-            continue;
-        }
 
         // one snapshot per batch with failover, otherwise resolve `rname` as before
         let (route, fixed) = match failover.as_ref() {
@@ -282,7 +256,7 @@ async fn send_back(
     let laddr_s: SockAddrStore = laddr.into();
 
     loop {
-        match timeoutfut(registry.batched_recv_on(&assoc.sock, sockmap.seen_large()), timeout).await {
+        match timeoutfut(registry.batched_recv_on(&assoc.sock), timeout).await {
             Err(_) => {
                 log::debug!("[udp]rear recvfrom timeout");
                 break;
@@ -295,9 +269,6 @@ async fn send_back(
                 log::debug!("[udp]rear batched recvfrom[{}]", registry.count())
             }
         };
-        if registry.count() == 0 {
-            continue;
-        }
 
         // after a move, drop late replies from the peer(s) this association left
         if let (Some(fo), Some(cur)) = (failover.as_ref(), assoc.moved_peer()) {

@@ -403,6 +403,12 @@ To detect failures behind the next hop, point `probe` at a health port on the fa
 
 With the defaults, a silently failing primary is detected in about 7.5-10.5s. Keep `tcp_timeout` at 3-5s on failover endpoints.
 
+Limits:
+
+- An endpoint has 2 to 8 peers: `remote` plus 1 to 7 `extra_remotes`.
+- A new TCP connection dials at most three peers, and only retries on peers whose latest probe succeeded. A peer that has just died still counts as ready until a probe sees it fail, which takes up to `interval` + `timeout` (4.5s with the defaults; about `interval` if it refuses connections). So when three or more peers fail at the same moment, new connections can fail in that window. For example, with four peers and three of them dead, a connection whose three dials all land on dead peers fails without trying the fourth. This mostly happens when the dead peers fail fast (connection refused or unreachable). If a dial times out instead, the probes usually catch up before the next retry is chosen.
+- Right after realm starts, no peer counts as ready until the first probe round finishes. That round starts at once and takes at most `timeout` (1.5s by default). Until then, a failed dial is not retried, so a new connection sent to a dead peer fails.
+
 Example:
 
 ```toml

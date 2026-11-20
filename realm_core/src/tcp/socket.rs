@@ -130,52 +130,68 @@ pub async fn connect(raddr: &RemoteAddr, conn_opts: &ConnectOpts) -> Result<TcpS
     Err(last_err.unwrap_or_else(|| Error::new(ErrorKind::InvalidInput, "could not connect to any address")))
 }
 
-/// Dial the active failover peer, or with `balance` the peer picked for `want`; if
-/// that fails, retry once on the next ready peer.
+/// Connect to a failover peer: the active one, or `want`, the balancer's choice.
 ///
-/// Both attempts share one deadline of `connect_timeout` (0 = none). When a retry is
-/// possible the first attempt only gets half of it, so the retry always has time left.
-/// Nothing has been read from the client at this point, so retrying is lossless.
+/// A failed dial is retried on other ready peers, at most three dials in all, on
+/// the same client connection. The peers to retry on are looked up when
+/// they are needed: a dial that timed out took long enough for the probes to
+/// have learned more. `connect_timeout` (0 = none) covers all dials together; a
+/// dial that can be retried elsewhere gets half of what is left of it, so a retry
+/// always has time. Nothing has been read from the client at this point, so
+/// retrying is lossless.
 pub async fn connect_failover(
     fo: &Failover,
     conn_opts: &ConnectOpts,
     want: Option<usize>,
 ) -> Result<(TcpStream, usize)> {
-    let snap = fo.snapshot();
-    let (first, next) = match want {
-        Some(want) => {
-            let first = fo.pick(snap, want);
-            (first, fo.next_ready(snap, first))
-        }
-        None => {
-            let first = snap.active();
-            (first, fo.fallback(snap, first))
-        }
-    };
+    /// The first peer and two more: enough for two peers failing at once.
+    const MAX_DIALS: usize = 3;
 
     let keepalive = keepalive::build(conn_opts);
     let total = Duration::from_secs(conn_opts.connect_timeout as u64);
-    let start = Instant::now();
-    let deadline = |budget: Duration| (!total.is_zero()).then(|| start + budget);
+    let end = Instant::now() + total;
 
-    let budget = if next.is_some() { total / 2 } else { total };
-    let err = match dial(fo.peer(first), conn_opts, keepalive.as_ref(), deadline(budget)).await {
-        Ok(stream) => return Ok((stream, first)),
-        Err(e) => e,
-    };
+    let mut tried = [0usize; MAX_DIALS];
+    let mut dials = 0;
+    let mut peer = want.unwrap_or_else(|| fo.snapshot().active());
+    loop {
+        tried[dials] = peer;
+        dials += 1;
+        let retry = |tried: &[usize]| {
+            if dials < MAX_DIALS {
+                fo.retry_peer(fo.snapshot(), tried, want.is_some())
+            } else {
+                None
+            }
+        };
 
-    let Some(next) = next else { return Err(err) };
-    log::warn!(
-        "[tcp]connect to peer#{} {}: {}, retry peer#{} {}",
-        first,
-        fo.peer(first),
-        err,
-        next,
-        fo.peer(next)
-    );
-    dial(fo.peer(next), conn_opts, keepalive.as_ref(), deadline(total))
-        .await
-        .map(|stream| (stream, next))
+        let deadline = (!total.is_zero()).then(|| {
+            let now = Instant::now();
+            let left = end.saturating_duration_since(now);
+            now + if retry(&tried[..dials]).is_some() {
+                left / 2
+            } else {
+                left
+            }
+        });
+        let err = match dial(fo.peer(peer), conn_opts, keepalive.as_ref(), deadline).await {
+            Ok(stream) => return Ok((stream, peer)),
+            Err(e) => e,
+        };
+
+        let Some(next) = retry(&tried[..dials]) else {
+            return Err(err);
+        };
+        log::warn!(
+            "[tcp]connect to peer#{} {}: {}, retry peer#{} {}",
+            peer,
+            fo.peer(peer),
+            err,
+            next,
+            fo.peer(next)
+        );
+        peer = next;
+    }
 }
 
 async fn dial(

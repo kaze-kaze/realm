@@ -19,7 +19,7 @@
 
 use std::fmt::{Display, Formatter};
 use std::io::{Error, ErrorKind};
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 // no 64-bit atomics: 32-bit mips targets lack them
 use std::sync::atomic::{AtomicU32, Ordering::Relaxed};
@@ -149,6 +149,12 @@ impl Snapshot {
     pub const fn is_ready(self, i: usize) -> bool {
         self.0 >> (8 + i) & 1 == 1
     }
+
+    /// At least one peer is alive.
+    #[inline]
+    pub const fn any_up(self) -> bool {
+        self.0 & 0xff != 0
+    }
 }
 
 /// Runtime failover state of one endpoint and protocol.
@@ -236,10 +242,15 @@ impl Failover {
         self.peers[i]
     }
 
-    /// First ready peer other than `skip`, by priority.
-    #[inline]
-    pub fn fallback(&self, snap: Snapshot, skip: usize) -> Option<usize> {
-        (0..self.peers.len()).find(|&i| i != skip && snap.is_ready(i))
+    /// Peer to dial after the peers in `tried` failed, if any is ready: by priority,
+    /// or with `balance` on (`ring`) the next one around after the last that was tried.
+    pub fn retry_peer(&self, snap: Snapshot, tried: &[usize], ring: bool) -> Option<usize> {
+        let n = self.peers.len();
+        let ok = |i: &usize| snap.is_ready(*i) && !tried.contains(i);
+        match tried.last() {
+            Some(&last) if ring => (1..n).map(|k| (last + k) % n).find(ok),
+            _ => (0..n).find(ok),
+        }
     }
 
     /// Peer an existing udp association should use: stay unless its peer is down
@@ -255,47 +266,61 @@ impl Failover {
         }
     }
 
-    /// With `balance` on: the peer the balancer assigns to a new session from `src`.
-    #[inline]
-    pub(crate) fn balanced_peer(&self, conn_opts: &ConnectOpts, src: &std::net::IpAddr) -> Option<usize> {
+    /// With `balance` on: the peer for a new session from `src`.
+    ///
+    /// It is the balancer's choice while that peer is alive, even right after one
+    /// failed probe, so `iphash` stays sticky. When it is down the balancer is
+    /// asked again until it names a ready peer, so that what the dead peer would
+    /// get is shared by the others in their own proportions instead of all of it
+    /// falling on its neighbour: round robin just moves on, ip hash is asked for
+    /// other addresses derived from `src`, the same ones every time, which keeps a
+    /// client on one peer.
+    pub(crate) fn balanced_peer(&self, conn_opts: &ConnectOpts, src: &IpAddr, snap: Snapshot) -> Option<usize> {
         #[cfg(feature = "balance")]
         if self.balanced {
-            let ctx = realm_lb::BalanceCtx { src_ip: src };
-            return conn_opts.balancer.next(ctx).map(|t| t.0 as usize);
+            /// Enough to get past dead peers of a round robin whose weights sum up
+            /// to this; beyond it the neighbour takes over as before.
+            const TRIES: u32 = 32;
+            let n = self.peers.len();
+            let ask = |ip: &IpAddr| {
+                let ctx = realm_lb::BalanceCtx { src_ip: ip };
+                conn_opts.balancer.next(ctx).map(|t| t.0 as usize % n)
+            };
+            let want = ask(src)?;
+            if snap.is_up(want) || !snap.any_up() {
+                return Some(want);
+            }
+            let hashed = conn_opts.balancer.strategy() == realm_lb::Strategy::IpHash;
+            for k in 1..=TRIES {
+                let next = if hashed { ask(&salted(src, k)) } else { ask(src) };
+                match next {
+                    Some(i) if snap.is_ready(i) => return Some(i),
+                    _ => {}
+                }
+            }
+            return Some(pick_among(n, snap, want));
         }
-        let _ = (conn_opts, src);
+        let _ = (conn_opts, src, snap);
         None
     }
 
-    /// Peer for a new session the balancer assigned to `want`: `want` while it is
-    /// alive, otherwise the next peer after it that is ready, or at least alive.
-    /// A peer is not left for one failed probe, so `iphash` stays sticky. With no
-    /// peer alive, `want` is as good as any.
+    /// The peer after `want` that takes over when `want` is down: `want` while it
+    /// is alive, otherwise the next peer after it that is ready, or at least alive.
+    /// With no peer alive, `want` is as good as any.
     #[inline]
     pub fn pick(&self, snap: Snapshot, want: usize) -> usize {
         pick_among(self.peers.len(), snap, want)
     }
 
-    /// Balanced counterpart of [`Failover::fallback`]: the next ready peer after `skip`.
-    #[inline]
-    pub fn next_ready(&self, snap: Snapshot, skip: usize) -> Option<usize> {
-        let n = self.peers.len();
-        (1..n).map(|k| (skip + k) % n).find(|&i| snap.is_ready(i))
-    }
-
     /// Balanced counterpart of [`Failover::repick`]: an association stays on its
-    /// peer until that peer is down, then follows [`Failover::pick`]. With no peer
-    /// alive it stays where it is.
+    /// peer until that peer is down, then moves to `next`, the peer a new session
+    /// of its client would get now. With no peer alive it stays where it is.
     #[inline]
-    pub fn repick_balanced(&self, snap: Snapshot, cur: usize, want: usize) -> usize {
-        if snap.is_up(cur) {
-            return cur;
-        }
-        let next = self.pick(snap, want);
-        if snap.is_up(next) {
-            next
-        } else {
+    pub const fn repick_balanced(snap: Snapshot, cur: usize, next: usize) -> usize {
+        if snap.is_up(cur) || !snap.is_up(next) {
             cur
+        } else {
+            next
         }
     }
 
@@ -303,6 +328,18 @@ impl Failover {
     #[inline]
     pub fn is_stale(&self, src: &SocketAddr, cur: usize) -> bool {
         self.peers.iter().enumerate().any(|(i, p)| i != cur && p == src)
+    }
+}
+
+/// Another address for every `k`, always the same one for the same `ip` and `k`.
+#[cfg(feature = "balance")]
+fn salted(ip: &IpAddr, k: u32) -> IpAddr {
+    match ip {
+        IpAddr::V4(ip) => IpAddr::V4(u32::from(*ip).wrapping_add(k.wrapping_mul(0x9e37_79b9)).into()),
+        IpAddr::V6(ip) => {
+            let salt = (k as u128).wrapping_mul(0x9e37_79b9_7f4a_7c15_f39c_c060_5ced_c835);
+            IpAddr::V6(u128::from(*ip).wrapping_add(salt).into())
+        }
     }
 }
 
@@ -766,6 +803,101 @@ mod tests {
         assert_eq!(pick_among(2, snap(0b11, 0b11), 5), 1);
     }
 
+    fn four_peers(balanced: bool) -> Failover {
+        let _ = balanced;
+        Failover {
+            peers: (1..=4).map(|p| SocketAddr::from(([127, 0, 0, 1], p))).collect(),
+            state: Arc::new(AtomicU32::new(0)),
+            #[cfg(feature = "balance")]
+            balanced,
+        }
+    }
+
+    #[test]
+    fn retry_peers() {
+        let fo = four_peers(false);
+        let snap = |ready: u8| Snapshot::pack(0, ready, ready);
+        // by priority, never one that was tried or is not ready
+        assert_eq!(fo.retry_peer(snap(0b1111), &[0], false), Some(1));
+        assert_eq!(fo.retry_peer(snap(0b1111), &[0, 1], false), Some(2));
+        assert_eq!(fo.retry_peer(snap(0b1001), &[3], false), Some(0));
+        assert_eq!(fo.retry_peer(snap(0b1001), &[0], false), Some(3));
+        assert_eq!(fo.retry_peer(snap(0b0001), &[0], false), None);
+        // balanced: around the ring from the last one tried
+        assert_eq!(fo.retry_peer(snap(0b1111), &[2], true), Some(3));
+        assert_eq!(fo.retry_peer(snap(0b1111), &[2, 3], true), Some(0));
+        assert_eq!(fo.retry_peer(snap(0b0111), &[2], true), Some(0));
+        assert_eq!(fo.retry_peer(snap(0b0100), &[2], true), None);
+    }
+
+    /// What a dead peer would get is shared by the others, not handed to its neighbour.
+    #[cfg(feature = "balance")]
+    #[test]
+    fn balanced_share_of_a_dead_peer() {
+        use realm_lb::{Balancer, Strategy};
+        use std::net::Ipv4Addr;
+
+        let fo = four_peers(true);
+        let snap = |up: u8| Snapshot::pack(0, up, up);
+        let any: IpAddr = Ipv4Addr::new(10, 0, 0, 1).into();
+        let count = |opts: &ConnectOpts, up: u8, rounds: usize| {
+            let mut n = [0usize; 4];
+            for _ in 0..rounds {
+                n[fo.balanced_peer(opts, &any, snap(up)).unwrap()] += 1;
+            }
+            n
+        };
+
+        let mut opts = ConnectOpts::default();
+        opts.balancer = Balancer::new(Strategy::RoundRobin, &[1, 1, 1, 1]);
+        assert_eq!(count(&opts, 0b1111, 400), [100, 100, 100, 100]);
+        assert_eq!(count(&opts, 0b1110, 300), [0, 100, 100, 100]);
+        assert_eq!(count(&opts, 0b1100, 300), [0, 0, 150, 150]);
+        assert_eq!(count(&opts, 0b1000, 300), [0, 0, 0, 300]);
+        // nothing alive: the balancer's own choice, as if all were
+        assert_eq!(count(&opts, 0b0000, 400), [100, 100, 100, 100]);
+
+        // weights keep their meaning among the peers that are left
+        opts.balancer = Balancer::new(Strategy::RoundRobin, &[1, 3, 1, 1]);
+        assert_eq!(count(&opts, 0b1110, 500), [0, 300, 100, 100]);
+        assert_eq!(count(&opts, 0b1101, 300), [100, 0, 100, 100]);
+
+        // ip hash: a client keeps its peer while that is alive, and has one fixed
+        // substitute while it is not
+        opts.balancer = Balancer::new(Strategy::IpHash, &[1, 1, 1, 1]);
+        let clients: Vec<IpAddr> = (0..4000u32)
+            .map(|i| Ipv4Addr::from(0x0a00_0000 + i * 7919).into())
+            .collect();
+        let on = |up: u8| -> Vec<usize> {
+            clients
+                .iter()
+                .map(|ip| fo.balanced_peer(&opts, ip, snap(up)).unwrap())
+                .collect()
+        };
+        let (home, one_down, two_down) = (on(0b1111), on(0b1110), on(0b1010));
+        assert_eq!(one_down, on(0b1110));
+        let mut moved = [0usize; 4];
+        for i in 0..clients.len() {
+            if home[i] != 0 {
+                assert_eq!(one_down[i], home[i]);
+            } else {
+                assert_ne!(one_down[i], 0);
+                moved[one_down[i]] += 1;
+            }
+            // a second peer dies: only its clients move again
+            if one_down[i] != 2 {
+                assert_eq!(two_down[i], one_down[i]);
+            } else {
+                assert!(two_down[i] == 1 || two_down[i] == 3);
+            }
+        }
+        let total: usize = moved.iter().sum();
+        assert!(total > 400, "peer 0 had {} of 4000 clients", total);
+        for n in &moved[1..] {
+            assert!(n * 5 > total, "clients of the dead peer went to {:?}", moved);
+        }
+    }
+
     #[test]
     fn snapshot_layout() {
         let s = Snapshot::pack(5, 0b1010_0001, 0b0000_0001);
@@ -994,8 +1126,8 @@ mod tests {
         let all_down = Snapshot::pack(0, 0b00, 0b00);
         assert_eq!(Failover::repick(all_down, 1), 1);
         assert_eq!(Failover::repick(all_down, 0), 0);
-        assert_eq!(fo.fallback(both_up, 0), Some(1));
-        assert_eq!(fo.fallback(primary_down, 1), None);
+        assert_eq!(fo.retry_peer(both_up, &[0], false), Some(1));
+        assert_eq!(fo.retry_peer(primary_down, &[1], false), None);
 
         let a: SocketAddr = "127.0.0.1:1".parse().unwrap();
         let b: SocketAddr = "127.0.0.1:2".parse().unwrap();

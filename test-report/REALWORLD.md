@@ -1,7 +1,7 @@
 # realm 真实业务测试报告
 
 - 测试时间：2026-11-19 21:00 UTC 至 2026-11-20 03:00 UTC，约 6 小时
-- 被测：`kaze-kaze/realm` **v3.0.0 发布版**（下文"3.0.0"），以及测试中做了修复和改进的分支 `fix/real-world-findings`（下文"新版"，[kaze-kaze/realm#3](https://github.com/kaze-kaze/realm/pull/3)，合并后发布为 v3.1.0）
+- 被测：`kaze-kaze/realm` **v3.0.0 发布版**（下文"3.0.0"），以及测试中做了修复和改进的分支 `fix/real-world-findings`（下文"新版"，[kaze-kaze/realm#3](https://github.com/kaze-kaze/realm/pull/3)，已合并，随 v3.1.0 发布）
 - 对照：上游 v2.9.6 发布版（下文"原版"）
 - 线路：三台公网测试机互为中转、落地、客户端，另加本机 Docker 客户端（住宅宽带）。没有碰任何业务服务器
 - 上一份报告 [REPORT.md](REPORT.md) 是在本机测试台里做的，这一份是真实线路、真实协议
@@ -23,7 +23,7 @@
 
 报告初稿里留给你决定的四件事，你在 2026-11-20 都定了：
 
-1. **PR #3 合并，发 v3.1.0。** 改动是一个修复（大包不再截断）加三个新功能（QUIC 探测、带健康检查的负载均衡、`udp_no_fragment`）。三个新功能都要在配置里写了才生效，已有配置的行为不变。合并以 CI 全部通过为前提，结果见 PR 页面。
+1. **PR #3 合并，发 v3.1.0。** 改动是一个修复（大包不再截断）加三个新功能（QUIC 探测、带健康检查的负载均衡、`udp_no_fragment`）。三个新功能都要在配置里写了才生效，已有配置的行为不变。合并前 CI 45 项全部通过；v3.1.0 已于 2026-11-20 发布，38 个平台共 76 个发布包。
    - 说明一个插曲：2026-11-19 22:58 至 2026-11-20 03:05 UTC 之间，这个仓库的 GitHub Actions 不触发任何流水线，手动触发返回 `Actions has been disabled for this repository`，而仓库设置显示是开着的；之后自行恢复，原因不明。第四个提交正好在这段时间推送，当时没有 CI，我先在本地补做了验证：格式和 clippy 检查干净；单元测试 17 项、故障转移集成测试 7 项、UDP 集成测试 3 项、配置测试 15 项全部通过；`realm_core` 针对 Windows、macOS、安卓、musl 四个目标的编译检查 0 错误。
 2. **UDP 会话在节点被判下线时一律挪走，保持现状。** 另一种做法是"节点判下线，但这条会话最近几秒还在收到回包，就先不挪"，它能避免健康端口误判或主动摘流时 Hysteria / WireGuard 会话断 10–16 秒，但严重丢包的节点会拖住游戏、DNS 这类无状态流量。你选了现在这种简单可靠的做法，不做改动。
 3. **`test-report/` 入库。** 入库前把三台测试机和本机的公网地址换成了文档保留地址，测试用的密钥已删除（见第十二节）。
@@ -319,7 +319,9 @@ balance = "iphash: 1, 1, 1"
 **中转所在的主机：**
 
 - UDP 流量大的中转，把系统的 UDP 缓冲调大：`sysctl -w net.core.rmem_default=4194304 net.core.wmem_default=4194304`（写进 `/etc/sysctl.d/` 才能重启后保留）。默认值 212992 字节下，po0 中转在 Hysteria 大流量时有 1.28% 的包因为缓冲满被内核丢掉，调大后降到 0.009%。realm 要重启才会用上新值。
-- 系统是 glibc 的（Debian、Ubuntu 都是），用 `x86_64-unknown-linux-gnu` 那个发布包，不要用 musl 静态包。同一版本的两个官方产物对比，UDP 吞吐 gnu 快 12–23%，TCP 没有差别（8.2 节）。
+- 系统是 glibc 的（Debian、Ubuntu 都是），用 gnu 的发布包，不要用 musl 静态包。同一版本的两个官方产物对比，UDP 吞吐 gnu 快 12–23%，TCP 没有差别（8.2 节）。
+  - `x86_64-unknown-linux-gnu` 这个包要求 glibc 2.38 以上，Debian 13、Ubuntu 24.04 起才能跑；在 Debian 12（glibc 2.36）上会报 `GLIBC_2.38 not found`。
+  - Debian 12 这类系统用带 `-glibc2.28` 后缀的 gnu 包。测试机里 AMS 和 PO0 都是 Debian 12，属于这种情况。这个包的速度没有单独测过，8.2 节测的是不带后缀的那个。
 
 **落地端：**
 
@@ -369,7 +371,7 @@ balance = "iphash: 1, 1, 1"
 | TCP 上行 | 18819 | 19031 |
 | TCP 下行 | 18562 | 19203 |
 
-UDP 上 gnu 包快 12–23%，两组区间不重叠；TCP 没有差别。你的 UDP 流量大，Debian 上应该用 gnu 包。
+UDP 上 gnu 包快 12–23%，两组区间不重叠；TCP 没有差别。你的 UDP 流量大，Debian 上应该用 gnu 包。这里测的是 `x86_64-unknown-linux-gnu`（要求 glibc 2.38），Debian 12 上要换成 `-glibc2.28` 后缀的那个，见第七节。
 
 ### 8.3 UDP 有没有被中转丢包
 

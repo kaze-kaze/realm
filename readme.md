@@ -665,6 +665,8 @@ TCP Keepalive retries.
 
 On Linux, this is equivalent to `ipv4.tcp_keepalive_probes`.
 
+At least 1: with keepalive on, 0 is taken as 1 and reported in a warning at startup (Linux refuses a count of 0, and with it every connection). To turn keepalive off, set `tcp_keepalive = 0`.
+
 default: 3
 
 #### network.send_mptcp: bool

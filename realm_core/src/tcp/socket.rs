@@ -213,11 +213,7 @@ pub(crate) mod keepalive {
     use super::*;
     pub use realm_syscall::socket2::{SockRef, TcpKeepalive};
     pub fn build(conn_opts: &ConnectOpts) -> Option<TcpKeepalive> {
-        let ConnectOpts {
-            tcp_keepalive,
-            tcp_keepalive_probe,
-            ..
-        } = conn_opts;
+        let ConnectOpts { tcp_keepalive, .. } = conn_opts;
         if *tcp_keepalive == 0 {
             return None;
         };
@@ -229,16 +225,22 @@ pub(crate) mod keepalive {
         }
         #[cfg(not(target_os = "openbsd"))]
         {
-            let probe = *tcp_keepalive_probe as u32;
-            kpa = TcpKeepalive::with_retries(kpa, probe);
+            kpa = TcpKeepalive::with_retries(kpa, probes(conn_opts));
         }
 
         Some(kpa)
     }
 
+    /// Keepalive probes before the peer counts as dead, at least one: linux
+    /// refuses a count of zero, and the socket option with it, so no connection
+    /// could be made at all.
+    fn probes(conn_opts: &ConnectOpts) -> u32 {
+        (conn_opts.tcp_keepalive_probe as u32).max(1)
+    }
+
     /// Time until keepalive declares an idle peer dead: one idle period plus all probes.
     #[cfg(target_os = "linux")]
     pub fn dead_after(conn_opts: &ConnectOpts) -> Duration {
-        Duration::from_secs(conn_opts.tcp_keepalive as u64) * (conn_opts.tcp_keepalive_probe as u32 + 1)
+        Duration::from_secs(conn_opts.tcp_keepalive as u64) * (probes(conn_opts) + 1)
     }
 }

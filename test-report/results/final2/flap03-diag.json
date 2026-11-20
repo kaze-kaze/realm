@@ -1,0 +1,158 @@
+[
+ {
+  "round": 0,
+  "config": "旧规则（清零）",
+  "flaps": 35,
+  "flap_end_s": 21.3,
+  "events": [],
+  "tcp_err": 0,
+  "tcp_sent": 3143,
+  "err_kinds": {},
+  "err_recorded_at_s": [],
+  "dist": {
+   "A": 2763,
+   "B": 380
+  },
+  "udp_delivered": 0.638,
+  "probe_tcp": "OOOOFOOOOFOOOOOFOOOOOFOOOOFOOOOOFOOOOFOOOO",
+  "probe_udp": "OOOOFOOOOFOOOOOFOOOOOFOOOOFOOOOOFOOOOFOOOO"
+ },
+ {
+  "round": 0,
+  "config": "最终版",
+  "flaps": 35,
+  "flap_end_s": 21.3,
+  "events": [],
+  "tcp_err": 0,
+  "tcp_sent": 3258,
+  "err_kinds": {},
+  "err_recorded_at_s": [],
+  "dist": {
+   "A": 2922,
+   "B": 336
+  },
+  "udp_delivered": 0.64,
+  "probe_tcp": "OOOOFOOOOOFOOOOFOOOOOFOOOOOOOOOOFOOOOOFOOO",
+  "probe_udp": "OOOOFOOOOOFOOOOFOOOOOFOOOOOOOOOOFOOOOOFOOO"
+ },
+ {
+  "round": 1,
+  "config": "旧规则（清零）",
+  "flaps": 35,
+  "flap_end_s": 21.3,
+  "events": [
+   [
+    5.3,
+    "tcp",
+    "0.0.0:6000 peer#0 10.9.0.11:5000 is down"
+   ],
+   [
+    5.3,
+    "tcp",
+    " 10.9.0.11:5000 => peer#1 10.9.0.12:5000"
+   ],
+   [
+    5.3,
+    "udp",
+    "0.0.0:6000 peer#0 10.9.0.11:5000 is down"
+   ],
+   [
+    5.3,
+    "udp",
+    " 10.9.0.11:5000 => peer#1 10.9.0.12:5000"
+   ],
+   [
+    24.0,
+    "tcp",
+    "0.0.0.0:6000 peer#0 10.9.0.11:5000 is up"
+   ],
+   [
+    24.0,
+    "tcp",
+    " 10.9.0.12:5000 => peer#0 10.9.0.11:5000"
+   ],
+   [
+    24.0,
+    "udp",
+    "0.0.0.0:6000 peer#0 10.9.0.11:5000 is up"
+   ],
+   [
+    24.0,
+    "udp",
+    " 10.9.0.12:5000 => peer#0 10.9.0.11:5000"
+   ]
+  ],
+  "tcp_err": 3,
+  "tcp_sent": 5069,
+  "err_kinds": {
+   "read_timeout": 3
+  },
+  "err_recorded_at_s": [
+   [
+    11.6,
+    3
+   ]
+  ],
+  "dist": {
+   "A": 1455,
+   "B": 3611
+  },
+  "udp_delivered": 0.882,
+  "probe_tcp": "OOOOFOOFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+  "probe_udp": "OOOOFOOFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+ },
+ {
+  "round": 1,
+  "config": "最终版",
+  "flaps": 35,
+  "flap_end_s": 21.3,
+  "events": [],
+  "tcp_err": 0,
+  "tcp_sent": 3155,
+  "err_kinds": {},
+  "err_recorded_at_s": [],
+  "dist": {
+   "A": 2774,
+   "B": 381
+  },
+  "udp_delivered": 0.636,
+  "probe_tcp": "OOOOFOOOOOFOOOOFOOOOOFOOOOFOOOOOFOOOOOFOOO",
+  "probe_udp": "OOOOFOOOOOFOOOOFOOOOOFOOOOFOOOOOFOOOOOFOOO"
+ },
+ {
+  "round": 2,
+  "config": "旧规则（清零）",
+  "flaps": 35,
+  "flap_end_s": 21.3,
+  "events": [],
+  "tcp_err": 0,
+  "tcp_sent": 3140,
+  "err_kinds": {},
+  "err_recorded_at_s": [],
+  "dist": {
+   "A": 2759,
+   "B": 381
+  },
+  "udp_delivered": 0.638,
+  "probe_tcp": "OOOOFOOOOFOOOOOFOOOOOFOOOOFOOOOOFOOOOOFOOO",
+  "probe_udp": "OOOOFOOOOFOOOOOFOOOOOFOOOOFOOOOOFOOOOOFOOO"
+ },
+ {
+  "round": 2,
+  "config": "最终版",
+  "flaps": 35,
+  "flap_end_s": 21.3,
+  "events": [],
+  "tcp_err": 0,
+  "tcp_sent": 3137,
+  "err_kinds": {},
+  "err_recorded_at_s": [],
+  "dist": {
+   "A": 2756,
+   "B": 381
+  },
+  "udp_delivered": 0.64,
+  "probe_tcp": "OOOOFOOOOFOOOOOFOOOOOFOOOOFOOOOOFOOOOOFOOO",
+  "probe_udp": "OOOOFOOOOFOOOOOFOOOOOFOOOOFOOOOOFOOOOOFOOO"
+ }
+]

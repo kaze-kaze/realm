@@ -1,0 +1,147 @@
+[
+ {
+  "round": 0,
+  "flaps": 35,
+  "probe_tcp": "OOOOFOOOOOOOOOOFOOOOOFOOOOFOOOOOFOOOOOFOOO",
+  "switches": 0,
+  "tcp_err": 0,
+  "tcp_sent": 3288,
+  "ping_reply_ratio_whole": 0.49
+ },
+ {
+  "round": 1,
+  "flaps": 35,
+  "probe_tcp": "OOOOFOOOOOOOOOOFOOOOOFOOOOFOOOOOFOOOOOFOOO",
+  "switches": 0,
+  "tcp_err": 0,
+  "tcp_sent": 3168,
+  "ping_reply_ratio_whole": 0.49
+ },
+ {
+  "round": 2,
+  "flaps": 35,
+  "probe_tcp": "OOOOFOOOOFOOOOOFOOOOFOOOOOFOOOOOFOOOOFOOOO",
+  "switches": 0,
+  "tcp_err": 0,
+  "tcp_sent": 3153,
+  "ping_reply_ratio_whole": 0.49
+ },
+ {
+  "round": 3,
+  "flaps": 35,
+  "probe_tcp": "OOOOFOOOOOOOOOOFOOOOOFOOOOOOOOOOFOOOOOFOOO",
+  "switches": 0,
+  "tcp_err": 0,
+  "tcp_sent": 3319,
+  "ping_reply_ratio_whole": 0.49
+ },
+ {
+  "round": 4,
+  "flaps": 35,
+  "probe_tcp": "OOOOFOOOOFOOOOOFOOOOOFOOOOFOOOOOFOOOOOOOOO",
+  "switches": 0,
+  "tcp_err": 0,
+  "tcp_sent": 3135,
+  "ping_reply_ratio_whole": 0.49
+ },
+ {
+  "round": 5,
+  "flaps": 35,
+  "probe_tcp": "OOOOFOOOOFOOOOOFOOOOFOOOOOFOOOOOFOOOOFOOOO",
+  "switches": 0,
+  "tcp_err": 0,
+  "tcp_sent": 3181,
+  "ping_reply_ratio_whole": 0.49
+ },
+ {
+  "round": 6,
+  "flaps": 35,
+  "probe_tcp": "OOOOFOOOOFOOOOOFOOOOOFOOOOFOOOOOFOOOOFOOOO",
+  "switches": 0,
+  "tcp_err": 0,
+  "tcp_sent": 3170,
+  "ping_reply_ratio_whole": 0.49
+ },
+ {
+  "round": 7,
+  "flaps": 35,
+  "probe_tcp": "OOOOFOOOOFOOOOOFOOOOOOOOOOFOOOOOFOOOOFOOOO",
+  "switches": 0,
+  "tcp_err": 0,
+  "tcp_sent": 3127,
+  "ping_reply_ratio_whole": 0.49
+ },
+ {
+  "round": 8,
+  "flaps": 35,
+  "probe_tcp": "OOFFFFFFFFFFOFOFFFFFFFFOFFFFFFFFFFFOFFFFFF",
+  "switches": 2,
+  "tcp_err": 2,
+  "tcp_sent": 5420,
+  "ping_reply_ratio_whole": 0.09,
+  "stuck_from_s": 1.8,
+  "stuck_to_s": 6.3,
+  "ping_reply_ratio_before_stuck": 0.37,
+  "ping_reply_ratio_in_stuck": 0.0,
+  "probe_failure_reasons_in_stuck": {
+   "tcp: timeout": 10,
+   "udp: no echo": 10
+  },
+  "neigh_r_about_a_in_stuck": {
+   "REACHABLE": 18
+  },
+  "neigh_a_about_r_in_stuck": {
+   "INCOMPLETE": 15,
+   "none": 3
+  },
+  "neigh_r_about_a_before": {
+   "REACHABLE": 7
+  },
+  "link_state_a_now": "118: v-a@if11: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master br0 state UP mode DEFAULT group default q"
+ },
+ {
+  "round": 9,
+  "flaps": 35,
+  "probe_tcp": "OOOOFOOOOFOOOOOFOOOOOFOOOOFOOOOOFOOOOOFOOO",
+  "switches": 0,
+  "tcp_err": 0,
+  "tcp_sent": 3163,
+  "ping_reply_ratio_whole": 0.49
+ },
+ {
+  "round": 10,
+  "flaps": 35,
+  "probe_tcp": "OOOOFOOOOFOOOOOFOOOOOFOOOOFOOOOOFOOOOFOOOO",
+  "switches": 0,
+  "tcp_err": 0,
+  "tcp_sent": 3165,
+  "ping_reply_ratio_whole": 0.49
+ },
+ {
+  "round": 11,
+  "flaps": 35,
+  "probe_tcp": "OOOOFOOOOFOOOOOFOOOOOFOOOOFOOOOOFOOOOOOOOO",
+  "switches": 0,
+  "tcp_err": 0,
+  "tcp_sent": 3154,
+  "ping_reply_ratio_whole": 0.49
+ },
+ {
+  "round": 12,
+  "flaps": 35,
+  "probe_tcp": "OOOOFOOOOFOOOOOFOOOOOFOOOOFOOOOOFOOOOOFOOO",
+  "switches": 0,
+  "tcp_err": 0,
+  "tcp_sent": 3162,
+  "ping_reply_ratio_whole": 0.49
+ },
+ {
+  "round": 13,
+  "flaps": 35,
+  "probe_tcp": "OOOOFOOOOFOOOOOFOOOOOFOOOOFOOOOOFOOOOOFOOO",
+  "switches": 0,
+  "tcp_err": 0,
+  "tcp_sent": 3144,
+  "ping_reply_ratio_whole": 0.49
+ }
+]

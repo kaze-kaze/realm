@@ -1,0 +1,359 @@
+{
+ "on": 1795130605.0,
+ "off": 1795130665.0,
+ "rows": {
+  "fo-chi/vless-reality": {
+   "tcp_switch_s": -0.1,
+   "tcp_fail": 21,
+   "tcp_fail_total": 21,
+   "tcp_n": 758,
+   "tcp_dead_s": 5.3,
+   "tcp_dead_until_s": 64.8,
+   "tcp_back_s": 4.8,
+   "long_breaks": [
+    {
+     "at": 2.1,
+     "down_s": 1.12,
+     "to": 2
+    }
+   ],
+   "udp_switch_s": 0.9,
+   "udp_back_s": null,
+   "udp_out": [],
+   "udp_loss": 0.105,
+   "udp_reopens": 0,
+   "udp_foreign": 0,
+   "udp_dup": 0,
+   "udp_damaged": 0,
+   "errs": {
+    "ConnectionError:eof": 2,
+    "TimeoutError": 19
+   },
+   "lat_p50": 644.4
+  },
+  "fo-chi/trojan-tls": {
+   "tcp_switch_s": -0.1,
+   "tcp_fail": 1,
+   "tcp_fail_total": 1,
+   "tcp_n": 758,
+   "tcp_dead_s": 0.2,
+   "tcp_dead_until_s": -0.1,
+   "tcp_back_s": 0.0,
+   "long_breaks": [
+    {
+     "at": 1.1,
+     "down_s": 1.08,
+     "to": 2
+    }
+   ],
+   "udp_switch_s": 0.9,
+   "udp_back_s": null,
+   "udp_out": [],
+   "udp_loss": 0.105,
+   "udp_reopens": 0,
+   "udp_foreign": 0,
+   "udp_dup": 0,
+   "udp_damaged": 0,
+   "errs": {
+    "ConnectionError:eof": 1
+   },
+   "lat_p50": 594.5
+  },
+  "fo-chi/vmess-ws": {
+   "tcp_switch_s": -0.1,
+   "tcp_fail": 1,
+   "tcp_fail_total": 1,
+   "tcp_n": 758,
+   "tcp_dead_s": 0.2,
+   "tcp_dead_until_s": -0.1,
+   "tcp_back_s": 0.0,
+   "long_breaks": [
+    {
+     "at": 0.4,
+     "down_s": 1.09,
+     "to": 2
+    }
+   ],
+   "udp_switch_s": 1.0,
+   "udp_back_s": null,
+   "udp_out": [],
+   "udp_loss": 0.132,
+   "udp_reopens": 0,
+   "udp_foreign": 0,
+   "udp_dup": 0,
+   "udp_damaged": 0,
+   "errs": {
+    "ConnectionError:eof": 1
+   },
+   "lat_p50": 597.4
+  },
+  "fo-chi/ss-2022": {
+   "tcp_switch_s": -0.1,
+   "tcp_fail": 0,
+   "tcp_fail_total": 0,
+   "tcp_n": 758,
+   "tcp_dead_s": 0,
+   "tcp_dead_until_s": null,
+   "tcp_back_s": 0.1,
+   "long_breaks": [
+    {
+     "at": 1.1,
+     "down_s": 0.86,
+     "to": 2
+    }
+   ],
+   "udp_switch_s": null,
+   "udp_back_s": null,
+   "udp_out": [
+    {
+     "at": 0.0,
+     "s": 60.11
+    }
+   ],
+   "udp_loss": 31.605,
+   "udp_reopens": 19,
+   "udp_foreign": 0,
+   "udp_dup": 0,
+   "udp_damaged": 0,
+   "errs": {},
+   "lat_p50": 396.3
+  },
+  "fo-chi/hy2": {
+   "tcp_switch_s": null,
+   "tcp_fail": 758,
+   "tcp_fail_total": 758,
+   "tcp_n": 758,
+   "tcp_dead_s": 190.0,
+   "tcp_dead_until_s": 9.999999982048694e+17,
+   "tcp_back_s": null,
+   "long_breaks": [
+    {
+     "at": -47.0,
+     "down_s": 190.0,
+     "to": null
+    }
+   ],
+   "udp_switch_s": null,
+   "udp_back_s": null,
+   "udp_out": [],
+   "udp_loss": null,
+   "udp_reopens": null,
+   "udp_foreign": null,
+   "udp_dup": null,
+   "udp_damaged": null,
+   "errs": {
+    "ConnectionRefusedError:111": 758
+   },
+   "lat_p50": null
+  },
+  "fd-chi/vless-reality": {
+   "tcp_switch_s": -0.4,
+   "tcp_fail": 0,
+   "tcp_fail_total": 0,
+   "tcp_n": 758,
+   "tcp_dead_s": 0,
+   "tcp_dead_until_s": null,
+   "tcp_back_s": 13.6,
+   "long_breaks": [],
+   "udp_switch_s": null,
+   "udp_back_s": null,
+   "udp_out": [],
+   "udp_loss": 0.0,
+   "udp_reopens": 0,
+   "udp_foreign": 0,
+   "udp_dup": 0,
+   "udp_damaged": 0,
+   "errs": {},
+   "lat_p50": 674.2
+  },
+  "fd-chi/trojan-tls": {
+   "tcp_switch_s": -0.1,
+   "tcp_fail": 1,
+   "tcp_fail_total": 1,
+   "tcp_n": 758,
+   "tcp_dead_s": 0.2,
+   "tcp_dead_until_s": -0.1,
+   "tcp_back_s": 13.6,
+   "long_breaks": [],
+   "udp_switch_s": null,
+   "udp_back_s": null,
+   "udp_out": [],
+   "udp_loss": 0.0,
+   "udp_reopens": 0,
+   "udp_foreign": 0,
+   "udp_dup": 0,
+   "udp_damaged": 0,
+   "errs": {
+    "ConnectionError:eof": 1
+   },
+   "lat_p50": 641.0
+  },
+  "fd-chi/vmess-ws": {
+   "tcp_switch_s": -0.1,
+   "tcp_fail": 1,
+   "tcp_fail_total": 1,
+   "tcp_n": 758,
+   "tcp_dead_s": 0.2,
+   "tcp_dead_until_s": -0.1,
+   "tcp_back_s": 13.6,
+   "long_breaks": [],
+   "udp_switch_s": null,
+   "udp_back_s": null,
+   "udp_out": [],
+   "udp_loss": 0.0,
+   "udp_reopens": 0,
+   "udp_foreign": 0,
+   "udp_dup": 0,
+   "udp_damaged": 0,
+   "errs": {
+    "ConnectionError:eof": 1
+   },
+   "lat_p50": 641.7
+  },
+  "fd-chi/ss-2022": {
+   "tcp_switch_s": -0.1,
+   "tcp_fail": 0,
+   "tcp_fail_total": 0,
+   "tcp_n": 758,
+   "tcp_dead_s": 0,
+   "tcp_dead_until_s": null,
+   "tcp_back_s": 13.6,
+   "long_breaks": [],
+   "udp_switch_s": null,
+   "udp_back_s": null,
+   "udp_out": [
+    {
+     "at": -47.0,
+     "s": 190.0
+    }
+   ],
+   "udp_loss": 100.0,
+   "udp_reopens": 62,
+   "udp_foreign": 0,
+   "udp_dup": 0,
+   "udp_damaged": 0,
+   "errs": {},
+   "lat_p50": 426.3
+  },
+  "fd-chi/hy2": {
+   "tcp_switch_s": null,
+   "tcp_fail": 0,
+   "tcp_fail_total": 0,
+   "tcp_n": 758,
+   "tcp_dead_s": 0,
+   "tcp_dead_until_s": null,
+   "tcp_back_s": null,
+   "long_breaks": [],
+   "udp_switch_s": null,
+   "udp_back_s": null,
+   "udp_out": [],
+   "udp_loss": 0.0,
+   "udp_reopens": 0,
+   "udp_foreign": 0,
+   "udp_dup": 0,
+   "udp_damaged": 0,
+   "errs": {},
+   "lat_p50": 493.5
+  },
+  "p2-chi/vless-reality": {
+   "tcp_switch_s": null,
+   "tcp_fail": 0,
+   "tcp_fail_total": 0,
+   "tcp_n": 758,
+   "tcp_dead_s": 0,
+   "tcp_dead_until_s": null,
+   "tcp_back_s": null,
+   "long_breaks": [],
+   "udp_switch_s": null,
+   "udp_back_s": null,
+   "udp_out": [],
+   "udp_loss": 0.0,
+   "udp_reopens": 0,
+   "udp_foreign": 0,
+   "udp_dup": 0,
+   "udp_damaged": 0,
+   "errs": {},
+   "lat_p50": 716.5
+  },
+  "p2-chi/trojan-tls": {
+   "tcp_switch_s": null,
+   "tcp_fail": 0,
+   "tcp_fail_total": 0,
+   "tcp_n": 758,
+   "tcp_dead_s": 0,
+   "tcp_dead_until_s": null,
+   "tcp_back_s": null,
+   "long_breaks": [],
+   "udp_switch_s": null,
+   "udp_back_s": null,
+   "udp_out": [],
+   "udp_loss": 0.0,
+   "udp_reopens": 0,
+   "udp_foreign": 0,
+   "udp_dup": 0,
+   "udp_damaged": 0,
+   "errs": {},
+   "lat_p50": 709.5
+  },
+  "p2-chi/vmess-ws": {
+   "tcp_switch_s": null,
+   "tcp_fail": 0,
+   "tcp_fail_total": 0,
+   "tcp_n": 758,
+   "tcp_dead_s": 0,
+   "tcp_dead_until_s": null,
+   "tcp_back_s": null,
+   "long_breaks": [],
+   "udp_switch_s": null,
+   "udp_back_s": null,
+   "udp_out": [],
+   "udp_loss": 0.0,
+   "udp_reopens": 0,
+   "udp_foreign": 0,
+   "udp_dup": 0,
+   "udp_damaged": 0,
+   "errs": {},
+   "lat_p50": 708.5
+  },
+  "p2-chi/ss-2022": {
+   "tcp_switch_s": null,
+   "tcp_fail": 0,
+   "tcp_fail_total": 0,
+   "tcp_n": 758,
+   "tcp_dead_s": 0,
+   "tcp_dead_until_s": null,
+   "tcp_back_s": null,
+   "long_breaks": [],
+   "udp_switch_s": null,
+   "udp_back_s": null,
+   "udp_out": [],
+   "udp_loss": 0.0,
+   "udp_reopens": 0,
+   "udp_foreign": 0,
+   "udp_dup": 0,
+   "udp_damaged": 0,
+   "errs": {},
+   "lat_p50": 472.7
+  },
+  "p2-chi/hy2": {
+   "tcp_switch_s": null,
+   "tcp_fail": 0,
+   "tcp_fail_total": 0,
+   "tcp_n": 758,
+   "tcp_dead_s": 0,
+   "tcp_dead_until_s": null,
+   "tcp_back_s": null,
+   "long_breaks": [],
+   "udp_switch_s": null,
+   "udp_back_s": null,
+   "udp_out": [],
+   "udp_loss": 0.0,
+   "udp_reopens": 0,
+   "udp_foreign": 0,
+   "udp_dup": 0,
+   "udp_damaged": 0,
+   "errs": {},
+   "lat_p50": 461.6
+  }
+ }
+}

@@ -1,0 +1,2537 @@
+{
+ "suite": "apps",
+ "me": "mac",
+ "args": {
+  "vias": [
+   "fo-ams"
+  ],
+  "protos": [
+   "vless-reality",
+   "vless-xhttp-tls",
+   "trojan-tls",
+   "ss-2022",
+   "hy2",
+   "wg",
+   "tgt"
+  ],
+  "secs": 20
+ },
+ "t": 1795133033.9589002,
+ "res": {
+  "fo-ams/vless-reality": {
+   "game": {
+    "ok": true,
+    "sent": 1200,
+    "recv": 1200,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 1200,
+     "min": 226.3,
+     "p50": 249.7,
+     "p90": 274.0,
+     "p99": 884.9,
+     "max": 997.4,
+     "mean": 270.6
+    },
+    "jitter_ms": 3.66,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "1": 1200
+    },
+    "lid_changes": [
+     [
+      0.97,
+      null,
+      1
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795132395.627,
+    "push": {
+     "want": 600,
+     "recv": 600,
+     "loss_pct": 0.0,
+     "gap_ms": {
+      "n": 599,
+      "min": 0.0,
+      "p50": 33.2,
+      "p90": 36.7,
+      "p99": 53.5,
+      "max": 223.4,
+      "mean": 33.4
+     },
+     "lids": {
+      "1": 600
+     }
+    }
+   },
+   "voice": {
+    "ok": true,
+    "sent": 1000,
+    "recv": 1000,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 1000,
+     "min": 227.7,
+     "p50": 251.8,
+     "p90": 276.3,
+     "p99": 863.4,
+     "max": 952.4,
+     "mean": 272.7
+    },
+    "jitter_ms": 3.95,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "1": 1000
+    },
+    "lid_changes": [
+     [
+      0.97,
+      null,
+      1
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795132395.628
+   },
+   "vcall": {
+    "ok": true,
+    "sent": 3000,
+    "recv": 3000,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 3000,
+     "min": 214.3,
+     "p50": 217.6,
+     "p90": 387.5,
+     "p99": 858.9,
+     "max": 901.0,
+     "mean": 261.7
+    },
+    "jitter_ms": 2.97,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "1": 3000
+    },
+    "lid_changes": [
+     [
+      0.79,
+      null,
+      1
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795132395.629,
+    "push": {
+     "want": 3000,
+     "recv": 3000,
+     "loss_pct": 0.0,
+     "gap_ms": {
+      "n": 2999,
+      "min": 0.0,
+      "p50": 6.6,
+      "p90": 7.5,
+      "p99": 18.4,
+      "max": 208.1,
+      "mean": 6.7
+     },
+     "lids": {
+      "1": 3000
+     }
+    }
+   },
+   "web": {
+    "n": 200,
+    "ok": 200,
+    "fail": 0,
+    "lids": {
+     "1": 200
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 200,
+     "min": 730.4,
+     "p50": 804.3,
+     "p90": 875.2,
+     "p99": 947.5,
+     "max": 950.2,
+     "mean": 812.6
+    },
+    "secs": 5.8
+   },
+   "chat": {
+    "ok": true,
+    "done": 40,
+    "lid": 1,
+    "err": null,
+    "rtt_ms": {
+     "n": 40,
+     "min": 225.4,
+     "p50": 248.5,
+     "p90": 266.4,
+     "p99": 277.4,
+     "max": 277.4,
+     "mean": 249.0
+    },
+    "secs": 30.94
+   },
+   "push": {
+    "ok": true,
+    "got": 2,
+    "want": 2,
+    "lid": 1,
+    "err": null,
+    "delay_ms": {
+     "n": 2,
+     "min": 110.6,
+     "p50": 117.7,
+     "p90": 117.7,
+     "p99": 117.7,
+     "max": 117.7,
+     "mean": 114.2
+    }
+   },
+   "p2p_tcp": {
+    "conns": {
+     "n": 200,
+     "ok": 199,
+     "fail": 1,
+     "lids": {
+      "1": 199
+     },
+     "errs": {
+      "TimeoutError": 1
+     },
+     "lat_ms": {
+      "n": 199,
+      "min": 733.0,
+      "p50": 811.9,
+      "p90": 881.3,
+      "p99": 1027.8,
+      "max": 1048.7,
+      "mean": 820.9
+     },
+     "secs": 12.53
+    },
+    "dl_ok": 8,
+    "dl_n": 8,
+    "dl_mbps_sum": 142.0,
+    "dl_bad": []
+   },
+   "p2p_udp": {
+    "ok": true,
+    "dests": 9,
+    "sent_each": 50,
+    "recv_each": [
+     50,
+     50,
+     50,
+     50,
+     50,
+     50,
+     50,
+     50,
+     50
+    ],
+    "dead_dests": 0,
+    "loss_pct": 0.0
+   },
+   "video": {
+    "ok": true,
+    "segs": 6,
+    "failed": 0,
+    "stalls": 0,
+    "seg_s": {
+     "n": 6,
+     "min": 1.61,
+     "p50": 1.75,
+     "p90": 1.83,
+     "p99": 1.83,
+     "max": 1.83,
+     "mean": 1.7
+    },
+    "secs": 11.6,
+    "mbps_needed": 12.6
+   },
+   "down": {
+    "ok": true,
+    "mbps": 185.58,
+    "sent_mbps": 196.73,
+    "retrans": 19
+   },
+   "up": {
+    "ok": true,
+    "mbps": 130.18,
+    "sent_mbps": 151.36,
+    "retrans": 25
+   },
+   "udp_down": {
+    "ok": true,
+    "mbps": 20.0,
+    "loss_pct": 0,
+    "jitter_ms": 0.179,
+    "packets": 10891
+   },
+   "sites": [
+    {
+     "ok": true,
+     "code": 204,
+     "connect_ms": 1,
+     "ttfb_ms": 1138,
+     "total_ms": 1138,
+     "size": 0,
+     "mbps": 0.0,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.google.com/generate_204"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 1071,
+     "total_ms": 1072,
+     "size": 247,
+     "mbps": 0.0,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.cloudflare.com/cdn-cgi/trace"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 1278,
+     "total_ms": 1598,
+     "size": 122506,
+     "mbps": 0.61,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.wikipedia.org/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 1114,
+     "total_ms": 1674,
+     "size": 537323,
+     "mbps": 2.57,
+     "http": "2",
+     "rc": 0,
+     "url": "https://github.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 1270,
+     "total_ms": 2053,
+     "size": 1029294,
+     "mbps": 4.01,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.youtube.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 1176,
+     "total_ms": 1659,
+     "size": 249632,
+     "mbps": 1.2,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.apple.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 1492,
+     "total_ms": 1988,
+     "size": 208356,
+     "mbps": 0.84,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.bing.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 1344,
+     "total_ms": 2012,
+     "size": 1009073,
+     "mbps": 4.01,
+     "http": "1.1",
+     "rc": 0,
+     "url": "https://store.steampowered.com/"
+    }
+   ],
+   "cdn": {
+    "ok": true,
+    "code": 200,
+    "connect_ms": 0,
+    "ttfb_ms": 1042,
+    "total_ms": 2853,
+    "size": 30000000,
+    "mbps": 84.11,
+    "http": "1.1",
+    "rc": 0
+   }
+  },
+  "fo-ams/vless-xhttp-tls": {
+   "game": {
+    "ok": true,
+    "sent": 1200,
+    "recv": 1200,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 1200,
+     "min": 240.5,
+     "p50": 266.2,
+     "p90": 288.9,
+     "p99": 589.8,
+     "max": 765.7,
+     "mean": 275.0
+    },
+    "jitter_ms": 15.65,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "1": 1200
+    },
+    "lid_changes": [
+     [
+      0.77,
+      null,
+      1
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795132491.121,
+    "push": {
+     "want": 600,
+     "recv": 600,
+     "loss_pct": 0.0,
+     "gap_ms": {
+      "n": 599,
+      "min": 0.0,
+      "p50": 33.2,
+      "p90": 36.6,
+      "p99": 75.4,
+      "max": 185.1,
+      "mean": 33.4
+     },
+     "lids": {
+      "1": 600
+     }
+    }
+   },
+   "voice": {
+    "ok": true,
+    "sent": 1000,
+    "recv": 1000,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 1000,
+     "min": 260.2,
+     "p50": 295.7,
+     "p90": 319.7,
+     "p99": 708.2,
+     "max": 881.7,
+     "mean": 306.8
+    },
+    "jitter_ms": 14.97,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "1": 1000
+    },
+    "lid_changes": [
+     [
+      0.89,
+      null,
+      1
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795132491.121
+   },
+   "vcall": {
+    "ok": true,
+    "sent": 3000,
+    "recv": 3000,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 3000,
+     "min": 264.4,
+     "p50": 313.7,
+     "p90": 417.4,
+     "p99": 988.6,
+     "max": 1124.2,
+     "mean": 344.4
+    },
+    "jitter_ms": 9.93,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "1": 3000
+    },
+    "lid_changes": [
+     [
+      0.91,
+      null,
+      1
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795132491.121,
+    "push": {
+     "want": 3000,
+     "recv": 3000,
+     "loss_pct": 0.0,
+     "gap_ms": {
+      "n": 2999,
+      "min": 0.0,
+      "p50": 6.5,
+      "p90": 8.5,
+      "p99": 18.1,
+      "max": 171.8,
+      "mean": 6.7
+     },
+     "lids": {
+      "1": 3000
+     }
+    }
+   },
+   "web": {
+    "n": 200,
+    "ok": 200,
+    "fail": 0,
+    "lids": {
+     "1": 200
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 200,
+     "min": 214.5,
+     "p50": 258.7,
+     "p90": 879.9,
+     "p99": 923.6,
+     "max": 923.6,
+     "mean": 359.7
+    },
+    "secs": 2.46
+   },
+   "chat": {
+    "ok": true,
+    "done": 40,
+    "lid": 1,
+    "err": null,
+    "rtt_ms": {
+     "n": 40,
+     "min": 231.0,
+     "p50": 250.9,
+     "p90": 275.7,
+     "p99": 492.9,
+     "max": 492.9,
+     "mean": 266.3
+    },
+    "secs": 31.61
+   },
+   "push": {
+    "ok": true,
+    "got": 2,
+    "want": 2,
+    "lid": 1,
+    "err": null,
+    "delay_ms": {
+     "n": 2,
+     "min": 102.7,
+     "p50": 107.8,
+     "p90": 107.8,
+     "p99": 107.8,
+     "max": 107.8,
+     "mean": 105.2
+    }
+   },
+   "p2p_tcp": {
+    "conns": {
+     "n": 200,
+     "ok": 200,
+     "fail": 0,
+     "lids": {
+      "1": 200
+     },
+     "errs": {},
+     "lat_ms": {
+      "n": 200,
+      "min": 220.2,
+      "p50": 379.9,
+      "p90": 924.4,
+      "p99": 1015.8,
+      "max": 1016.1,
+      "mean": 494.1
+     },
+     "secs": 2.08
+    },
+    "dl_ok": 8,
+    "dl_n": 8,
+    "dl_mbps_sum": 174.9,
+    "dl_bad": []
+   },
+   "p2p_udp": {
+    "ok": true,
+    "dests": 9,
+    "sent_each": 50,
+    "recv_each": [
+     50,
+     50,
+     50,
+     50,
+     50,
+     50,
+     50,
+     50,
+     50
+    ],
+    "dead_dests": 0,
+    "loss_pct": 0.0
+   },
+   "video": {
+    "ok": true,
+    "segs": 6,
+    "failed": 0,
+    "stalls": 0,
+    "seg_s": {
+     "n": 6,
+     "min": 1.04,
+     "p50": 1.13,
+     "p90": 1.49,
+     "p99": 1.49,
+     "max": 1.49,
+     "mean": 1.18
+    },
+    "secs": 11.1,
+    "mbps_needed": 12.6
+   },
+   "down": {
+    "ok": true,
+    "mbps": 136.47,
+    "sent_mbps": 145.73,
+    "retrans": 11
+   },
+   "up": {
+    "ok": true,
+    "mbps": 29.45,
+    "sent_mbps": 37.39,
+    "retrans": 6
+   },
+   "udp_down": {
+    "ok": true,
+    "mbps": 20.0,
+    "loss_pct": 0,
+    "jitter_ms": 0.11,
+    "packets": 10899
+   },
+   "sites": [
+    {
+     "ok": true,
+     "code": 204,
+     "connect_ms": 0,
+     "ttfb_ms": 578,
+     "total_ms": 578,
+     "size": 0,
+     "mbps": 0.0,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.google.com/generate_204"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 928,
+     "total_ms": 928,
+     "size": 246,
+     "mbps": 0.0,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.cloudflare.com/cdn-cgi/trace"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 767,
+     "total_ms": 1108,
+     "size": 122506,
+     "mbps": 0.88,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.wikipedia.org/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 570,
+     "total_ms": 1080,
+     "size": 537192,
+     "mbps": 3.98,
+     "http": "2",
+     "rc": 0,
+     "url": "https://github.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 756,
+     "total_ms": 1560,
+     "size": 1025374,
+     "mbps": 5.26,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.youtube.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 842,
+     "total_ms": 1215,
+     "size": 249632,
+     "mbps": 1.64,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.apple.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 772,
+     "total_ms": 1159,
+     "size": 209421,
+     "mbps": 1.45,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.bing.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 1108,
+     "total_ms": 1730,
+     "size": 1006517,
+     "mbps": 4.65,
+     "http": "1.1",
+     "rc": 0,
+     "url": "https://store.steampowered.com/"
+    }
+   ],
+   "cdn": {
+    "ok": true,
+    "code": 200,
+    "connect_ms": 0,
+    "ttfb_ms": 2200,
+    "total_ms": 17957,
+    "size": 30000000,
+    "mbps": 13.36,
+    "http": "1.1",
+    "rc": 0
+   }
+  },
+  "fo-ams/trojan-tls": {
+   "game": {
+    "ok": true,
+    "sent": 1200,
+    "recv": 1200,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 1200,
+     "min": 217.0,
+     "p50": 221.5,
+     "p90": 232.5,
+     "p99": 577.8,
+     "max": 678.9,
+     "mean": 231.3
+    },
+    "jitter_ms": 2.52,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "1": 1200
+    },
+    "lid_changes": [
+     [
+      0.69,
+      null,
+      1
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795132593.439,
+    "push": {
+     "want": 600,
+     "recv": 600,
+     "loss_pct": 0.0,
+     "gap_ms": {
+      "n": 599,
+      "min": 0.0,
+      "p50": 33.3,
+      "p90": 35.8,
+      "p99": 40.3,
+      "max": 116.6,
+      "mean": 33.3
+     },
+     "lids": {
+      "1": 600
+     }
+    }
+   },
+   "voice": {
+    "ok": true,
+    "sent": 1000,
+    "recv": 1000,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 1000,
+     "min": 224.4,
+     "p50": 228.3,
+     "p90": 229.3,
+     "p99": 574.7,
+     "max": 695.9,
+     "mean": 235.9
+    },
+    "jitter_ms": 2.14,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "1": 1000
+    },
+    "lid_changes": [
+     [
+      0.7,
+      null,
+      1
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795132593.439
+   },
+   "vcall": {
+    "ok": true,
+    "sent": 3000,
+    "recv": 3000,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 3000,
+     "min": 238.8,
+     "p50": 241.7,
+     "p90": 245.1,
+     "p99": 922.4,
+     "max": 976.1,
+     "mean": 275.4
+    },
+    "jitter_ms": 2.26,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "1": 3000
+    },
+    "lid_changes": [
+     [
+      0.79,
+      null,
+      1
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795132593.439,
+    "push": {
+     "want": 3000,
+     "recv": 3000,
+     "loss_pct": 0.0,
+     "gap_ms": {
+      "n": 2999,
+      "min": 0.0,
+      "p50": 6.6,
+      "p90": 7.4,
+      "p99": 9.2,
+      "max": 196.2,
+      "mean": 6.7
+     },
+     "lids": {
+      "1": 3000
+     }
+    }
+   },
+   "web": {
+    "n": 200,
+    "ok": 200,
+    "fail": 0,
+    "lids": {
+     "1": 200
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 200,
+     "min": 642.6,
+     "p50": 704.2,
+     "p90": 746.0,
+     "p99": 818.8,
+     "max": 836.9,
+     "mean": 704.6
+    },
+    "secs": 5.01
+   },
+   "chat": {
+    "ok": true,
+    "done": 40,
+    "lid": 1,
+    "err": null,
+    "rtt_ms": {
+     "n": 40,
+     "min": 225.1,
+     "p50": 238.5,
+     "p90": 260.5,
+     "p99": 281.7,
+     "max": 281.7,
+     "mean": 241.5
+    },
+    "secs": 30.56
+   },
+   "push": {
+    "ok": true,
+    "got": 2,
+    "want": 2,
+    "lid": 1,
+    "err": null,
+    "delay_ms": {
+     "n": 2,
+     "min": 107.6,
+     "p50": 108.0,
+     "p90": 108.0,
+     "p99": 108.0,
+     "max": 108.0,
+     "mean": 107.8
+    }
+   },
+   "p2p_tcp": {
+    "conns": {
+     "n": 200,
+     "ok": 200,
+     "fail": 0,
+     "lids": {
+      "1": 200
+     },
+     "errs": {},
+     "lat_ms": {
+      "n": 200,
+      "min": 646.2,
+      "p50": 715.9,
+      "p90": 804.5,
+      "p99": 872.9,
+      "max": 881.2,
+      "mean": 727.4
+     },
+     "secs": 3.04
+    },
+    "dl_ok": 8,
+    "dl_n": 8,
+    "dl_mbps_sum": 150.2,
+    "dl_bad": []
+   },
+   "p2p_udp": {
+    "ok": true,
+    "dests": 9,
+    "sent_each": 50,
+    "recv_each": [
+     50,
+     50,
+     50,
+     50,
+     50,
+     50,
+     50,
+     50,
+     50
+    ],
+    "dead_dests": 0,
+    "loss_pct": 0.0
+   },
+   "video": {
+    "ok": true,
+    "segs": 6,
+    "failed": 0,
+    "stalls": 0,
+    "seg_s": {
+     "n": 6,
+     "min": 1.66,
+     "p50": 1.69,
+     "p90": 1.77,
+     "p99": 1.77,
+     "max": 1.77,
+     "mean": 1.7
+    },
+    "secs": 11.7,
+    "mbps_needed": 12.6
+   },
+   "down": {
+    "ok": true,
+    "mbps": 169.96,
+    "sent_mbps": 179.94,
+    "retrans": 36
+   },
+   "up": {
+    "ok": true,
+    "mbps": 84.32,
+    "sent_mbps": 103.5,
+    "retrans": 13
+   },
+   "udp_down": {
+    "ok": true,
+    "mbps": 20.0,
+    "loss_pct": 0,
+    "jitter_ms": 0.148,
+    "packets": 10948
+   },
+   "sites": [
+    {
+     "ok": true,
+     "code": 204,
+     "connect_ms": 0,
+     "ttfb_ms": 1013,
+     "total_ms": 1013,
+     "size": 0,
+     "mbps": 0.0,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.google.com/generate_204"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 976,
+     "total_ms": 976,
+     "size": 251,
+     "mbps": 0.0,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.cloudflare.com/cdn-cgi/trace"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 1169,
+     "total_ms": 1476,
+     "size": 122506,
+     "mbps": 0.66,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.wikipedia.org/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 1212,
+     "total_ms": 1941,
+     "size": 537414,
+     "mbps": 2.22,
+     "http": "2",
+     "rc": 0,
+     "url": "https://github.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 1049,
+     "total_ms": 1726,
+     "size": 928563,
+     "mbps": 4.3,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.youtube.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 1066,
+     "total_ms": 1555,
+     "size": 249632,
+     "mbps": 1.28,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.apple.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 1124,
+     "total_ms": 1585,
+     "size": 208620,
+     "mbps": 1.05,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.bing.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 1500,
+     "total_ms": 2226,
+     "size": 1006517,
+     "mbps": 3.62,
+     "http": "1.1",
+     "rc": 0,
+     "url": "https://store.steampowered.com/"
+    }
+   ],
+   "cdn": {
+    "ok": true,
+    "code": 200,
+    "connect_ms": 0,
+    "ttfb_ms": 1455,
+    "total_ms": 3915,
+    "size": 30000000,
+    "mbps": 61.31,
+    "http": "1.1",
+    "rc": 0
+   }
+  },
+  "fo-ams/ss-2022": {
+   "game": {
+    "ok": true,
+    "sent": 1200,
+    "recv": 1200,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 1200,
+     "min": 231.9,
+     "p50": 234.7,
+     "p90": 236.9,
+     "p99": 237.8,
+     "max": 242.9,
+     "mean": 234.8
+    },
+    "jitter_ms": 1.23,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "1": 1200
+    },
+    "lid_changes": [
+     [
+      0.25,
+      null,
+      1
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795132687.529,
+    "push": {
+     "want": 600,
+     "recv": 600,
+     "loss_pct": 0.0,
+     "gap_ms": {
+      "n": 599,
+      "min": 22.0,
+      "p50": 33.3,
+      "p90": 34.0,
+      "p99": 35.2,
+      "max": 45.3,
+      "mean": 33.3
+     },
+     "lids": {
+      "1": 600
+     }
+    }
+   },
+   "voice": {
+    "ok": true,
+    "sent": 1000,
+    "recv": 1000,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 1000,
+     "min": 227.2,
+     "p50": 258.3,
+     "p90": 270.6,
+     "p99": 275.9,
+     "max": 276.8,
+     "mean": 256.3
+    },
+    "jitter_ms": 1.58,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "1": 1000
+    },
+    "lid_changes": [
+     [
+      0.28,
+      null,
+      1
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795132687.53
+   },
+   "vcall": {
+    "ok": true,
+    "sent": 3000,
+    "recv": 3000,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 3000,
+     "min": 224.4,
+     "p50": 227.1,
+     "p90": 229.0,
+     "p99": 230.1,
+     "max": 240.2,
+     "mean": 227.1
+    },
+    "jitter_ms": 1.63,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "1": 3000
+    },
+    "lid_changes": [
+     [
+      0.24,
+      null,
+      1
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795132687.53,
+    "push": {
+     "want": 3000,
+     "recv": 3000,
+     "loss_pct": 0.0,
+     "gap_ms": {
+      "n": 2999,
+      "min": 0.3,
+      "p50": 6.7,
+      "p90": 7.4,
+      "p99": 8.3,
+      "max": 19.0,
+      "mean": 6.7
+     },
+     "lids": {
+      "1": 3000
+     }
+    }
+   },
+   "web": {
+    "n": 200,
+    "ok": 200,
+    "fail": 0,
+    "lids": {
+     "1": 200
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 200,
+     "min": 428.6,
+     "p50": 478.2,
+     "p90": 524.2,
+     "p99": 557.8,
+     "max": 561.5,
+     "mean": 482.4
+    },
+    "secs": 3.44
+   },
+   "chat": {
+    "ok": true,
+    "done": 40,
+    "lid": 1,
+    "err": null,
+    "rtt_ms": {
+     "n": 40,
+     "min": 222.3,
+     "p50": 226.4,
+     "p90": 227.4,
+     "p99": 228.1,
+     "max": 228.1,
+     "mean": 225.6
+    },
+    "secs": 29.55
+   },
+   "push": {
+    "ok": true,
+    "got": 2,
+    "want": 2,
+    "lid": 1,
+    "err": null,
+    "delay_ms": {
+     "n": 2,
+     "min": 124.2,
+     "p50": 158.8,
+     "p90": 158.8,
+     "p99": 158.8,
+     "max": 158.8,
+     "mean": 141.5
+    }
+   },
+   "p2p_tcp": {
+    "conns": {
+     "n": 200,
+     "ok": 200,
+     "fail": 0,
+     "lids": {
+      "1": 200
+     },
+     "errs": {},
+     "lat_ms": {
+      "n": 200,
+      "min": 427.6,
+      "p50": 485.5,
+      "p90": 548.9,
+      "p99": 575.6,
+      "max": 576.7,
+      "mean": 492.5
+     },
+     "secs": 2.14
+    },
+    "dl_ok": 8,
+    "dl_n": 8,
+    "dl_mbps_sum": 165.1,
+    "dl_bad": []
+   },
+   "p2p_udp": {
+    "ok": true,
+    "dests": 9,
+    "sent_each": 50,
+    "recv_each": [
+     50,
+     50,
+     50,
+     50,
+     50,
+     50,
+     50,
+     50,
+     50
+    ],
+    "dead_dests": 0,
+    "loss_pct": 0.0
+   },
+   "video": {
+    "ok": true,
+    "segs": 6,
+    "failed": 0,
+    "stalls": 0,
+    "seg_s": {
+     "n": 6,
+     "min": 1.3,
+     "p50": 1.65,
+     "p90": 1.86,
+     "p99": 1.86,
+     "max": 1.86,
+     "mean": 1.57
+    },
+    "secs": 11.5,
+    "mbps_needed": 12.6
+   },
+   "down": {
+    "ok": true,
+    "mbps": 137.78,
+    "sent_mbps": 150.07,
+    "retrans": 24
+   },
+   "up": {
+    "ok": true,
+    "mbps": 142.15,
+    "sent_mbps": 161.83,
+    "retrans": 22
+   },
+   "udp_down": {
+    "ok": true,
+    "mbps": 20.0,
+    "loss_pct": 0,
+    "jitter_ms": 0.123,
+    "packets": 10985
+   },
+   "sites": [
+    {
+     "ok": true,
+     "code": 204,
+     "connect_ms": 0,
+     "ttfb_ms": 877,
+     "total_ms": 877,
+     "size": 0,
+     "mbps": 0.0,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.google.com/generate_204"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 1171,
+     "total_ms": 1172,
+     "size": 247,
+     "mbps": 0.0,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.cloudflare.com/cdn-cgi/trace"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 909,
+     "total_ms": 1214,
+     "size": 122506,
+     "mbps": 0.81,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.wikipedia.org/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 818,
+     "total_ms": 1467,
+     "size": 537249,
+     "mbps": 2.93,
+     "http": "2",
+     "rc": 0,
+     "url": "https://github.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 878,
+     "total_ms": 1602,
+     "size": 933364,
+     "mbps": 4.66,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.youtube.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 966,
+     "total_ms": 1485,
+     "size": 249632,
+     "mbps": 1.34,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.apple.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 1030,
+     "total_ms": 1640,
+     "size": 208328,
+     "mbps": 1.02,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.bing.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 1434,
+     "total_ms": 2128,
+     "size": 1006383,
+     "mbps": 3.78,
+     "http": "1.1",
+     "rc": 0,
+     "url": "https://store.steampowered.com/"
+    }
+   ],
+   "cdn": {
+    "ok": true,
+    "code": 200,
+    "connect_ms": 0,
+    "ttfb_ms": 802,
+    "total_ms": 2736,
+    "size": 30000000,
+    "mbps": 87.73,
+    "http": "1.1",
+    "rc": 0
+   }
+  },
+  "fo-ams/hy2": {
+   "game": {
+    "ok": true,
+    "sent": 1200,
+    "recv": 1198,
+    "loss_pct": 0.167,
+    "rtt_ms": {
+     "n": 1198,
+     "min": 221.1,
+     "p50": 257.3,
+     "p90": 341.8,
+     "p99": 585.3,
+     "max": 684.8,
+     "mean": 288.1
+    },
+    "jitter_ms": 7.18,
+    "late": 44,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "1": 1198
+    },
+    "lid_changes": [
+     [
+      0.49,
+      null,
+      1
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795132776.841,
+    "push": {
+     "want": 600,
+     "recv": 598,
+     "loss_pct": 0.333,
+     "gap_ms": {
+      "n": 597,
+      "min": 0.1,
+      "p50": 33.0,
+      "p90": 41.7,
+      "p99": 76.3,
+      "max": 272.1,
+      "mean": 33.5
+     },
+     "lids": {
+      "1": 598
+     }
+    }
+   },
+   "voice": {
+    "ok": true,
+    "sent": 1000,
+    "recv": 998,
+    "loss_pct": 0.2,
+    "rtt_ms": {
+     "n": 998,
+     "min": 220.0,
+     "p50": 257.6,
+     "p90": 342.6,
+     "p99": 577.5,
+     "max": 691.9,
+     "mean": 288.8
+    },
+    "jitter_ms": 6.63,
+    "late": 8,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "1": 998
+    },
+    "lid_changes": [
+     [
+      0.49,
+      null,
+      1
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795132776.842
+   },
+   "vcall": {
+    "ok": true,
+    "sent": 3000,
+    "recv": 2956,
+    "loss_pct": 1.467,
+    "rtt_ms": {
+     "n": 2956,
+     "min": 220.2,
+     "p50": 257.0,
+     "p90": 496.9,
+     "p99": 700.6,
+     "max": 732.8,
+     "mean": 324.1
+    },
+    "jitter_ms": 4.26,
+    "late": 174,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "1": 2956
+    },
+    "lid_changes": [
+     [
+      0.47,
+      null,
+      1
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795132776.842,
+    "push": {
+     "want": 3000,
+     "recv": 2959,
+     "loss_pct": 1.367,
+     "gap_ms": {
+      "n": 2958,
+      "min": 0.0,
+      "p50": 6.5,
+      "p90": 8.6,
+      "p99": 20.7,
+      "max": 241.7,
+      "mean": 6.8
+     },
+     "lids": {
+      "1": 2959
+     }
+    }
+   },
+   "web": {
+    "n": 200,
+    "ok": 200,
+    "fail": 0,
+    "lids": {
+     "1": 200
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 200,
+     "min": 450.2,
+     "p50": 532.9,
+     "p90": 652.4,
+     "p99": 1066.6,
+     "max": 1090.0,
+     "mean": 566.0
+    },
+    "secs": 4.01
+   },
+   "chat": {
+    "ok": true,
+    "done": 40,
+    "lid": 1,
+    "err": null,
+    "rtt_ms": {
+     "n": 40,
+     "min": 227.8,
+     "p50": 251.8,
+     "p90": 262.5,
+     "p99": 303.0,
+     "max": 303.0,
+     "mean": 250.3
+    },
+    "secs": 31.05
+   },
+   "push": {
+    "ok": true,
+    "got": 2,
+    "want": 2,
+    "lid": 1,
+    "err": null,
+    "delay_ms": {
+     "n": 2,
+     "min": 111.3,
+     "p50": 131.1,
+     "p90": 131.1,
+     "p99": 131.1,
+     "max": 131.1,
+     "mean": 121.2
+    }
+   },
+   "p2p_tcp": {
+    "conns": {
+     "n": 200,
+     "ok": 200,
+     "fail": 0,
+     "lids": {
+      "1": 200
+     },
+     "errs": {},
+     "lat_ms": {
+      "n": 200,
+      "min": 461.3,
+      "p50": 487.2,
+      "p90": 535.9,
+      "p99": 571.0,
+      "max": 572.5,
+      "mean": 498.5
+     },
+     "secs": 2.08
+    },
+    "dl_ok": 8,
+    "dl_n": 8,
+    "dl_mbps_sum": 16.9,
+    "dl_bad": []
+   },
+   "p2p_udp": {
+    "ok": true,
+    "dests": 9,
+    "sent_each": 50,
+    "recv_each": [
+     50,
+     50,
+     50,
+     50,
+     50,
+     50,
+     50,
+     50,
+     50
+    ],
+    "dead_dests": 0,
+    "loss_pct": 0.0
+   },
+   "video": {
+    "ok": true,
+    "segs": 6,
+    "failed": 0,
+    "stalls": 0,
+    "seg_s": {
+     "n": 6,
+     "min": 0.84,
+     "p50": 0.99,
+     "p90": 1.29,
+     "p99": 1.29,
+     "max": 1.29,
+     "mean": 1.03
+    },
+    "secs": 10.8,
+    "mbps_needed": 12.6
+   },
+   "down": {
+    "ok": true,
+    "mbps": 101.01,
+    "sent_mbps": 106.06,
+    "retrans": 0
+   },
+   "up": {
+    "ok": true,
+    "mbps": 84.89,
+    "sent_mbps": 91.73,
+    "retrans": 14
+   },
+   "udp_down": {
+    "ok": true,
+    "mbps": 20.0,
+    "loss_pct": 0.055,
+    "jitter_ms": 0.141,
+    "packets": 10973
+   },
+   "sites": [
+    {
+     "ok": true,
+     "code": 204,
+     "connect_ms": 0,
+     "ttfb_ms": 785,
+     "total_ms": 785,
+     "size": 0,
+     "mbps": 0.0,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.google.com/generate_204"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 1252,
+     "total_ms": 1252,
+     "size": 247,
+     "mbps": 0.0,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.cloudflare.com/cdn-cgi/trace"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 889,
+     "total_ms": 1162,
+     "size": 122506,
+     "mbps": 0.84,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.wikipedia.org/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 827,
+     "total_ms": 1150,
+     "size": 537568,
+     "mbps": 3.74,
+     "http": "2",
+     "rc": 0,
+     "url": "https://github.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 889,
+     "total_ms": 1250,
+     "size": 1029689,
+     "mbps": 6.59,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.youtube.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 891,
+     "total_ms": 1213,
+     "size": 249632,
+     "mbps": 1.65,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.apple.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 857,
+     "total_ms": 1122,
+     "size": 207752,
+     "mbps": 1.48,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.bing.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 0,
+     "ttfb_ms": 1026,
+     "total_ms": 1183,
+     "size": 1001769,
+     "mbps": 6.77,
+     "http": "1.1",
+     "rc": 0,
+     "url": "https://store.steampowered.com/"
+    }
+   ],
+   "cdn": {
+    "ok": true,
+    "code": 200,
+    "connect_ms": 0,
+    "ttfb_ms": 794,
+    "total_ms": 3239,
+    "size": 30000000,
+    "mbps": 74.09,
+    "http": "1.1",
+    "rc": 0
+   }
+  },
+  "fo-ams/wg": {
+   "game": {
+    "ok": true,
+    "sent": 1200,
+    "recv": 1196,
+    "loss_pct": 0.333,
+    "rtt_ms": {
+     "n": 1196,
+     "min": 216.6,
+     "p50": 218.8,
+     "p90": 220.6,
+     "p99": 233.4,
+     "max": 449.8,
+     "mean": 220.1
+    },
+    "jitter_ms": 1.78,
+    "late": 6,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "1": 1196
+    },
+    "lid_changes": [
+     [
+      0.45,
+      null,
+      1
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795132869.3,
+    "push": {
+     "want": 600,
+     "recv": 600,
+     "loss_pct": 0.0,
+     "gap_ms": {
+      "n": 599,
+      "min": 13.0,
+      "p50": 33.3,
+      "p90": 34.0,
+      "p99": 35.4,
+      "max": 52.3,
+      "mean": 33.3
+     },
+     "lids": {
+      "1": 600
+     }
+    }
+   },
+   "voice": {
+    "ok": true,
+    "sent": 1000,
+    "recv": 996,
+    "loss_pct": 0.4,
+    "rtt_ms": {
+     "n": 996,
+     "min": 216.7,
+     "p50": 217.7,
+     "p90": 218.6,
+     "p99": 239.4,
+     "max": 448.9,
+     "mean": 219.1
+    },
+    "jitter_ms": 1.47,
+    "late": 5,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "1": 996
+    },
+    "lid_changes": [
+     [
+      0.45,
+      null,
+      1
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795132869.301
+   },
+   "vcall": {
+    "ok": true,
+    "sent": 3000,
+    "recv": 2987,
+    "loss_pct": 0.433,
+    "rtt_ms": {
+     "n": 2987,
+     "min": 216.5,
+     "p50": 218.8,
+     "p90": 220.6,
+     "p99": 232.1,
+     "max": 449.8,
+     "mean": 220.2
+    },
+    "jitter_ms": 2.01,
+    "late": 18,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "1": 2987
+    },
+    "lid_changes": [
+     [
+      0.45,
+      null,
+      1
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795132869.301,
+    "push": {
+     "want": 3000,
+     "recv": 3000,
+     "loss_pct": 0.0,
+     "gap_ms": {
+      "n": 2999,
+      "min": 0.0,
+      "p50": 6.7,
+      "p90": 7.3,
+      "p99": 8.2,
+      "max": 25.6,
+      "mean": 6.7
+     },
+     "lids": {
+      "1": 3000
+     }
+    }
+   },
+   "web": {
+    "n": 200,
+    "ok": 200,
+    "fail": 0,
+    "lids": {
+     "1": 200
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 200,
+     "min": 438.1,
+     "p50": 443.5,
+     "p90": 678.7,
+     "p99": 1458.1,
+     "max": 1458.3,
+     "mean": 518.2
+    },
+    "secs": 3.77
+   },
+   "chat": {
+    "ok": true,
+    "done": 40,
+    "lid": 1,
+    "err": null,
+    "rtt_ms": {
+     "n": 40,
+     "min": 218.1,
+     "p50": 219.5,
+     "p90": 222.2,
+     "p99": 226.4,
+     "max": 226.4,
+     "mean": 219.8
+    },
+    "secs": 29.53
+   },
+   "push": {
+    "ok": true,
+    "got": 2,
+    "want": 2,
+    "lid": 1,
+    "err": null,
+    "delay_ms": {
+     "n": 2,
+     "min": 108.8,
+     "p50": 108.8,
+     "p90": 108.8,
+     "p99": 108.8,
+     "max": 108.8,
+     "mean": 108.8
+    }
+   },
+   "p2p_tcp": {
+    "conns": {
+     "n": 200,
+     "ok": 200,
+     "fail": 0,
+     "lids": {
+      "1": 200
+     },
+     "errs": {},
+     "lat_ms": {
+      "n": 200,
+      "min": 439.2,
+      "p50": 444.8,
+      "p90": 451.2,
+      "p99": 454.7,
+      "max": 454.7,
+      "mean": 445.7
+     },
+     "secs": 1.8
+    },
+    "dl_ok": 8,
+    "dl_n": 8,
+    "dl_mbps_sum": 60.4,
+    "dl_bad": []
+   },
+   "p2p_udp": {
+    "ok": true,
+    "dests": 9,
+    "sent_each": 50,
+    "recv_each": [
+     50,
+     50,
+     50,
+     50,
+     50,
+     50,
+     50,
+     50,
+     50
+    ],
+    "dead_dests": 0,
+    "loss_pct": 0.0
+   },
+   "video": {
+    "ok": true,
+    "segs": 6,
+    "failed": 0,
+    "stalls": 0,
+    "seg_s": {
+     "n": 6,
+     "min": 2.08,
+     "p50": 2.43,
+     "p90": 3.68,
+     "p99": 3.68,
+     "max": 3.68,
+     "mean": 2.65
+    },
+    "secs": 15.9,
+    "mbps_needed": 12.6
+   },
+   "down": {
+    "ok": true,
+    "mbps": 40.37,
+    "sent_mbps": 44.01,
+    "retrans": 2065
+   },
+   "up": {
+    "ok": true,
+    "mbps": 10.28,
+    "sent_mbps": 13.62,
+    "retrans": 50
+   },
+   "udp_down": {
+    "ok": true,
+    "mbps": 20.0,
+    "loss_pct": 0,
+    "jitter_ms": 0.074,
+    "packets": 10875
+   },
+   "sites": [
+    {
+     "ok": true,
+     "code": 204,
+     "connect_ms": 273,
+     "ttfb_ms": 738,
+     "total_ms": 738,
+     "size": 0,
+     "mbps": 0.0,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.google.com/generate_204"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 251,
+     "ttfb_ms": 707,
+     "total_ms": 707,
+     "size": 247,
+     "mbps": 0.0,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.cloudflare.com/cdn-cgi/trace"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 302,
+     "ttfb_ms": 865,
+     "total_ms": 1547,
+     "size": 122506,
+     "mbps": 0.63,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.wikipedia.org/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 267,
+     "ttfb_ms": 757,
+     "total_ms": 1959,
+     "size": 537468,
+     "mbps": 2.2,
+     "http": "2",
+     "rc": 0,
+     "url": "https://github.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 264,
+     "ttfb_ms": 818,
+     "total_ms": 2082,
+     "size": 925483,
+     "mbps": 3.56,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.youtube.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 481,
+     "ttfb_ms": 956,
+     "total_ms": 1828,
+     "size": 249712,
+     "mbps": 1.09,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.apple.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 599,
+     "ttfb_ms": 1318,
+     "total_ms": 2066,
+     "size": 207959,
+     "mbps": 0.81,
+     "http": "2",
+     "rc": 0,
+     "url": "https://www.bing.com/"
+    },
+    {
+     "ok": true,
+     "code": 200,
+     "connect_ms": 278,
+     "ttfb_ms": 1315,
+     "total_ms": 2745,
+     "size": 1001770,
+     "mbps": 2.92,
+     "http": "1.1",
+     "rc": 0,
+     "url": "https://store.steampowered.com/"
+    }
+   ],
+   "cdn": {
+    "ok": true,
+    "code": 200,
+    "connect_ms": 395,
+    "ttfb_ms": 1161,
+    "total_ms": 6693,
+    "size": 30000000,
+    "mbps": 35.86,
+    "http": "1.1",
+    "rc": 0
+   }
+  },
+  "fo-ams/tgt": {
+   "game": {
+    "ok": true,
+    "sent": 1200,
+    "recv": 1200,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 1200,
+     "min": 214.8,
+     "p50": 231.3,
+     "p90": 250.3,
+     "p99": 264.0,
+     "max": 424.5,
+     "mean": 233.4
+    },
+    "jitter_ms": 2.07,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "1": 1200
+    },
+    "lid_changes": [
+     [
+      0.24,
+      null,
+      1
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795132967.994,
+    "push": {
+     "want": 600,
+     "recv": 600,
+     "loss_pct": 0.0,
+     "gap_ms": {
+      "n": 599,
+      "min": 0.0,
+      "p50": 33.2,
+      "p90": 36.7,
+      "p99": 41.0,
+      "max": 210.0,
+      "mean": 33.4
+     },
+     "lids": {
+      "1": 600
+     }
+    }
+   },
+   "voice": {
+    "ok": true,
+    "sent": 1000,
+    "recv": 1000,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 1000,
+     "min": 224.3,
+     "p50": 225.7,
+     "p90": 229.0,
+     "p99": 243.1,
+     "max": 404.9,
+     "mean": 227.4
+    },
+    "jitter_ms": 2.4,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "1": 1000
+    },
+    "lid_changes": [
+     [
+      0.23,
+      null,
+      1
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795132967.995
+   },
+   "vcall": {
+    "ok": true,
+    "sent": 3000,
+    "recv": 3000,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 3000,
+     "min": 212.7,
+     "p50": 215.4,
+     "p90": 217.1,
+     "p99": 223.4,
+     "max": 391.3,
+     "mean": 216.2
+    },
+    "jitter_ms": 1.59,
+    "late": 5,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "1": 3000
+    },
+    "lid_changes": [
+     [
+      0.22,
+      null,
+      1
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795132967.995,
+    "push": {
+     "want": 3000,
+     "recv": 3000,
+     "loss_pct": 0.0,
+     "gap_ms": {
+      "n": 2999,
+      "min": 0.0,
+      "p50": 6.7,
+      "p90": 7.3,
+      "p99": 8.1,
+      "max": 181.6,
+      "mean": 6.7
+     },
+     "lids": {
+      "1": 3000
+     }
+    }
+   },
+   "web": {
+    "n": 200,
+    "ok": 200,
+    "fail": 0,
+    "lids": {
+     "1": 200
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 200,
+     "min": 427.0,
+     "p50": 466.2,
+     "p90": 511.6,
+     "p99": 556.5,
+     "max": 561.0,
+     "mean": 469.7
+    },
+    "secs": 3.36
+   },
+   "chat": {
+    "ok": true,
+    "done": 40,
+    "lid": 1,
+    "err": null,
+    "rtt_ms": {
+     "n": 40,
+     "min": 228.2,
+     "p50": 237.6,
+     "p90": 255.6,
+     "p99": 262.3,
+     "max": 262.3,
+     "mean": 240.7
+    },
+    "secs": 30.36
+   },
+   "push": {
+    "ok": true,
+    "got": 2,
+    "want": 2,
+    "lid": 1,
+    "err": null,
+    "delay_ms": {
+     "n": 2,
+     "min": 117.0,
+     "p50": 127.7,
+     "p90": 127.7,
+     "p99": 127.7,
+     "max": 127.7,
+     "mean": 122.3
+    }
+   },
+   "p2p_tcp": {
+    "conns": {
+     "n": 200,
+     "ok": 200,
+     "fail": 0,
+     "lids": {
+      "1": 200
+     },
+     "errs": {},
+     "lat_ms": {
+      "n": 200,
+      "min": 426.8,
+      "p50": 472.3,
+      "p90": 519.9,
+      "p99": 545.1,
+      "max": 562.4,
+      "mean": 477.2
+     },
+     "secs": 2.1
+    },
+    "dl_ok": 8,
+    "dl_n": 8,
+    "dl_mbps_sum": 175.2,
+    "dl_bad": []
+   },
+   "p2p_udp": null,
+   "video": {
+    "ok": true,
+    "segs": 6,
+    "failed": 0,
+    "stalls": 0,
+    "seg_s": {
+     "n": 6,
+     "min": 1.32,
+     "p50": 1.4,
+     "p90": 1.53,
+     "p99": 1.53,
+     "max": 1.53,
+     "mean": 1.41
+    },
+    "secs": 11.5,
+    "mbps_needed": 12.6
+   },
+   "down": {
+    "ok": true,
+    "mbps": 167.46,
+    "sent_mbps": 170.48,
+    "retrans": 0
+   },
+   "up": {
+    "ok": true,
+    "mbps": 160.48,
+    "sent_mbps": 175.56,
+    "retrans": 6
+   },
+   "udp_down": {
+    "ok": true,
+    "mbps": 20.0,
+    "loss_pct": 0.472,
+    "jitter_ms": 0.064,
+    "packets": 11021
+   }
+  }
+ }
+}

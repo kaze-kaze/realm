@@ -1,0 +1,27 @@
+0 new-single down FAIL:TimeoutError 53 Mbit/s | up FAIL:TimeoutError 3
+0 og-single down ok 176 Mbit/s | up ok 60
+0 v300-single down ok 130 Mbit/s | up ok 142
+1 og-single down ok 177 Mbit/s | up ok 125
+1 v300-single down ok 68 Mbit/s | up ok 93
+1 new-single down FAIL:eof 0 Mbit/s | up ok 29
+2 v300-single down ok 183 Mbit/s | up FAIL:TimeoutError 10
+2 new-single down FAIL:TimeoutError 31 Mbit/s | up FAIL:TimeoutError 8
+2 og-single down ok 209 Mbit/s | up ok 56
+3 new-single down FAIL:eof 0 Mbit/s | up ok 124
+3 og-single down ok 177 Mbit/s | up ok 76
+3 v300-single down ok 151 Mbit/s | up ok 45
+4 og-single down ok 206 Mbit/s | up ok 36
+4 v300-single down ok 178 Mbit/s | up ok 47
+4 new-single down ok 173 Mbit/s | up FAIL:TimeoutError 45
+5 v300-single down ok 180 Mbit/s | up FAIL:TimeoutError 12
+5 new-single down FAIL:ConnectionResetError:104 0 Mbit/s | up ok 132
+5 og-single down ok 188 Mbit/s | up ok 33
+6 new-single down ok 158 Mbit/s | up ok 178
+6 og-single down ok 53 Mbit/s | up ok 38
+6 v300-single down ok 49 Mbit/s | up ok 66
+7 og-single down ok 214 Mbit/s | up ok 36
+7 v300-single down ok 191 Mbit/s | up ok 142
+7 new-single down ok 190 Mbit/s | up ok 82
+TOTAL new-single   down median 173 (min 158 max 190) ok 3/8 | up median 124 (min 29 max 178) ok 5/8 | errors 0
+TOTAL og-single    down median 188 (min 53 max 214) ok 8/8 | up median 56 (min 33 max 125) ok 8/8 | errors 0
+TOTAL v300-single  down median 178 (min 49 max 191) ok 8/8 | up median 93 (min 45 max 142) ok 6/8 | errors 0

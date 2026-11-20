@@ -1,0 +1,491 @@
+{
+ "suite": "wgin",
+ "me": "chi",
+ "args": {
+  "vias": [
+   "pl-po0",
+   "og-po0"
+  ]
+ },
+ "t": 1795135467.01292,
+ "res": {
+  "pl-po0/ss-2022/1420": {
+   "id": {
+    "n": 6,
+    "ok": 6,
+    "fail": 0,
+    "lids": {
+     "1": 6
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 6,
+     "min": 404.8,
+     "p50": 405.3,
+     "p90": 608.9,
+     "p99": 608.9,
+     "max": 608.9,
+     "mean": 439.1
+    },
+    "secs": 2.64
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 1,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 202.1,
+     "p50": 202.6,
+     "p90": 203.1,
+     "p99": 203.1,
+     "max": 203.1,
+     "mean": 202.5
+    },
+    "secs": 3.43
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 3145728,
+    "want": 3145728,
+    "bad_off": null,
+    "err": null,
+    "secs": 2.114,
+    "ttfb_ms": 338.6,
+    "mbps": 11.91
+   },
+   "ul": {
+    "ok": true,
+    "sent": 3145728,
+    "reply": [
+     "OK",
+     "3145728",
+     "-1",
+     "1"
+    ],
+    "err": null,
+    "secs": 15.449,
+    "lid": 1,
+    "mbps": 1.63
+   }
+  },
+  "pl-po0/ss-2022/1280": {
+   "id": {
+    "n": 6,
+    "ok": 6,
+    "fail": 0,
+    "lids": {
+     "1": 6
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 6,
+     "min": 233.4,
+     "p50": 234.9,
+     "p90": 351.9,
+     "p99": 351.9,
+     "max": 351.9,
+     "mean": 254.1
+    },
+    "secs": 1.53
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 1,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 116.9,
+     "p50": 117.3,
+     "p90": 118.1,
+     "p99": 118.1,
+     "max": 118.1,
+     "mean": 117.4
+    },
+    "secs": 2.41
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 3145728,
+    "want": 3145728,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.329,
+    "ttfb_ms": 235.6,
+    "mbps": 18.94
+   },
+   "ul": {
+    "ok": true,
+    "sent": 3145728,
+    "reply": [
+     "OK",
+     "3145728",
+     "-1",
+     "1"
+    ],
+    "err": null,
+    "secs": 13.503,
+    "lid": 1,
+    "mbps": 1.86
+   }
+  },
+  "pl-po0/ss-aead/1420": {
+   "id": {
+    "n": 6,
+    "ok": 6,
+    "fail": 0,
+    "lids": {
+     "1": 6
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 6,
+     "min": 234.8,
+     "p50": 235.5,
+     "p90": 352.8,
+     "p99": 352.8,
+     "max": 352.8,
+     "mean": 254.9
+    },
+    "secs": 1.53
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 1,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 117.0,
+     "p50": 117.6,
+     "p90": 117.8,
+     "p99": 117.8,
+     "max": 117.8,
+     "mean": 117.4
+    },
+    "secs": 2.41
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 3145728,
+    "want": 3145728,
+    "bad_off": null,
+    "err": null,
+    "secs": 2.491,
+    "ttfb_ms": 212.6,
+    "mbps": 10.1
+   },
+   "ul": {
+    "ok": true,
+    "sent": 3145728,
+    "reply": [
+     "OK",
+     "3145728",
+     "-1",
+     "1"
+    ],
+    "err": null,
+    "secs": 12.208,
+    "lid": 1,
+    "mbps": 2.06
+   }
+  },
+  "pl-po0/ss-aead/1280": {
+   "id": {
+    "n": 6,
+    "ok": 6,
+    "fail": 0,
+    "lids": {
+     "1": 6
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 6,
+     "min": 327.1,
+     "p50": 328.1,
+     "p90": 498.6,
+     "p99": 498.6,
+     "max": 498.6,
+     "mean": 356.3
+    },
+    "secs": 2.14
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 1,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 163.4,
+     "p50": 163.9,
+     "p90": 164.2,
+     "p99": 164.2,
+     "max": 164.2,
+     "mean": 163.8
+    },
+    "secs": 2.97
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 3145728,
+    "want": 3145728,
+    "bad_off": null,
+    "err": null,
+    "secs": 2.158,
+    "ttfb_ms": 328.1,
+    "mbps": 11.66
+   },
+   "ul": {
+    "ok": true,
+    "sent": 3145728,
+    "reply": [
+     "OK",
+     "3145728",
+     "-1",
+     "1"
+    ],
+    "err": null,
+    "secs": 19.795,
+    "lid": 1,
+    "mbps": 1.27
+   }
+  },
+  "og-po0/ss-2022/1420": {
+   "id": {
+    "n": 6,
+    "ok": 6,
+    "fail": 0,
+    "lids": {
+     "1": 6
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 6,
+     "min": 240.2,
+     "p50": 241.1,
+     "p90": 363.3,
+     "p99": 363.3,
+     "max": 363.3,
+     "mean": 261.6
+    },
+    "secs": 1.57
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 1,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 119.5,
+     "p50": 120.5,
+     "p90": 120.6,
+     "p99": 120.6,
+     "max": 120.6,
+     "mean": 120.3
+    },
+    "secs": 2.45
+   },
+   "dl": {
+    "ok": false,
+    "bytes": 0,
+    "want": 3145728,
+    "bad_off": null,
+    "err": "TimeoutError",
+    "secs": 10.131,
+    "ttfb_ms": null,
+    "mbps": 0.0
+   },
+   "ul": {
+    "ok": false,
+    "sent": 131072,
+    "reply": null,
+    "err": "TimeoutError",
+    "secs": 10.125,
+    "lid": null,
+    "mbps": 0.1
+   }
+  },
+  "og-po0/ss-2022/1280": {
+   "id": {
+    "n": 6,
+    "ok": 6,
+    "fail": 0,
+    "lids": {
+     "1": 6
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 6,
+     "min": 282.1,
+     "p50": 282.7,
+     "p90": 425.4,
+     "p99": 425.4,
+     "max": 425.4,
+     "mean": 306.5
+    },
+    "secs": 1.84
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 1,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 141.2,
+     "p50": 141.9,
+     "p90": 142.4,
+     "p99": 142.4,
+     "max": 142.4,
+     "mean": 141.8
+    },
+    "secs": 2.7
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 3145728,
+    "want": 3145728,
+    "bad_off": null,
+    "err": null,
+    "secs": 2.286,
+    "ttfb_ms": 284.5,
+    "mbps": 11.01
+   },
+   "ul": {
+    "ok": true,
+    "sent": 3145728,
+    "reply": [
+     "OK",
+     "3145728",
+     "-1",
+     "1"
+    ],
+    "err": null,
+    "secs": 16.712,
+    "lid": 1,
+    "mbps": 1.51
+   }
+  },
+  "og-po0/ss-aead/1420": {
+   "id": {
+    "n": 6,
+    "ok": 6,
+    "fail": 0,
+    "lids": {
+     "1": 6
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 6,
+     "min": 367.0,
+     "p50": 367.9,
+     "p90": 552.1,
+     "p99": 552.1,
+     "max": 552.1,
+     "mean": 398.4
+    },
+    "secs": 2.39
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 1,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 183.5,
+     "p50": 183.8,
+     "p90": 184.2,
+     "p99": 184.2,
+     "max": 184.2,
+     "mean": 183.8
+    },
+    "secs": 3.21
+   },
+   "dl": {
+    "ok": false,
+    "bytes": 0,
+    "want": 3145728,
+    "bad_off": null,
+    "err": "TimeoutError",
+    "secs": 10.192,
+    "ttfb_ms": null,
+    "mbps": 0.0
+   },
+   "ul": {
+    "ok": false,
+    "sent": 131072,
+    "reply": null,
+    "err": "TimeoutError",
+    "secs": 10.147,
+    "lid": null,
+    "mbps": 0.1
+   }
+  },
+  "og-po0/ss-aead/1280": {
+   "id": {
+    "n": 6,
+    "ok": 6,
+    "fail": 0,
+    "lids": {
+     "1": 6
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 6,
+     "min": 318.7,
+     "p50": 319.9,
+     "p90": 479.4,
+     "p99": 479.4,
+     "max": 479.4,
+     "mean": 346.0
+    },
+    "secs": 2.08
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 1,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 159.1,
+     "p50": 159.6,
+     "p90": 159.8,
+     "p99": 159.8,
+     "max": 159.8,
+     "mean": 159.6
+    },
+    "secs": 2.92
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 3145728,
+    "want": 3145728,
+    "bad_off": null,
+    "err": null,
+    "secs": 2.428,
+    "ttfb_ms": 319.7,
+    "mbps": 10.36
+   },
+   "ul": {
+    "ok": true,
+    "sent": 3145728,
+    "reply": [
+     "OK",
+     "3145728",
+     "-1",
+     "1"
+    ],
+    "err": null,
+    "secs": 23.194,
+    "lid": 1,
+    "mbps": 1.09
+   }
+  }
+ }
+}

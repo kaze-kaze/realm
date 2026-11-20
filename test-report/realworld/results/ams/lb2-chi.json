@@ -1,0 +1,2178 @@
+{
+ "suite": "lb",
+ "me": "ams",
+ "args": {
+  "vias": [
+   "rr-chi",
+   "rh-chi",
+   "ih-chi",
+   "hh-chi"
+  ],
+  "protos": [
+   "vless-reality",
+   "ss-2022",
+   "tgt"
+  ],
+  "rounds": 13,
+  "gap": 15,
+  "timeout": 3
+ },
+ "t": 1795128809.4771993,
+ "res": [
+  {
+   "t": 1795128621.75,
+   "res": {
+    "rr-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 686.9,
+     "udp_flows": {
+      "3": 4,
+      "2": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rr-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 443.9,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rr-chi/tgt": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 441.8,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 674.1,
+     "udp_flows": {
+      "3": 4,
+      "2": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 443.8,
+     "udp_flows": {
+      "2": 4,
+      "3": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/tgt": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 441.8,
+     "udp_flows": {
+      "3": 4,
+      "2": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 557.8,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 386.9,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/tgt": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 371.8,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 588.8,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 387.0,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/tgt": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 373.0,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    }
+   }
+  },
+  {
+   "t": 1795128636.75,
+   "res": {
+    "rr-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 19,
+      "2": 21
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 702.8,
+     "udp_flows": {
+      "3": 5,
+      "2": 3
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rr-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 453.9,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rr-chi/tgt": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 451.9,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 687.8,
+     "udp_flows": {
+      "2": 4,
+      "3": 3
+     },
+     "udp_mixed": 0,
+     "udp_dead": 1
+    },
+    "rh-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 463.8,
+     "udp_flows": {
+      "3": 4,
+      "2": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/tgt": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 442.0,
+     "udp_flows": {
+      "3": 4,
+      "2": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 587.2,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 389.4,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/tgt": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 373.8,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 590.5,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 369.1,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/tgt": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 384.8,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    }
+   }
+  },
+  {
+   "t": 1795128651.75,
+   "res": {
+    "rr-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 672.1,
+     "udp_flows": {
+      "3": 4,
+      "2": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rr-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 454.1,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rr-chi/tgt": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 462.0,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 21,
+      "2": 19
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 685.3,
+     "udp_flows": {
+      "2": 5,
+      "3": 3
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 454.3,
+     "udp_flows": {
+      "2": 4,
+      "3": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/tgt": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 441.8,
+     "udp_flows": {
+      "3": 4,
+      "2": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 559.4,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 388.8,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/tgt": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 385.2,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 590.1,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 387.7,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/tgt": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 368.6,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    }
+   }
+  },
+  {
+   "t": 1795128666.75,
+   "res": {
+    "rr-chi/vless-reality": {
+     "tcp_lids": {
+      "2": 20
+     },
+     "tcp_fail": 20,
+     "tcp_errs": {
+      "TimeoutError": 20
+     },
+     "tcp_p50": 719.8,
+     "udp_flows": {
+      "2": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 4
+    },
+    "rr-chi/ss-2022": {
+     "tcp_lids": {
+      "2": 20
+     },
+     "tcp_fail": 20,
+     "tcp_errs": {
+      "TimeoutError": 20
+     },
+     "tcp_p50": 491.8,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "rr-chi/tgt": {
+     "tcp_lids": {
+      "2": 20
+     },
+     "tcp_fail": 20,
+     "tcp_errs": {
+      "TimeoutError": 20
+     },
+     "tcp_p50": 471.7,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "rh-chi/vless-reality": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 715.0,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/ss-2022": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 474.0,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/tgt": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 470.2,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/vless-reality": {
+     "tcp_lids": {},
+     "tcp_fail": 40,
+     "tcp_errs": {
+      "TimeoutError": 40
+     },
+     "tcp_p50": null,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "ih-chi/ss-2022": {
+     "tcp_lids": {},
+     "tcp_fail": 40,
+     "tcp_errs": {
+      "TimeoutError": 40
+     },
+     "tcp_p50": null,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "ih-chi/tgt": {
+     "tcp_lids": {},
+     "tcp_fail": 40,
+     "tcp_errs": {
+      "TimeoutError": 40
+     },
+     "tcp_p50": null,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "hh-chi/vless-reality": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 719.9,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/ss-2022": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 481.4,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/tgt": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 470.5,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    }
+   }
+  },
+  {
+   "t": 1795128682.4,
+   "res": {
+    "rr-chi/vless-reality": {
+     "tcp_lids": {
+      "2": 21
+     },
+     "tcp_fail": 19,
+     "tcp_errs": {
+      "TimeoutError": 19
+     },
+     "tcp_p50": 723.9,
+     "udp_flows": {
+      "2": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 4
+    },
+    "rr-chi/ss-2022": {
+     "tcp_lids": {
+      "2": 20
+     },
+     "tcp_fail": 20,
+     "tcp_errs": {
+      "TimeoutError": 20
+     },
+     "tcp_p50": 475.0,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "rr-chi/tgt": {
+     "tcp_lids": {
+      "2": 20
+     },
+     "tcp_fail": 20,
+     "tcp_errs": {
+      "TimeoutError": 20
+     },
+     "tcp_p50": 469.9,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "rh-chi/vless-reality": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 716.5,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/ss-2022": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 472.3,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/tgt": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 470.5,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/vless-reality": {
+     "tcp_lids": {},
+     "tcp_fail": 40,
+     "tcp_errs": {
+      "TimeoutError": 40
+     },
+     "tcp_p50": null,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "ih-chi/ss-2022": {
+     "tcp_lids": {},
+     "tcp_fail": 40,
+     "tcp_errs": {
+      "TimeoutError": 40
+     },
+     "tcp_p50": null,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "ih-chi/tgt": {
+     "tcp_lids": {},
+     "tcp_fail": 40,
+     "tcp_errs": {
+      "TimeoutError": 40
+     },
+     "tcp_p50": null,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "hh-chi/vless-reality": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 721.6,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/ss-2022": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 491.6,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/tgt": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 470.7,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    }
+   }
+  },
+  {
+   "t": 1795128698.04,
+   "res": {
+    "rr-chi/vless-reality": {
+     "tcp_lids": {
+      "2": 19
+     },
+     "tcp_fail": 21,
+     "tcp_errs": {
+      "TimeoutError": 21
+     },
+     "tcp_p50": 720.1,
+     "udp_flows": {
+      "2": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 4
+    },
+    "rr-chi/ss-2022": {
+     "tcp_lids": {
+      "2": 20
+     },
+     "tcp_fail": 20,
+     "tcp_errs": {
+      "TimeoutError": 20
+     },
+     "tcp_p50": 475.4,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "rr-chi/tgt": {
+     "tcp_lids": {
+      "2": 20
+     },
+     "tcp_fail": 20,
+     "tcp_errs": {
+      "TimeoutError": 20
+     },
+     "tcp_p50": 470.8,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "rh-chi/vless-reality": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 718.0,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/ss-2022": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 473.6,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/tgt": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 471.6,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/vless-reality": {
+     "tcp_lids": {},
+     "tcp_fail": 40,
+     "tcp_errs": {
+      "TimeoutError": 40
+     },
+     "tcp_p50": null,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "ih-chi/ss-2022": {
+     "tcp_lids": {},
+     "tcp_fail": 40,
+     "tcp_errs": {
+      "TimeoutError": 40
+     },
+     "tcp_p50": null,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "ih-chi/tgt": {
+     "tcp_lids": {},
+     "tcp_fail": 40,
+     "tcp_errs": {
+      "TimeoutError": 40
+     },
+     "tcp_p50": null,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "hh-chi/vless-reality": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 717.0,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/ss-2022": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 475.0,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/tgt": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 470.2,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    }
+   }
+  },
+  {
+   "t": 1795128713.66,
+   "res": {
+    "rr-chi/vless-reality": {
+     "tcp_lids": {
+      "2": 20
+     },
+     "tcp_fail": 20,
+     "tcp_errs": {
+      "TimeoutError": 20
+     },
+     "tcp_p50": 726.5,
+     "udp_flows": {
+      "2": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 4
+    },
+    "rr-chi/ss-2022": {
+     "tcp_lids": {
+      "2": 20
+     },
+     "tcp_fail": 20,
+     "tcp_errs": {
+      "TimeoutError": 20
+     },
+     "tcp_p50": 474.7,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "rr-chi/tgt": {
+     "tcp_lids": {
+      "2": 20
+     },
+     "tcp_fail": 20,
+     "tcp_errs": {
+      "TimeoutError": 20
+     },
+     "tcp_p50": 462.1,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "rh-chi/vless-reality": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 743.4,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/ss-2022": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 476.1,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/tgt": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 470.3,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/vless-reality": {
+     "tcp_lids": {},
+     "tcp_fail": 40,
+     "tcp_errs": {
+      "TimeoutError": 40
+     },
+     "tcp_p50": null,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "ih-chi/ss-2022": {
+     "tcp_lids": {},
+     "tcp_fail": 40,
+     "tcp_errs": {
+      "TimeoutError": 40
+     },
+     "tcp_p50": null,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "ih-chi/tgt": {
+     "tcp_lids": {},
+     "tcp_fail": 40,
+     "tcp_errs": {
+      "TimeoutError": 40
+     },
+     "tcp_p50": null,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "hh-chi/vless-reality": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 720.1,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/ss-2022": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 477.1,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/tgt": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 470.6,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    }
+   }
+  },
+  {
+   "t": 1795128729.32,
+   "res": {
+    "rr-chi/vless-reality": {
+     "tcp_lids": {
+      "2": 21
+     },
+     "tcp_fail": 19,
+     "tcp_errs": {
+      "TimeoutError": 19
+     },
+     "tcp_p50": 719.3,
+     "udp_flows": {
+      "2": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 4
+    },
+    "rr-chi/ss-2022": {
+     "tcp_lids": {
+      "2": 20
+     },
+     "tcp_fail": 20,
+     "tcp_errs": {
+      "TimeoutError": 20
+     },
+     "tcp_p50": 478.0,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "rr-chi/tgt": {
+     "tcp_lids": {
+      "2": 20
+     },
+     "tcp_fail": 20,
+     "tcp_errs": {
+      "TimeoutError": 20
+     },
+     "tcp_p50": 471.2,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "rh-chi/vless-reality": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 716.0,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/ss-2022": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 474.3,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/tgt": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 470.1,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/vless-reality": {
+     "tcp_lids": {},
+     "tcp_fail": 40,
+     "tcp_errs": {
+      "TimeoutError": 40
+     },
+     "tcp_p50": null,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "ih-chi/ss-2022": {
+     "tcp_lids": {},
+     "tcp_fail": 40,
+     "tcp_errs": {
+      "TimeoutError": 40
+     },
+     "tcp_p50": null,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "ih-chi/tgt": {
+     "tcp_lids": {},
+     "tcp_fail": 40,
+     "tcp_errs": {
+      "TimeoutError": 40
+     },
+     "tcp_p50": null,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "hh-chi/vless-reality": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 719.2,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/ss-2022": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 474.4,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/tgt": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 470.1,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    }
+   }
+  },
+  {
+   "t": 1795128744.97,
+   "res": {
+    "rr-chi/vless-reality": {
+     "tcp_lids": {
+      "2": 21,
+      "3": 14
+     },
+     "tcp_fail": 5,
+     "tcp_errs": {
+      "TimeoutError": 5
+     },
+     "tcp_p50": 715.0,
+     "udp_flows": {
+      "2": 4,
+      "3": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rr-chi/ss-2022": {
+     "tcp_lids": {
+      "2": 20,
+      "3": 14
+     },
+     "tcp_fail": 6,
+     "tcp_errs": {
+      "TimeoutError": 6
+     },
+     "tcp_p50": 471.6,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rr-chi/tgt": {
+     "tcp_lids": {
+      "2": 20,
+      "3": 14
+     },
+     "tcp_fail": 6,
+     "tcp_errs": {
+      "TimeoutError": 6
+     },
+     "tcp_p50": 461.4,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "rh-chi/vless-reality": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 722.9,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/ss-2022": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 475.1,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/tgt": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 470.5,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 32
+     },
+     "tcp_fail": 8,
+     "tcp_errs": {
+      "TimeoutError": 8
+     },
+     "tcp_p50": 587.2,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 32
+     },
+     "tcp_fail": 8,
+     "tcp_errs": {
+      "TimeoutError": 8
+     },
+     "tcp_p50": 394.0,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/tgt": {
+     "tcp_lids": {
+      "3": 32
+     },
+     "tcp_fail": 8,
+     "tcp_errs": {
+      "TimeoutError": 8
+     },
+     "tcp_p50": 384.3,
+     "udp_flows": {},
+     "udp_mixed": 0,
+     "udp_dead": 8
+    },
+    "hh-chi/vless-reality": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 717.7,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/ss-2022": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 472.1,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/tgt": {
+     "tcp_lids": {
+      "2": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 470.7,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    }
+   }
+  },
+  {
+   "t": 1795128759.97,
+   "res": {
+    "rr-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 682.0,
+     "udp_flows": {
+      "3": 4,
+      "2": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rr-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 452.6,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rr-chi/tgt": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 441.8,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/vless-reality": {
+     "tcp_lids": {
+      "2": 24,
+      "3": 16
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 715.0,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/ss-2022": {
+     "tcp_lids": {
+      "2": 24,
+      "3": 16
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 465.6,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/tgt": {
+     "tcp_lids": {
+      "2": 24,
+      "3": 16
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 461.3,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 561.2,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 374.8,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/tgt": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 377.9,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/vless-reality": {
+     "tcp_lids": {
+      "2": 8,
+      "3": 32
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 592.1,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/ss-2022": {
+     "tcp_lids": {
+      "2": 8,
+      "3": 32
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 376.6,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/tgt": {
+     "tcp_lids": {
+      "2": 8,
+      "3": 32
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 384.7,
+     "udp_flows": {
+      "2": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    }
+   }
+  },
+  {
+   "t": 1795128774.97,
+   "res": {
+    "rr-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 699.1,
+     "udp_flows": {
+      "2": 4,
+      "3": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rr-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 452.7,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rr-chi/tgt": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 442.2,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 690.5,
+     "udp_flows": {
+      "2": 4,
+      "3": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 451.9,
+     "udp_flows": {
+      "3": 4,
+      "2": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/tgt": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 450.6,
+     "udp_flows": {
+      "3": 4,
+      "2": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 573.4,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 386.8,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/tgt": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 365.9,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 562.7,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 377.3,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/tgt": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 375.5,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    }
+   }
+  },
+  {
+   "t": 1795128789.97,
+   "res": {
+    "rr-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 699.4,
+     "udp_flows": {
+      "2": 4,
+      "3": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rr-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 454.5,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rr-chi/tgt": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 442.1,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 673.9,
+     "udp_flows": {
+      "2": 4,
+      "3": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 454.9,
+     "udp_flows": {
+      "2": 4,
+      "3": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/tgt": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 442.4,
+     "udp_flows": {
+      "3": 4,
+      "2": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 597.3,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 364.0,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/tgt": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 385.0,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 558.4,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 377.6,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/tgt": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 364.5,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    }
+   }
+  },
+  {
+   "t": 1795128804.97,
+   "res": {
+    "rr-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 672.9,
+     "udp_flows": {
+      "3": 4,
+      "2": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rr-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 463.8,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rr-chi/tgt": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 450.5,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 691.7,
+     "udp_flows": {
+      "2": 4,
+      "3": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 453.3,
+     "udp_flows": {
+      "3": 4,
+      "2": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "rh-chi/tgt": {
+     "tcp_lids": {
+      "3": 20,
+      "2": 20
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 450.4,
+     "udp_flows": {
+      "3": 4,
+      "2": 4
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 574.6,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 386.2,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "ih-chi/tgt": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 364.4,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/vless-reality": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 588.3,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/ss-2022": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 385.6,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    },
+    "hh-chi/tgt": {
+     "tcp_lids": {
+      "3": 40
+     },
+     "tcp_fail": 0,
+     "tcp_errs": {},
+     "tcp_p50": 365.0,
+     "udp_flows": {
+      "3": 8
+     },
+     "udp_mixed": 0,
+     "udp_dead": 0
+    }
+   }
+  }
+ ]
+}

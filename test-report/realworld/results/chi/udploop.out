@@ -1,0 +1,16 @@
+round 0 done
+round 1 done
+round 2 done
+round 3 done
+round 4 done
+round 5 done
+round 6 done
+round 7 done
+round 8 done
+round 9 done
+round 10 done
+round 11 done
+TOTAL og         echo 151200/151200 lost 0 | push 141600/141600 lost 0 | rounds with loss 0/12
+TOTAL v300       echo 151200/151200 lost 0 | push 141600/141600 lost 0 | rounds with loss 0/12
+TOTAL v300-glibc echo 151200/151200 lost 0 | push 141600/141600 lost 0 | rounds with loss 0/12
+TOTAL new        echo 151200/151200 lost 0 | push 141600/141600 lost 0 | rounds with loss 0/12

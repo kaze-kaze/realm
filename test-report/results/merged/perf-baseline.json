@@ -1,0 +1,945 @@
+{
+ "runs": {
+  "orig": [
+   {
+    "rss_idle_kb": 4948,
+    "threads": 11,
+    "fd_idle": 10,
+    "tcp1_gbps": 112.58662944622927,
+    "tcp8_gbps": 130.56227781283218,
+    "udp64_kpps": 722.9195632730839,
+    "udp64_loss_pct": 1.0930548182848012,
+    "udp1400_kpps": 629.479016772782,
+    "udp1400_loss_pct": 13.966400428605011,
+    "churn_cps": 48892.1,
+    "churn_err": 0,
+    "churn_p50_us": 1151,
+    "churn_p99_us": 4607,
+    "churn_ok": {
+     "A": 391201,
+     "B": 0,
+     "C": 0,
+     "D": 0,
+     "other": 0
+    },
+    "fixed_cps": 4926.9,
+    "fixed_err": 0,
+    "fixed_cpu_ms_per_1k_conn": 156.27378355066213,
+    "fixed_p50_us": 1023,
+    "fixed_p99_us": 8191,
+    "xfer_mib_s": 8061.975209916034,
+    "xfer_err": 0,
+    "rss_after_kb": 13436,
+    "fd_after": 11
+   },
+   {
+    "rss_idle_kb": 4956,
+    "threads": 11,
+    "fd_idle": 10,
+    "tcp1_gbps": 114.07933438640295,
+    "tcp8_gbps": 137.7685247788713,
+    "udp64_kpps": 703.7077629223708,
+    "udp64_loss_pct": 2.389811136509909,
+    "udp1400_kpps": 612.0042975346774,
+    "udp1400_loss_pct": 15.4586267581314,
+    "churn_cps": 66518.5,
+    "churn_err": 0,
+    "churn_p50_us": 959,
+    "churn_p99_us": 1791,
+    "churn_ok": {
+     "A": 532199,
+     "B": 0,
+     "C": 0,
+     "D": 0,
+     "other": 0
+    },
+    "fixed_cps": 4968.2,
+    "fixed_err": 0,
+    "fixed_cpu_ms_per_1k_conn": 144.3480447629825,
+    "fixed_p50_us": 575,
+    "fixed_p99_us": 3839,
+    "xfer_mib_s": 5926.843893663801,
+    "xfer_err": 0,
+    "rss_after_kb": 13768,
+    "fd_after": 11
+   },
+   {
+    "rss_idle_kb": 4948,
+    "threads": 11,
+    "fd_idle": 10,
+    "tcp1_gbps": 118.58964268064615,
+    "tcp8_gbps": 141.20193786883146,
+    "udp64_kpps": 775.2082756678661,
+    "udp64_loss_pct": 0.6227037670398753,
+    "udp1400_kpps": 719.4113775462145,
+    "udp1400_loss_pct": 5.459899709852404,
+    "churn_cps": 54639.7,
+    "churn_err": 0,
+    "churn_p50_us": 1151,
+    "churn_p99_us": 3327,
+    "churn_ok": {
+     "A": 437163,
+     "B": 0,
+     "C": 0,
+     "D": 0,
+     "other": 0
+    },
+    "fixed_cps": 4901.1,
+    "fixed_err": 0,
+    "fixed_cpu_ms_per_1k_conn": 140.73016520497654,
+    "fixed_p50_us": 1023,
+    "fixed_p99_us": 7167,
+    "xfer_mib_s": 5050.96941834899,
+    "xfer_err": 0,
+    "rss_after_kb": 13412,
+    "fd_after": 11
+   }
+  ],
+  "new": [
+   {
+    "rss_idle_kb": 5012,
+    "threads": 11,
+    "fd_idle": 10,
+    "tcp1_gbps": 113.90555920855927,
+    "tcp8_gbps": 95.29916881336136,
+    "udp64_kpps": 724.5627806838511,
+    "udp64_loss_pct": 2.683988847044413,
+    "udp1400_kpps": 639.5366860230816,
+    "udp1400_loss_pct": 13.767508211398338,
+    "churn_cps": 57508.9,
+    "churn_err": 0,
+    "churn_p50_us": 1023,
+    "churn_p99_us": 2815,
+    "churn_ok": {
+     "A": 460116,
+     "B": 0,
+     "C": 0,
+     "D": 0,
+     "other": 0
+    },
+    "fixed_cps": 4924.4,
+    "fixed_err": 0,
+    "fixed_cpu_ms_per_1k_conn": 153.7875904073087,
+    "fixed_p50_us": 959,
+    "fixed_p99_us": 6143,
+    "xfer_mib_s": 8574.055566660003,
+    "xfer_err": 0,
+    "rss_after_kb": 13532,
+    "fd_after": 11
+   },
+   {
+    "rss_idle_kb": 5028,
+    "threads": 11,
+    "fd_idle": 10,
+    "tcp1_gbps": 116.13045593813948,
+    "tcp8_gbps": 141.30632286253854,
+    "udp64_kpps": 710.8702647751933,
+    "udp64_loss_pct": 2.033019582983063,
+    "udp1400_kpps": 635.1783394345105,
+    "udp1400_loss_pct": 11.548061337596293,
+    "churn_cps": 63400.1,
+    "churn_err": 0,
+    "churn_p50_us": 959,
+    "churn_p99_us": 2047,
+    "churn_ok": {
+     "A": 507237,
+     "B": 0,
+     "C": 0,
+     "D": 0,
+     "other": 0
+    },
+    "fixed_cps": 4954.4,
+    "fixed_err": 0,
+    "fixed_cpu_ms_per_1k_conn": 137.47004666414426,
+    "fixed_p50_us": 831,
+    "fixed_p99_us": 3071,
+    "xfer_mib_s": 9328.53429314137,
+    "xfer_err": 0,
+    "rss_after_kb": 13968,
+    "fd_after": 11
+   },
+   {
+    "rss_idle_kb": 5028,
+    "threads": 11,
+    "fd_idle": 10,
+    "tcp1_gbps": 110.72243521598006,
+    "tcp8_gbps": 124.37374440603082,
+    "udp64_kpps": 743.0423087307381,
+    "udp64_loss_pct": 2.4242639121973513,
+    "udp1400_kpps": 636.6303487004727,
+    "udp1400_loss_pct": 15.228523723167136,
+    "churn_cps": 46264.8,
+    "churn_err": 0,
+    "churn_p50_us": 1279,
+    "churn_p99_us": 5119,
+    "churn_ok": {
+     "A": 370152,
+     "B": 0,
+     "C": 0,
+     "D": 0,
+     "other": 0
+    },
+    "fixed_cps": 4961.5,
+    "fixed_err": 0,
+    "fixed_cpu_ms_per_1k_conn": 138.97980764388942,
+    "fixed_p50_us": 959,
+    "fixed_p99_us": 5119,
+    "xfer_mib_s": 8035.5786528083145,
+    "xfer_err": 0,
+    "rss_after_kb": 13972,
+    "fd_after": 11
+   }
+  ],
+  "new+failover": [
+   {
+    "rss_idle_kb": 5212,
+    "threads": 11,
+    "fd_idle": 10,
+    "tcp1_gbps": 116.31426607263246,
+    "tcp8_gbps": 95.87999142278596,
+    "udp64_kpps": 727.9132827099813,
+    "udp64_loss_pct": 0.4351501291197969,
+    "udp1400_kpps": 631.399192493566,
+    "udp1400_loss_pct": 13.678150548218632,
+    "churn_cps": 60803.1,
+    "churn_err": 0,
+    "churn_p50_us": 959,
+    "churn_p99_us": 2303,
+    "churn_ok": {
+     "A": 486486,
+     "B": 0,
+     "C": 0,
+     "D": 0,
+     "other": 0
+    },
+    "fixed_cps": 4959.6,
+    "fixed_err": 0,
+    "fixed_cpu_ms_per_1k_conn": 153.95469549222668,
+    "fixed_p50_us": 959,
+    "fixed_p99_us": 3583,
+    "xfer_mib_s": 8988.606835898461,
+    "xfer_err": 0,
+    "rss_after_kb": 13664,
+    "fd_after": 11
+   },
+   {
+    "rss_idle_kb": 5212,
+    "threads": 11,
+    "fd_idle": 10,
+    "tcp1_gbps": 117.90860406437955,
+    "tcp8_gbps": 137.45637772509244,
+    "udp64_kpps": 706.5093481532087,
+    "udp64_loss_pct": 3.153519918194354,
+    "udp1400_kpps": 602.2943766752038,
+    "udp1400_loss_pct": 14.837128806666987,
+    "churn_cps": 37347.5,
+    "churn_err": 0,
+    "churn_p50_us": 1279,
+    "churn_p99_us": 9215,
+    "churn_ok": {
+     "A": 298807,
+     "B": 0,
+     "C": 0,
+     "D": 0,
+     "other": 0
+    },
+    "fixed_cps": 4966.0,
+    "fixed_err": 0,
+    "fixed_cpu_ms_per_1k_conn": 133.10855014845757,
+    "fixed_p50_us": 831,
+    "fixed_p99_us": 4607,
+    "xfer_mib_s": 6804.878048780488,
+    "xfer_err": 0,
+    "rss_after_kb": 13784,
+    "fd_after": 11
+   },
+   {
+    "rss_idle_kb": 5212,
+    "threads": 11,
+    "fd_idle": 10,
+    "tcp1_gbps": 117.94107905172326,
+    "tcp8_gbps": 140.96602677725727,
+    "udp64_kpps": 751.7522230157656,
+    "udp64_loss_pct": 1.3036993858426087,
+    "udp1400_kpps": 655.0244506136803,
+    "udp1400_loss_pct": 11.660134808912817,
+    "churn_cps": 58353.8,
+    "churn_err": 0,
+    "churn_p50_us": 1023,
+    "churn_p99_us": 2303,
+    "churn_ok": {
+     "A": 466864,
+     "B": 0,
+     "C": 0,
+     "D": 0,
+     "other": 0
+    },
+    "fixed_cps": 4909.8,
+    "fixed_err": 0,
+    "fixed_cpu_ms_per_1k_conn": 138.89242196840578,
+    "fixed_p50_us": 831,
+    "fixed_p99_us": 4607,
+    "xfer_mib_s": 8695.721711315475,
+    "xfer_err": 0,
+    "rss_after_kb": 13812,
+    "fd_after": 11
+   }
+  ],
+  "orig+balance": [
+   {
+    "rss_idle_kb": 4960,
+    "threads": 11,
+    "fd_idle": 10,
+    "churn_cps": 59680.8,
+    "churn_err": 0,
+    "churn_p50_us": 959,
+    "churn_p99_us": 3327,
+    "churn_ok": {
+     "A": 238962,
+     "B": 238962,
+     "C": 0,
+     "D": 0,
+     "other": 0
+    },
+    "fixed_cps": 4875.4,
+    "fixed_err": 0,
+    "fixed_cpu_ms_per_1k_conn": 150.70740209144967,
+    "fixed_p50_us": 959,
+    "fixed_p99_us": 6655,
+    "xfer_mib_s": 8698.38097141715,
+    "xfer_err": 0,
+    "rss_after_kb": 13652,
+    "fd_after": 10
+   },
+   {
+    "rss_idle_kb": 4956,
+    "threads": 11,
+    "fd_idle": 10,
+    "churn_cps": 49717.6,
+    "churn_err": 0,
+    "churn_p50_us": 1151,
+    "churn_p99_us": 3583,
+    "churn_ok": {
+     "A": 198885,
+     "B": 198885,
+     "C": 0,
+     "D": 0,
+     "other": 0
+    },
+    "fixed_cps": 4806.5,
+    "fixed_err": 0,
+    "fixed_cpu_ms_per_1k_conn": 155.92515592515593,
+    "fixed_p50_us": 895,
+    "fixed_p99_us": 11263,
+    "xfer_mib_s": 5310.013991605037,
+    "xfer_err": 0,
+    "rss_after_kb": 13040,
+    "fd_after": 10
+   },
+   {
+    "rss_idle_kb": 4956,
+    "threads": 11,
+    "fd_idle": 10,
+    "churn_cps": 58726.9,
+    "churn_err": 0,
+    "churn_p50_us": 1023,
+    "churn_p99_us": 2559,
+    "churn_ok": {
+     "A": 234928,
+     "B": 234927,
+     "C": 0,
+     "D": 0,
+     "other": 0
+    },
+    "fixed_cps": 4913.8,
+    "fixed_err": 0,
+    "fixed_cpu_ms_per_1k_conn": 149.50039409117488,
+    "fixed_p50_us": 895,
+    "fixed_p99_us": 9215,
+    "xfer_mib_s": 8922.431027588966,
+    "xfer_err": 0,
+    "rss_after_kb": 13708,
+    "fd_after": 10
+   }
+  ],
+  "new+balance": [
+   {
+    "rss_idle_kb": 5008,
+    "threads": 11,
+    "fd_idle": 10,
+    "churn_cps": 61460.2,
+    "churn_err": 0,
+    "churn_p50_us": 959,
+    "churn_p99_us": 2559,
+    "churn_ok": {
+     "A": 245869,
+     "B": 245868,
+     "C": 0,
+     "D": 0,
+     "other": 0
+    },
+    "fixed_cps": 4871.6,
+    "fixed_err": 0,
+    "fixed_cpu_ms_per_1k_conn": 163.36265483548328,
+    "fixed_p50_us": 1023,
+    "fixed_p99_us": 9215,
+    "xfer_mib_s": 9448.220711715314,
+    "xfer_err": 0,
+    "rss_after_kb": 13708,
+    "fd_after": 10
+   },
+   {
+    "rss_idle_kb": 5020,
+    "threads": 11,
+    "fd_idle": 10,
+    "churn_cps": 49317.6,
+    "churn_err": 0,
+    "churn_p50_us": 1151,
+    "churn_p99_us": 4095,
+    "churn_ok": {
+     "A": 197285,
+     "B": 197284,
+     "C": 0,
+     "D": 0,
+     "other": 0
+    },
+    "fixed_cps": 4861.8,
+    "fixed_err": 0,
+    "fixed_cpu_ms_per_1k_conn": 156.7680090462851,
+    "fixed_p50_us": 1023,
+    "fixed_p99_us": 8191,
+    "xfer_mib_s": 8156.737305077969,
+    "xfer_err": 0,
+    "rss_after_kb": 13740,
+    "fd_after": 10
+   },
+   {
+    "rss_idle_kb": 5024,
+    "threads": 11,
+    "fd_idle": 10,
+    "churn_cps": 53874.5,
+    "churn_err": 0,
+    "churn_p50_us": 1151,
+    "churn_p99_us": 2815,
+    "churn_ok": {
+     "A": 215516,
+     "B": 215516,
+     "C": 0,
+     "D": 0,
+     "other": 0
+    },
+    "fixed_cps": 4790.8,
+    "fixed_err": 0,
+    "fixed_cpu_ms_per_1k_conn": 163.81469115191987,
+    "fixed_p50_us": 767,
+    "fixed_p99_us": 13311,
+    "xfer_mib_s": 7565.0500384911475,
+    "xfer_err": 0,
+    "rss_after_kb": 12996,
+    "fd_after": 10
+   }
+  ]
+ },
+ "summary": {
+  "orig": {
+   "rss_idle_kb": {
+    "median": 4948,
+    "min": 4948,
+    "max": 4956
+   },
+   "threads": {
+    "median": 11,
+    "min": 11,
+    "max": 11
+   },
+   "fd_idle": {
+    "median": 10,
+    "min": 10,
+    "max": 10
+   },
+   "tcp1_gbps": {
+    "median": 114.07933438640295,
+    "min": 112.58662944622927,
+    "max": 118.58964268064615
+   },
+   "tcp8_gbps": {
+    "median": 137.7685247788713,
+    "min": 130.56227781283218,
+    "max": 141.20193786883146
+   },
+   "udp64_kpps": {
+    "median": 722.9195632730839,
+    "min": 703.7077629223708,
+    "max": 775.2082756678661
+   },
+   "udp64_loss_pct": {
+    "median": 1.0930548182848012,
+    "min": 0.6227037670398753,
+    "max": 2.389811136509909
+   },
+   "udp1400_kpps": {
+    "median": 629.479016772782,
+    "min": 612.0042975346774,
+    "max": 719.4113775462145
+   },
+   "udp1400_loss_pct": {
+    "median": 13.966400428605011,
+    "min": 5.459899709852404,
+    "max": 15.4586267581314
+   },
+   "churn_cps": {
+    "median": 54639.7,
+    "min": 48892.1,
+    "max": 66518.5
+   },
+   "churn_err": {
+    "median": 0,
+    "min": 0,
+    "max": 0
+   },
+   "churn_p50_us": {
+    "median": 1151,
+    "min": 959,
+    "max": 1151
+   },
+   "churn_p99_us": {
+    "median": 3327,
+    "min": 1791,
+    "max": 4607
+   },
+   "fixed_cps": {
+    "median": 4926.9,
+    "min": 4901.1,
+    "max": 4968.2
+   },
+   "fixed_err": {
+    "median": 0,
+    "min": 0,
+    "max": 0
+   },
+   "fixed_cpu_ms_per_1k_conn": {
+    "median": 144.3480447629825,
+    "min": 140.73016520497654,
+    "max": 156.27378355066213
+   },
+   "fixed_p50_us": {
+    "median": 1023,
+    "min": 575,
+    "max": 1023
+   },
+   "fixed_p99_us": {
+    "median": 7167,
+    "min": 3839,
+    "max": 8191
+   },
+   "xfer_mib_s": {
+    "median": 5926.843893663801,
+    "min": 5050.96941834899,
+    "max": 8061.975209916034
+   },
+   "xfer_err": {
+    "median": 0,
+    "min": 0,
+    "max": 0
+   },
+   "rss_after_kb": {
+    "median": 13436,
+    "min": 13412,
+    "max": 13768
+   },
+   "fd_after": {
+    "median": 11,
+    "min": 11,
+    "max": 11
+   }
+  },
+  "new": {
+   "rss_idle_kb": {
+    "median": 5028,
+    "min": 5012,
+    "max": 5028
+   },
+   "threads": {
+    "median": 11,
+    "min": 11,
+    "max": 11
+   },
+   "fd_idle": {
+    "median": 10,
+    "min": 10,
+    "max": 10
+   },
+   "tcp1_gbps": {
+    "median": 113.90555920855927,
+    "min": 110.72243521598006,
+    "max": 116.13045593813948
+   },
+   "tcp8_gbps": {
+    "median": 124.37374440603082,
+    "min": 95.29916881336136,
+    "max": 141.30632286253854
+   },
+   "udp64_kpps": {
+    "median": 724.5627806838511,
+    "min": 710.8702647751933,
+    "max": 743.0423087307381
+   },
+   "udp64_loss_pct": {
+    "median": 2.4242639121973513,
+    "min": 2.033019582983063,
+    "max": 2.683988847044413
+   },
+   "udp1400_kpps": {
+    "median": 636.6303487004727,
+    "min": 635.1783394345105,
+    "max": 639.5366860230816
+   },
+   "udp1400_loss_pct": {
+    "median": 13.767508211398338,
+    "min": 11.548061337596293,
+    "max": 15.228523723167136
+   },
+   "churn_cps": {
+    "median": 57508.9,
+    "min": 46264.8,
+    "max": 63400.1
+   },
+   "churn_err": {
+    "median": 0,
+    "min": 0,
+    "max": 0
+   },
+   "churn_p50_us": {
+    "median": 1023,
+    "min": 959,
+    "max": 1279
+   },
+   "churn_p99_us": {
+    "median": 2815,
+    "min": 2047,
+    "max": 5119
+   },
+   "fixed_cps": {
+    "median": 4954.4,
+    "min": 4924.4,
+    "max": 4961.5
+   },
+   "fixed_err": {
+    "median": 0,
+    "min": 0,
+    "max": 0
+   },
+   "fixed_cpu_ms_per_1k_conn": {
+    "median": 138.97980764388942,
+    "min": 137.47004666414426,
+    "max": 153.7875904073087
+   },
+   "fixed_p50_us": {
+    "median": 959,
+    "min": 831,
+    "max": 959
+   },
+   "fixed_p99_us": {
+    "median": 5119,
+    "min": 3071,
+    "max": 6143
+   },
+   "xfer_mib_s": {
+    "median": 8574.055566660003,
+    "min": 8035.5786528083145,
+    "max": 9328.53429314137
+   },
+   "xfer_err": {
+    "median": 0,
+    "min": 0,
+    "max": 0
+   },
+   "rss_after_kb": {
+    "median": 13968,
+    "min": 13532,
+    "max": 13972
+   },
+   "fd_after": {
+    "median": 11,
+    "min": 11,
+    "max": 11
+   }
+  },
+  "new+failover": {
+   "rss_idle_kb": {
+    "median": 5212,
+    "min": 5212,
+    "max": 5212
+   },
+   "threads": {
+    "median": 11,
+    "min": 11,
+    "max": 11
+   },
+   "fd_idle": {
+    "median": 10,
+    "min": 10,
+    "max": 10
+   },
+   "tcp1_gbps": {
+    "median": 117.90860406437955,
+    "min": 116.31426607263246,
+    "max": 117.94107905172326
+   },
+   "tcp8_gbps": {
+    "median": 137.45637772509244,
+    "min": 95.87999142278596,
+    "max": 140.96602677725727
+   },
+   "udp64_kpps": {
+    "median": 727.9132827099813,
+    "min": 706.5093481532087,
+    "max": 751.7522230157656
+   },
+   "udp64_loss_pct": {
+    "median": 1.3036993858426087,
+    "min": 0.4351501291197969,
+    "max": 3.153519918194354
+   },
+   "udp1400_kpps": {
+    "median": 631.399192493566,
+    "min": 602.2943766752038,
+    "max": 655.0244506136803
+   },
+   "udp1400_loss_pct": {
+    "median": 13.678150548218632,
+    "min": 11.660134808912817,
+    "max": 14.837128806666987
+   },
+   "churn_cps": {
+    "median": 58353.8,
+    "min": 37347.5,
+    "max": 60803.1
+   },
+   "churn_err": {
+    "median": 0,
+    "min": 0,
+    "max": 0
+   },
+   "churn_p50_us": {
+    "median": 1023,
+    "min": 959,
+    "max": 1279
+   },
+   "churn_p99_us": {
+    "median": 2303,
+    "min": 2303,
+    "max": 9215
+   },
+   "fixed_cps": {
+    "median": 4959.6,
+    "min": 4909.8,
+    "max": 4966.0
+   },
+   "fixed_err": {
+    "median": 0,
+    "min": 0,
+    "max": 0
+   },
+   "fixed_cpu_ms_per_1k_conn": {
+    "median": 138.89242196840578,
+    "min": 133.10855014845757,
+    "max": 153.95469549222668
+   },
+   "fixed_p50_us": {
+    "median": 831,
+    "min": 831,
+    "max": 959
+   },
+   "fixed_p99_us": {
+    "median": 4607,
+    "min": 3583,
+    "max": 4607
+   },
+   "xfer_mib_s": {
+    "median": 8695.721711315475,
+    "min": 6804.878048780488,
+    "max": 8988.606835898461
+   },
+   "xfer_err": {
+    "median": 0,
+    "min": 0,
+    "max": 0
+   },
+   "rss_after_kb": {
+    "median": 13784,
+    "min": 13664,
+    "max": 13812
+   },
+   "fd_after": {
+    "median": 11,
+    "min": 11,
+    "max": 11
+   }
+  },
+  "orig+balance": {
+   "rss_idle_kb": {
+    "median": 4956,
+    "min": 4956,
+    "max": 4960
+   },
+   "threads": {
+    "median": 11,
+    "min": 11,
+    "max": 11
+   },
+   "fd_idle": {
+    "median": 10,
+    "min": 10,
+    "max": 10
+   },
+   "churn_cps": {
+    "median": 58726.9,
+    "min": 49717.6,
+    "max": 59680.8
+   },
+   "churn_err": {
+    "median": 0,
+    "min": 0,
+    "max": 0
+   },
+   "churn_p50_us": {
+    "median": 1023,
+    "min": 959,
+    "max": 1151
+   },
+   "churn_p99_us": {
+    "median": 3327,
+    "min": 2559,
+    "max": 3583
+   },
+   "fixed_cps": {
+    "median": 4875.4,
+    "min": 4806.5,
+    "max": 4913.8
+   },
+   "fixed_err": {
+    "median": 0,
+    "min": 0,
+    "max": 0
+   },
+   "fixed_cpu_ms_per_1k_conn": {
+    "median": 150.70740209144967,
+    "min": 149.50039409117488,
+    "max": 155.92515592515593
+   },
+   "fixed_p50_us": {
+    "median": 895,
+    "min": 895,
+    "max": 959
+   },
+   "fixed_p99_us": {
+    "median": 9215,
+    "min": 6655,
+    "max": 11263
+   },
+   "xfer_mib_s": {
+    "median": 8698.38097141715,
+    "min": 5310.013991605037,
+    "max": 8922.431027588966
+   },
+   "xfer_err": {
+    "median": 0,
+    "min": 0,
+    "max": 0
+   },
+   "rss_after_kb": {
+    "median": 13652,
+    "min": 13040,
+    "max": 13708
+   },
+   "fd_after": {
+    "median": 10,
+    "min": 10,
+    "max": 10
+   }
+  },
+  "new+balance": {
+   "rss_idle_kb": {
+    "median": 5020,
+    "min": 5008,
+    "max": 5024
+   },
+   "threads": {
+    "median": 11,
+    "min": 11,
+    "max": 11
+   },
+   "fd_idle": {
+    "median": 10,
+    "min": 10,
+    "max": 10
+   },
+   "churn_cps": {
+    "median": 53874.5,
+    "min": 49317.6,
+    "max": 61460.2
+   },
+   "churn_err": {
+    "median": 0,
+    "min": 0,
+    "max": 0
+   },
+   "churn_p50_us": {
+    "median": 1151,
+    "min": 959,
+    "max": 1151
+   },
+   "churn_p99_us": {
+    "median": 2815,
+    "min": 2559,
+    "max": 4095
+   },
+   "fixed_cps": {
+    "median": 4861.8,
+    "min": 4790.8,
+    "max": 4871.6
+   },
+   "fixed_err": {
+    "median": 0,
+    "min": 0,
+    "max": 0
+   },
+   "fixed_cpu_ms_per_1k_conn": {
+    "median": 163.36265483548328,
+    "min": 156.7680090462851,
+    "max": 163.81469115191987
+   },
+   "fixed_p50_us": {
+    "median": 1023,
+    "min": 767,
+    "max": 1023
+   },
+   "fixed_p99_us": {
+    "median": 9215,
+    "min": 8191,
+    "max": 13311
+   },
+   "xfer_mib_s": {
+    "median": 8156.737305077969,
+    "min": 7565.0500384911475,
+    "max": 9448.220711715314
+   },
+   "xfer_err": {
+    "median": 0,
+    "min": 0,
+    "max": 0
+   },
+   "rss_after_kb": {
+    "median": 13708,
+    "min": 12996,
+    "max": 13740
+   },
+   "fd_after": {
+    "median": 10,
+    "min": 10,
+    "max": 10
+   }
+  }
+ }
+}

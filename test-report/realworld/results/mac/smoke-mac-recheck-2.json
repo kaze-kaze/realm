@@ -1,0 +1,110 @@
+{
+ "suite": "smoke",
+ "me": "mac",
+ "args": {
+  "vias": [
+   "hh-po0"
+  ],
+  "protos": [
+   "vless-ws-tls"
+  ]
+ },
+ "t": 1795133075.6210706,
+ "res": {
+  "hh-po0/vless-ws-tls": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "1": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 422.8,
+     "p50": 524.5,
+     "p90": 690.7,
+     "p99": 693.0,
+     "max": 693.0,
+     "mean": 516.5
+    },
+    "secs": 2.35
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.497,
+    "ttfb_ms": 706.2,
+    "mbps": 11.21
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "1"
+    ],
+    "err": null,
+    "secs": 1.121,
+    "lid": 1,
+    "mbps": 7.48
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 1,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 127.2,
+     "p50": 130.2,
+     "p90": 131.6,
+     "p99": 131.6,
+     "max": 131.6,
+     "mean": 129.3
+    },
+    "secs": 2.34
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 126.2,
+     "p50": 128.3,
+     "p90": 134.5,
+     "p99": 515.2,
+     "max": 515.2,
+     "mean": 145.1
+    },
+    "jitter_ms": 5.28,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "1": 100
+    },
+    "lid_changes": [
+     [
+      0.52,
+      null,
+      1
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795133069.159
+   }
+  }
+ }
+}

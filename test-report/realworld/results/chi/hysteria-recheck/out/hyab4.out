@@ -1,0 +1,42 @@
+0 og-a down ok 128 Mbit/s | up FAIL:TimeoutError 25
+0 new-a down ok 162 Mbit/s | up ok 155
+0 og-b down ok 120 Mbit/s | up ok 135
+0 new-b down ok 155 Mbit/s | up ok 39
+0 og-c down ok 129 Mbit/s | up ok 124
+0 new-c down ok 125 Mbit/s | up ok 133
+1 new-a down ok 139 Mbit/s | up ok 93
+1 og-b down ok 64 Mbit/s | up FAIL:TimeoutError 14
+1 new-b down ok 184 Mbit/s | up ok 63
+1 og-c down ok 159 Mbit/s | up FAIL:TimeoutError 13
+1 new-c down ok 173 Mbit/s | up ok 83
+1 og-a down FAIL:ConnectionResetError:104 0 Mbit/s | up ok 46
+2 og-b down ok 191 Mbit/s | up ok 51
+2 new-b down ok 195 Mbit/s | up ok 197
+2 og-c down ok 74 Mbit/s | up ok 50
+2 new-c down ok 179 Mbit/s | up FAIL:TimeoutError 11
+2 og-a down FAIL:TimeoutError 27 Mbit/s | up FAIL:TimeoutError 6
+2 new-a down ok 181 Mbit/s | up ok 180
+3 new-b down ok 92 Mbit/s | up FAIL:TimeoutError 12
+3 og-c down ok 184 Mbit/s | up ok 112
+3 new-c down ok 195 Mbit/s | up ok 40
+3 og-a down FAIL:eof 0 Mbit/s | up ok 142
+3 new-a down ok 147 Mbit/s | up ok 130
+3 og-b down ok 37 Mbit/s | up ok 145
+4 og-c down ok 145 Mbit/s | up ok 37
+4 new-c down ok 171 Mbit/s | up ok 35
+4 og-a down FAIL:TimeoutError 24 Mbit/s | up ok 213
+4 new-a down ok 104 Mbit/s | up FAIL:TimeoutError 13
+4 og-b down ok 170 Mbit/s | up ok 178
+4 new-b down ok 199 Mbit/s | up ok 98
+5 new-c down ok 204 Mbit/s | up ok 26
+5 og-a down FAIL:TimeoutError 8 Mbit/s | up ok 185
+5 new-a down ok 186 Mbit/s | up ok 49
+5 og-b down ok 195 Mbit/s | up ok 178
+5 new-b down ok 198 Mbit/s | up ok 61
+5 og-c down ok 22 Mbit/s | up ok 131
+TOTAL og-a         down median 128 (min 128 max 128) ok 1/6 | up median 185 (min 46 max 213) ok 4/6 | errors 0
+TOTAL new-a        down median 162 (min 104 max 186) ok 6/6 | up median 130 (min 49 max 180) ok 5/6 | errors 0
+TOTAL og-b         down median 170 (min 37 max 195) ok 6/6 | up median 145 (min 51 max 178) ok 5/6 | errors 0
+TOTAL new-b        down median 195 (min 92 max 199) ok 6/6 | up median 63 (min 39 max 197) ok 5/6 | errors 0
+TOTAL og-c         down median 145 (min 22 max 184) ok 6/6 | up median 112 (min 37 max 131) ok 5/6 | errors 0
+TOTAL new-c        down median 179 (min 125 max 204) ok 6/6 | up median 40 (min 26 max 133) ok 5/6 | errors 0

@@ -1,0 +1,4382 @@
+{
+ "suite": "smoke",
+ "me": "ams",
+ "args": {
+  "vias": [
+   "fd-chi",
+   "rh-chi",
+   "hh-chi"
+  ]
+ },
+ "t": 1795128365.226087,
+ "res": {
+  "fd-chi/vmess-tcp": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 311.6,
+     "p50": 368.9,
+     "p90": 475.8,
+     "p99": 476.5,
+     "max": 476.5,
+     "mean": 374.0
+    },
+    "secs": 1.59
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.133,
+    "ttfb_ms": 339.5,
+    "mbps": 14.81
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.013,
+    "lid": 3,
+    "mbps": 8.28
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 159.4,
+     "p50": 159.9,
+     "p90": 160.2,
+     "p99": 160.2,
+     "max": 160.2,
+     "mean": 159.8
+    },
+    "secs": 2.42
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 154.8,
+     "p50": 155.2,
+     "p90": 155.5,
+     "p99": 310.4,
+     "max": 310.4,
+     "mean": 158.4
+    },
+    "jitter_ms": 1.81,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.31,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795127560.817
+   }
+  },
+  "fd-chi/vmess-ws": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 476.1,
+     "p50": 580.6,
+     "p90": 683.6,
+     "p99": 684.3,
+     "max": 684.3,
+     "mean": 586.6
+    },
+    "secs": 2.45
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.445,
+    "ttfb_ms": 581.3,
+    "mbps": 11.61
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.377,
+    "lid": 3,
+    "mbps": 6.09
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 211.6,
+     "p50": 212.2,
+     "p90": 212.4,
+     "p99": 212.4,
+     "max": 212.4,
+     "mean": 212.1
+    },
+    "secs": 3.26
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 196.5,
+     "p50": 196.7,
+     "p90": 197.6,
+     "p99": 590.6,
+     "max": 590.6,
+     "mean": 214.2
+    },
+    "jitter_ms": 4.18,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.59,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795127575.812
+   }
+  },
+  "fd-chi/vless-enc": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 326.3,
+     "p50": 394.9,
+     "p90": 583.0,
+     "p99": 641.2,
+     "max": 641.2,
+     "mean": 424.1
+    },
+    "secs": 1.76
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.29,
+    "ttfb_ms": 429.0,
+    "mbps": 13.0
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 0.981,
+    "lid": 3,
+    "mbps": 8.55
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 183.5,
+     "p50": 183.8,
+     "p90": 184.1,
+     "p99": 184.1,
+     "max": 184.1,
+     "mean": 183.8
+    },
+    "secs": 2.71
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 210.8,
+     "p50": 211.2,
+     "p90": 212.3,
+     "p99": 422.6,
+     "max": 422.6,
+     "mean": 217.5
+    },
+    "jitter_ms": 3.32,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.42,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795127589.004
+   }
+  },
+  "fd-chi/vless-reality": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 487.5,
+     "p50": 569.8,
+     "p90": 717.2,
+     "p99": 718.8,
+     "max": 718.8,
+     "mean": 579.4
+    },
+    "secs": 2.53
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.171,
+    "ttfb_ms": 488.5,
+    "mbps": 14.33
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.296,
+    "lid": 3,
+    "mbps": 6.47
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 193.6,
+     "p50": 194.0,
+     "p90": 194.6,
+     "p99": 194.6,
+     "max": 194.6,
+     "mean": 194.1
+    },
+    "secs": 3.04
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 183.1,
+     "p50": 183.8,
+     "p90": 184.7,
+     "p99": 562.2,
+     "max": 562.2,
+     "mean": 201.2
+    },
+    "jitter_ms": 4.44,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.56,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795127603.494
+   }
+  },
+  "fd-chi/vless-ws-tls": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 639.0,
+     "p50": 775.7,
+     "p90": 889.6,
+     "p99": 944.5,
+     "max": 944.5,
+     "mean": 782.4
+    },
+    "secs": 3.27
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.513,
+    "ttfb_ms": 657.7,
+    "mbps": 11.09
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.417,
+    "lid": 3,
+    "mbps": 5.92
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 237.6,
+     "p50": 237.9,
+     "p90": 238.2,
+     "p99": 238.2,
+     "max": 238.2,
+     "mean": 237.9
+    },
+    "secs": 3.83
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 227.7,
+     "p50": 228.2,
+     "p90": 514.7,
+     "p99": 915.5,
+     "max": 915.5,
+     "mean": 284.9
+    },
+    "jitter_ms": 8.39,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.92,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795127619.979
+   }
+  },
+  "fd-chi/vless-xhttp-tls": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 161.1,
+     "p50": 204.6,
+     "p90": 669.8,
+     "p99": 670.2,
+     "max": 670.2,
+     "mean": 294.2
+    },
+    "secs": 1.27
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.014,
+    "ttfb_ms": 224.5,
+    "mbps": 16.54
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 0.795,
+    "lid": 3,
+    "mbps": 10.55
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 202.7,
+     "p50": 202.8,
+     "p90": 203.1,
+     "p99": 203.1,
+     "max": 203.1,
+     "mean": 202.8
+    },
+    "secs": 2.74
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 159.9,
+     "p50": 160.8,
+     "p90": 161.6,
+     "p99": 222.8,
+     "max": 222.8,
+     "mean": 161.7
+    },
+    "jitter_ms": 1.23,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.16,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795127632.247
+   }
+  },
+  "fd-chi/trojan-tls": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 468.0,
+     "p50": 583.2,
+     "p90": 708.2,
+     "p99": 708.3,
+     "max": 708.3,
+     "mean": 588.8
+    },
+    "secs": 2.49
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.472,
+    "ttfb_ms": 681.1,
+    "mbps": 11.39
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.276,
+    "lid": 3,
+    "mbps": 6.57
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 193.2,
+     "p50": 193.7,
+     "p90": 194.0,
+     "p99": 194.0,
+     "max": 194.0,
+     "mean": 193.6
+    },
+    "secs": 3.02
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 193.4,
+     "p50": 193.7,
+     "p90": 194.9,
+     "p99": 581.2,
+     "max": 581.2,
+     "mean": 210.7
+    },
+    "jitter_ms": 4.2,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.58,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795127646.969
+   }
+  },
+  "fd-chi/ss-aead": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 316.9,
+     "p50": 385.7,
+     "p90": 430.6,
+     "p99": 476.7,
+     "max": 476.7,
+     "mean": 374.0
+    },
+    "secs": 1.65
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.203,
+    "ttfb_ms": 339.8,
+    "mbps": 13.94
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.07,
+    "lid": 3,
+    "mbps": 7.84
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 235.4,
+     "p50": 236.0,
+     "p90": 236.4,
+     "p99": 236.4,
+     "max": 236.4,
+     "mean": 235.9
+    },
+    "secs": 3.33
+   },
+   "udp": {
+    "ok": false,
+    "sent": 100,
+    "recv": 0,
+    "loss_pct": 100.0,
+    "rtt_ms": null,
+    "jitter_ms": null,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {},
+    "lid_changes": [],
+    "outages": [
+     [
+      0.0,
+      5.0
+     ]
+    ],
+    "reopens": 1,
+    "err": null,
+    "t0": 1795127660.683
+   }
+  },
+  "fd-chi/ss-2022": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 318.9,
+     "p50": 376.2,
+     "p90": 472.7,
+     "p99": 474.9,
+     "max": 474.9,
+     "mean": 379.8
+    },
+    "secs": 1.57
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.255,
+    "ttfb_ms": 457.0,
+    "mbps": 13.37
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 0.997,
+    "lid": 3,
+    "mbps": 8.41
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 221.0,
+     "p50": 221.6,
+     "p90": 222.1,
+     "p99": 222.1,
+     "max": 222.1,
+     "mean": 221.5
+    },
+    "secs": 3.16
+   },
+   "udp": {
+    "ok": false,
+    "sent": 100,
+    "recv": 0,
+    "loss_pct": 100.0,
+    "rtt_ms": null,
+    "jitter_ms": null,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {},
+    "lid_changes": [],
+    "outages": [
+     [
+      0.0,
+      5.0
+     ]
+    ],
+    "reopens": 1,
+    "err": null,
+    "t0": 1795127674.119
+   }
+  },
+  "fd-chi/vmess-kcp": {
+   "timeout": true
+  },
+  "fd-chi/vless-grpc-tls": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 175.9,
+     "p50": 176.9,
+     "p90": 699.5,
+     "p99": 700.4,
+     "max": 700.4,
+     "mean": 307.4
+    },
+    "secs": 1.23
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.689,
+    "ttfb_ms": 220.6,
+    "mbps": 9.94
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.283,
+    "lid": 3,
+    "mbps": 6.54
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 172.5,
+     "p50": 173.5,
+     "p90": 180.7,
+     "p99": 180.7,
+     "max": 180.7,
+     "mean": 174.0
+    },
+    "secs": 2.42
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 172.8,
+     "p50": 173.2,
+     "p90": 173.8,
+     "p99": 174.1,
+     "max": 174.1,
+     "mean": 173.3
+    },
+    "jitter_ms": 0.24,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.18,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795127777.203
+   }
+  },
+  "fd-chi/vless-hu-tls": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 666.3,
+     "p50": 817.2,
+     "p90": 906.7,
+     "p99": 938.4,
+     "max": 938.4,
+     "mean": 802.3
+    },
+    "secs": 3.43
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.699,
+    "ttfb_ms": 906.8,
+    "mbps": 9.87
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.592,
+    "lid": 3,
+    "mbps": 5.27
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 221.6,
+     "p50": 221.9,
+     "p90": 222.1,
+     "p99": 222.1,
+     "max": 222.1,
+     "mean": 221.9
+    },
+    "secs": 3.72
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 192.4,
+     "p50": 193.1,
+     "p90": 390.2,
+     "p99": 840.4,
+     "max": 840.4,
+     "mean": 240.4
+    },
+    "jitter_ms": 7.14,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.84,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795127794.103
+   }
+  },
+  "fd-chi/hy2": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 374.4,
+     "p50": 391.1,
+     "p90": 392.6,
+     "p99": 392.8,
+     "max": 392.8,
+     "mean": 390.3
+    },
+    "secs": 1.57
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.816,
+    "ttfb_ms": 373.0,
+    "mbps": 9.24
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.428,
+    "lid": 3,
+    "mbps": 5.87
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 193.5,
+     "p50": 193.9,
+     "p90": 194.3,
+     "p99": 194.3,
+     "max": 194.3,
+     "mean": 193.9
+    },
+    "secs": 2.83
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 193.1,
+     "p50": 193.5,
+     "p90": 193.8,
+     "p99": 198.0,
+     "max": 198.0,
+     "mean": 193.6
+    },
+    "jitter_ms": 0.38,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.19,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795127808.201
+   }
+  },
+  "fd-chi/hy2-obfs": {
+   "id": {
+    "n": 20,
+    "ok": 0,
+    "fail": 20,
+    "lids": {},
+    "errs": {
+     "ConnectionRefusedError:111": 20
+    },
+    "lat_ms": null,
+    "secs": 0.0
+   },
+   "dl": {
+    "ok": false,
+    "bytes": 0,
+    "want": 2097152,
+    "bad_off": null,
+    "err": "ConnectionRefusedError:111",
+    "secs": 0.0,
+    "ttfb_ms": null,
+    "mbps": 0.0
+   },
+   "ul": {
+    "ok": false,
+    "sent": 0,
+    "reply": null,
+    "err": "ConnectionRefusedError:111",
+    "secs": 0.0,
+    "lid": null,
+    "mbps": 0.0
+   },
+   "echo": {
+    "ok": false,
+    "done": 0,
+    "lid": null,
+    "err": "ConnectionRefusedError:111",
+    "rtt_ms": null,
+    "secs": 0.0
+   },
+   "udp": {
+    "ok": false,
+    "err": "ConnectionRefusedError:111",
+    "sent": 0,
+    "recv": 0
+   }
+  },
+  "fd-chi/wg": {
+   "id": {
+    "n": 20,
+    "ok": 0,
+    "fail": 20,
+    "lids": {},
+    "errs": {
+     "TimeoutError": 20
+    },
+    "lat_ms": null,
+    "secs": 24.02
+   },
+   "dl": {
+    "ok": false,
+    "bytes": 0,
+    "want": 2097152,
+    "bad_off": null,
+    "err": "TimeoutError",
+    "secs": 15.017,
+    "ttfb_ms": null,
+    "mbps": 0.0
+   },
+   "ul": {
+    "ok": false,
+    "sent": 0,
+    "reply": null,
+    "err": "TimeoutError",
+    "secs": 15.016,
+    "lid": null,
+    "mbps": 0.0
+   },
+   "echo": {
+    "ok": false,
+    "done": 0,
+    "lid": null,
+    "err": "TimeoutError",
+    "rtt_ms": null,
+    "secs": 10.01
+   },
+   "udp": {
+    "ok": false,
+    "sent": 100,
+    "recv": 0,
+    "loss_pct": 100.0,
+    "rtt_ms": null,
+    "jitter_ms": null,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {},
+    "lid_changes": [],
+    "outages": [
+     [
+      0.0,
+      5.0
+     ]
+    ],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795127878.728
+   }
+  },
+  "fd-chi/tgt": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 308.2,
+     "p50": 374.1,
+     "p90": 401.2,
+     "p99": 473.3,
+     "max": 473.3,
+     "mean": 367.7
+    },
+    "secs": 1.57
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.265,
+    "ttfb_ms": 404.4,
+    "mbps": 13.27
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.136,
+    "lid": 3,
+    "mbps": 7.38
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 196.9,
+     "p50": 197.4,
+     "p90": 197.6,
+     "p99": 197.6,
+     "max": 197.6,
+     "mean": 197.4
+    },
+    "secs": 2.87
+   },
+   "udp": {
+    "ok": false,
+    "sent": 100,
+    "recv": 0,
+    "loss_pct": 100.0,
+    "rtt_ms": null,
+    "jitter_ms": null,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {},
+    "lid_changes": [],
+    "outages": [
+     [
+      0.0,
+      5.0
+     ]
+    ],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795127892.025
+   }
+  },
+  "rh-chi/vmess-tcp": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 10,
+     "2": 10
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 340.3,
+     "p50": 464.8,
+     "p90": 494.1,
+     "p99": 494.1,
+     "max": 494.1,
+     "mean": 431.0
+    },
+    "secs": 1.83
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.202,
+    "ttfb_ms": 405.6,
+    "mbps": 13.96
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "2"
+    ],
+    "err": null,
+    "secs": 1.172,
+    "lid": 2,
+    "mbps": 7.15
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 183.4,
+     "p50": 183.9,
+     "p90": 184.5,
+     "p99": 184.5,
+     "max": 184.5,
+     "mean": 183.9
+    },
+    "secs": 2.71
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 245.8,
+     "p50": 246.5,
+     "p90": 247.3,
+     "p99": 492.9,
+     "max": 492.9,
+     "mean": 253.8
+    },
+    "jitter_ms": 2.76,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "2": 100
+    },
+    "lid_changes": [
+     [
+      0.49,
+      null,
+      2
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795127907.97
+   }
+  },
+  "rh-chi/vmess-ws": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 10,
+     "2": 10
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 478.1,
+     "p50": 667.2,
+     "p90": 740.2,
+     "p99": 741.0,
+     "max": 741.0,
+     "mean": 633.2
+    },
+    "secs": 2.69
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.471,
+    "ttfb_ms": 607.8,
+    "mbps": 11.41
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "2"
+    ],
+    "err": null,
+    "secs": 1.524,
+    "lid": 2,
+    "mbps": 5.5
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 178.0,
+     "p50": 178.6,
+     "p90": 178.8,
+     "p99": 178.8,
+     "max": 178.8,
+     "mean": 178.5
+    },
+    "secs": 2.82
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 221.6,
+     "p50": 222.3,
+     "p90": 266.3,
+     "p99": 665.6,
+     "max": 665.6,
+     "mean": 244.8
+    },
+    "jitter_ms": 5.92,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "2": 100
+    },
+    "lid_changes": [
+     [
+      0.67,
+      null,
+      2
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795127922.936
+   }
+  },
+  "rh-chi/vless-enc": {
+   "id": {
+    "n": 20,
+    "ok": 15,
+    "fail": 5,
+    "lids": {
+     "3": 8,
+     "2": 7
+    },
+    "errs": {
+     "ConnectionError:eof": 5
+    },
+    "lat_ms": {
+     "n": 15,
+     "min": 357.2,
+     "p50": 579.6,
+     "p90": 711.9,
+     "p99": 738.8,
+     "max": 738.8,
+     "mean": 577.4
+    },
+    "secs": 2.28
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.455,
+    "ttfb_ms": 591.1,
+    "mbps": 11.53
+   },
+   "ul": {
+    "ok": false,
+    "sent": 1048576,
+    "reply": null,
+    "err": "ConnectionResetError:104",
+    "secs": 0.475,
+    "lid": null,
+    "mbps": 17.65
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 154.8,
+     "p50": 155.2,
+     "p90": 155.3,
+     "p99": 155.3,
+     "max": 155.3,
+     "mean": 155.1
+    },
+    "secs": 2.52
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 90,
+    "loss_pct": 10.0,
+    "rtt_ms": {
+     "n": 90,
+     "min": 168.8,
+     "p50": 169.3,
+     "p90": 169.9,
+     "p99": 507.9,
+     "max": 507.9,
+     "mean": 185.4
+    },
+    "jitter_ms": 3.96,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 90
+    },
+    "lid_changes": [
+     [
+      1.01,
+      null,
+      3
+     ]
+    ],
+    "outages": [
+     [
+      0.0,
+      1.01
+     ]
+    ],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795127936.12
+   }
+  },
+  "rh-chi/vless-reality": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 10,
+     "2": 10
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 512.6,
+     "p50": 690.4,
+     "p90": 748.3,
+     "p99": 823.0,
+     "max": 823.0,
+     "mean": 674.8
+    },
+    "secs": 2.93
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.356,
+    "ttfb_ms": 614.4,
+    "mbps": 12.37
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "2"
+    ],
+    "err": null,
+    "secs": 1.511,
+    "lid": 2,
+    "mbps": 5.55
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 192.7,
+     "p50": 193.2,
+     "p90": 193.4,
+     "p99": 193.4,
+     "max": 193.4,
+     "mean": 193.1
+    },
+    "secs": 3.05
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 246.2,
+     "p50": 247.0,
+     "p90": 300.8,
+     "p99": 749.7,
+     "max": 749.7,
+     "mean": 275.0
+    },
+    "jitter_ms": 5.42,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "2": 100
+    },
+    "lid_changes": [
+     [
+      0.75,
+      null,
+      2
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795127951.419
+   }
+  },
+  "rh-chi/vless-ws-tls": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 10,
+     "2": 10
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 638.6,
+     "p50": 905.3,
+     "p90": 948.8,
+     "p99": 986.9,
+     "max": 986.9,
+     "mean": 866.3
+    },
+    "secs": 3.76
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.458,
+    "ttfb_ms": 695.5,
+    "mbps": 11.51
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "2"
+    ],
+    "err": null,
+    "secs": 1.666,
+    "lid": 2,
+    "mbps": 5.03
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 196.9,
+     "p50": 197.3,
+     "p90": 197.7,
+     "p99": 197.7,
+     "max": 197.7,
+     "mean": 197.3
+    },
+    "secs": 3.27
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 245.7,
+     "p50": 246.5,
+     "p90": 536.4,
+     "p99": 986.4,
+     "max": 986.4,
+     "mean": 305.0
+    },
+    "jitter_ms": 7.7,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "2": 100
+    },
+    "lid_changes": [
+     [
+      0.99,
+      null,
+      2
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795127968.021
+   }
+  },
+  "rh-chi/vless-xhttp-tls": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 14,
+     "2": 6
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 179.8,
+     "p50": 230.5,
+     "p90": 717.7,
+     "p99": 718.2,
+     "max": 718.2,
+     "mean": 320.3
+    },
+    "secs": 1.37
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 0.925,
+    "ttfb_ms": 230.6,
+    "mbps": 18.14
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "2"
+    ],
+    "err": null,
+    "secs": 0.98,
+    "lid": 2,
+    "mbps": 8.56
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 2,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 237.1,
+     "p50": 237.7,
+     "p90": 238.9,
+     "p99": 238.9,
+     "max": 238.9,
+     "mean": 237.8
+    },
+    "secs": 3.12
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 178.8,
+     "p50": 179.7,
+     "p90": 180.4,
+     "p99": 251.1,
+     "max": 251.1,
+     "mean": 181.2
+    },
+    "jitter_ms": 2.03,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.18,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795127980.874
+   }
+  },
+  "rh-chi/trojan-tls": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 10,
+     "2": 10
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 481.2,
+     "p50": 680.5,
+     "p90": 740.4,
+     "p99": 740.7,
+     "max": 740.7,
+     "mean": 635.2
+    },
+    "secs": 2.7
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.406,
+    "ttfb_ms": 615.0,
+    "mbps": 11.93
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "2"
+    ],
+    "err": null,
+    "secs": 1.479,
+    "lid": 2,
+    "mbps": 5.67
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 237.7,
+     "p50": 238.1,
+     "p90": 238.5,
+     "p99": 238.5,
+     "max": 238.5,
+     "mean": 238.0
+    },
+    "secs": 3.6
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 235.8,
+     "p50": 236.6,
+     "p90": 261.7,
+     "p99": 711.4,
+     "max": 711.4,
+     "mean": 261.6
+    },
+    "jitter_ms": 5.07,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "2": 100
+    },
+    "lid_changes": [
+     [
+      0.71,
+      null,
+      2
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795127996.522
+   }
+  },
+  "rh-chi/ss-aead": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 10,
+     "2": 10
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 338.6,
+     "p50": 464.7,
+     "p90": 493.5,
+     "p99": 493.9,
+     "max": 493.9,
+     "mean": 434.5
+    },
+    "secs": 1.88
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.249,
+    "ttfb_ms": 389.3,
+    "mbps": 13.44
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "2"
+    ],
+    "err": null,
+    "secs": 1.233,
+    "lid": 2,
+    "mbps": 6.8
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 183.4,
+     "p50": 183.8,
+     "p90": 184.2,
+     "p99": 184.2,
+     "max": 184.2,
+     "mean": 183.8
+    },
+    "secs": 2.71
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 245.9,
+     "p50": 246.6,
+     "p90": 247.0,
+     "p99": 251.7,
+     "max": 251.7,
+     "mean": 246.7
+    },
+    "jitter_ms": 0.37,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "2": 100
+    },
+    "lid_changes": [
+     [
+      0.25,
+      null,
+      2
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128010.051
+   }
+  },
+  "rh-chi/ss-2022": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 10,
+     "2": 10
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 321.3,
+     "p50": 465.6,
+     "p90": 492.3,
+     "p99": 492.3,
+     "max": 492.3,
+     "mean": 440.2
+    },
+    "secs": 1.88
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.293,
+    "ttfb_ms": 429.5,
+    "mbps": 12.98
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "2"
+    ],
+    "err": null,
+    "secs": 1.212,
+    "lid": 2,
+    "mbps": 6.92
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 211.0,
+     "p50": 211.4,
+     "p90": 212.0,
+     "p99": 212.0,
+     "max": 212.0,
+     "mean": 211.4
+    },
+    "secs": 3.04
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 219.0,
+     "p50": 219.4,
+     "p90": 219.8,
+     "p99": 220.4,
+     "max": 220.4,
+     "mean": 219.5
+    },
+    "jitter_ms": 0.2,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "2": 100
+    },
+    "lid_changes": [
+     [
+      0.22,
+      null,
+      2
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128023.93
+   }
+  },
+  "rh-chi/vmess-kcp": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 10,
+     "2": 10
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 204.8,
+     "p50": 285.9,
+     "p90": 298.1,
+     "p99": 299.2,
+     "max": 299.2,
+     "mean": 267.9
+    },
+    "secs": 1.16
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.324,
+    "ttfb_ms": 222.7,
+    "mbps": 12.67
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "2"
+    ],
+    "err": null,
+    "secs": 1.247,
+    "lid": 2,
+    "mbps": 6.73
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 207.1,
+     "p50": 208.2,
+     "p90": 258.8,
+     "p99": 258.8,
+     "max": 258.8,
+     "mean": 223.0
+    },
+    "secs": 2.94
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 235.1,
+     "p50": 285.7,
+     "p90": 335.0,
+     "p99": 336.0,
+     "max": 336.0,
+     "mean": 306.9
+    },
+    "jitter_ms": 26.28,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "2": 100
+    },
+    "lid_changes": [
+     [
+      0.29,
+      null,
+      2
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128037.057
+   }
+  },
+  "rh-chi/vless-grpc-tls": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 192.0,
+     "p50": 193.8,
+     "p90": 758.4,
+     "p99": 758.5,
+     "max": 758.5,
+     "mean": 334.5
+    },
+    "secs": 1.34
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.825,
+    "ttfb_ms": 191.1,
+    "mbps": 9.19
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.327,
+    "lid": 3,
+    "mbps": 6.32
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 187.8,
+     "p50": 188.4,
+     "p90": 188.6,
+     "p99": 188.6,
+     "max": 188.6,
+     "mean": 188.3
+    },
+    "secs": 2.58
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 187.7,
+     "p50": 188.4,
+     "p90": 188.8,
+     "p99": 192.8,
+     "max": 192.8,
+     "mean": 188.5
+    },
+    "jitter_ms": 0.55,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.19,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128050.58
+   }
+  },
+  "rh-chi/vless-hu-tls": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 10,
+     "2": 10
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 702.5,
+     "p50": 931.1,
+     "p90": 948.5,
+     "p99": 987.3,
+     "max": 987.3,
+     "mean": 893.9
+    },
+    "secs": 3.77
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.706,
+    "ttfb_ms": 843.3,
+    "mbps": 9.83
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "2"
+    ],
+    "err": null,
+    "secs": 1.628,
+    "lid": 2,
+    "mbps": 5.15
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 183.8,
+     "p50": 184.1,
+     "p90": 184.3,
+     "p99": 184.3,
+     "max": 184.3,
+     "mean": 184.0
+    },
+    "secs": 3.15
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 226.2,
+     "p50": 226.7,
+     "p90": 455.7,
+     "p99": 906.2,
+     "max": 906.2,
+     "mean": 276.6
+    },
+    "jitter_ms": 7.26,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "2": 100
+    },
+    "lid_changes": [
+     [
+      0.91,
+      null,
+      2
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128067.298
+   }
+  },
+  "rh-chi/hy2": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 329.6,
+     "p50": 348.6,
+     "p90": 352.6,
+     "p99": 352.8,
+     "max": 352.8,
+     "mean": 346.5
+    },
+    "secs": 1.4
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.519,
+    "ttfb_ms": 330.8,
+    "mbps": 11.04
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.3,
+    "lid": 3,
+    "mbps": 6.45
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 173.3,
+     "p50": 173.6,
+     "p90": 174.0,
+     "p99": 174.0,
+     "max": 174.0,
+     "mean": 173.6
+    },
+    "secs": 2.59
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 172.7,
+     "p50": 173.1,
+     "p90": 173.4,
+     "p99": 175.9,
+     "max": 175.9,
+     "mean": 173.1
+    },
+    "jitter_ms": 0.26,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.17,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128080.56
+   }
+  },
+  "rh-chi/hy2-obfs": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 383.1,
+     "p50": 405.0,
+     "p90": 406.3,
+     "p99": 406.7,
+     "max": 406.7,
+     "mean": 401.9
+    },
+    "secs": 1.62
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.962,
+    "ttfb_ms": 381.5,
+    "mbps": 8.55
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.526,
+    "lid": 3,
+    "mbps": 5.5
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 201.8,
+     "p50": 202.3,
+     "p90": 202.5,
+     "p99": 202.5,
+     "max": 202.5,
+     "mean": 202.3
+    },
+    "secs": 2.93
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 201.3,
+     "p50": 201.7,
+     "p90": 202.0,
+     "p99": 205.8,
+     "max": 205.8,
+     "mean": 201.9
+    },
+    "jitter_ms": 0.42,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.2,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128095.057
+   }
+  },
+  "rh-chi/wg": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 450.0,
+     "p50": 450.9,
+     "p90": 677.5,
+     "p99": 677.8,
+     "max": 677.8,
+     "mean": 507.3
+    },
+    "secs": 2.03
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 8.332,
+    "ttfb_ms": 405.9,
+    "mbps": 2.01
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.925,
+    "lid": 3,
+    "mbps": 4.36
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 225.1,
+     "p50": 225.5,
+     "p90": 225.7,
+     "p99": 225.7,
+     "max": 225.7,
+     "mean": 225.4
+    },
+    "secs": 3.21
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 225.0,
+     "p50": 225.3,
+     "p90": 225.6,
+     "p99": 228.5,
+     "max": 228.5,
+     "mean": 225.4
+    },
+    "jitter_ms": 0.29,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.23,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128117.008
+   }
+  },
+  "rh-chi/tgt": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 10,
+     "2": 10
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 317.8,
+     "p50": 451.8,
+     "p90": 491.0,
+     "p99": 491.0,
+     "max": 491.0,
+     "mean": 425.8
+    },
+    "secs": 1.91
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.244,
+    "ttfb_ms": 384.6,
+    "mbps": 13.49
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "2"
+    ],
+    "err": null,
+    "secs": 1.128,
+    "lid": 2,
+    "mbps": 7.43
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 187.8,
+     "p50": 188.1,
+     "p90": 188.7,
+     "p99": 188.7,
+     "max": 188.7,
+     "mean": 188.0
+    },
+    "secs": 2.76
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 214.0,
+     "p50": 214.4,
+     "p90": 214.6,
+     "p99": 216.3,
+     "max": 216.3,
+     "mean": 214.4
+    },
+    "jitter_ms": 0.19,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "2": 100
+    },
+    "lid_changes": [
+     [
+      0.22,
+      null,
+      2
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128130.502
+   }
+  },
+  "hh-chi/vmess-tcp": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 311.7,
+     "p50": 367.5,
+     "p90": 456.8,
+     "p99": 475.5,
+     "max": 475.5,
+     "mean": 381.9
+    },
+    "secs": 1.64
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.308,
+    "ttfb_ms": 444.8,
+    "mbps": 12.82
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.042,
+    "lid": 3,
+    "mbps": 8.05
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 193.5,
+     "p50": 194.0,
+     "p90": 196.6,
+     "p99": 196.6,
+     "max": 196.6,
+     "mean": 194.2
+    },
+    "secs": 2.83
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 193.4,
+     "p50": 193.8,
+     "p90": 194.2,
+     "p99": 386.8,
+     "max": 386.8,
+     "mean": 198.5
+    },
+    "jitter_ms": 2.17,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.39,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128146.359
+   }
+  },
+  "hh-chi/vmess-ws": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 483.0,
+     "p50": 553.9,
+     "p90": 665.1,
+     "p99": 665.2,
+     "max": 665.2,
+     "mean": 560.1
+    },
+    "secs": 2.39
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.387,
+    "ttfb_ms": 481.2,
+    "mbps": 12.1
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.201,
+    "lid": 3,
+    "mbps": 6.99
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 172.8,
+     "p50": 173.1,
+     "p90": 173.3,
+     "p99": 173.3,
+     "max": 173.3,
+     "mean": 173.0
+    },
+    "secs": 2.75
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 183.0,
+     "p50": 183.5,
+     "p90": 184.3,
+     "p99": 549.5,
+     "max": 549.5,
+     "mean": 198.7
+    },
+    "jitter_ms": 3.93,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.55,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128160.548
+   }
+  },
+  "hh-chi/vless-enc": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 320.8,
+     "p50": 400.6,
+     "p90": 608.5,
+     "p99": 637.9,
+     "max": 637.9,
+     "mean": 430.5
+    },
+    "secs": 1.85
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.286,
+    "ttfb_ms": 424.3,
+    "mbps": 13.05
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 0.986,
+    "lid": 3,
+    "mbps": 8.5
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 183.0,
+     "p50": 183.2,
+     "p90": 183.5,
+     "p99": 183.5,
+     "max": 183.5,
+     "mean": 183.2
+    },
+    "secs": 2.7
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 201.3,
+     "p50": 201.8,
+     "p90": 202.3,
+     "p99": 403.5,
+     "max": 403.5,
+     "mean": 207.3
+    },
+    "jitter_ms": 3.17,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.4,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128173.827
+   }
+  },
+  "hh-chi/vless-reality": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 486.7,
+     "p50": 575.6,
+     "p90": 614.9,
+     "p99": 688.9,
+     "max": 688.9,
+     "mean": 568.2
+    },
+    "secs": 2.43
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.168,
+    "ttfb_ms": 487.4,
+    "mbps": 14.37
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.294,
+    "lid": 3,
+    "mbps": 6.48
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 178.3,
+     "p50": 178.9,
+     "p90": 180.0,
+     "p99": 180.0,
+     "max": 180.0,
+     "mean": 178.9
+    },
+    "secs": 2.84
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 203.5,
+     "p50": 203.9,
+     "p90": 257.9,
+     "p99": 619.3,
+     "max": 619.3,
+     "mean": 225.6
+    },
+    "jitter_ms": 5.13,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.62,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128188.008
+   }
+  },
+  "hh-chi/vless-ws-tls": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 620.2,
+     "p50": 714.5,
+     "p90": 893.1,
+     "p99": 907.4,
+     "max": 907.4,
+     "mean": 728.2
+    },
+    "secs": 3.06
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.637,
+    "ttfb_ms": 774.6,
+    "mbps": 10.25
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.422,
+    "lid": 3,
+    "mbps": 5.9
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 160.0,
+     "p50": 160.3,
+     "p90": 161.3,
+     "p99": 161.3,
+     "max": 161.3,
+     "mean": 160.3
+    },
+    "secs": 2.75
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 169.4,
+     "p50": 169.9,
+     "p90": 229.6,
+     "p99": 679.8,
+     "max": 679.8,
+     "mean": 199.0
+    },
+    "jitter_ms": 5.48,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.68,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128203.328
+   }
+  },
+  "hh-chi/vless-xhttp-tls": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 180.8,
+     "p50": 196.1,
+     "p90": 583.3,
+     "p99": 636.6,
+     "max": 636.6,
+     "mean": 288.5
+    },
+    "secs": 1.23
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.075,
+    "ttfb_ms": 213.9,
+    "mbps": 15.61
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 0.783,
+    "lid": 3,
+    "mbps": 10.72
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 211.7,
+     "p50": 212.3,
+     "p90": 214.6,
+     "p99": 214.6,
+     "max": 214.6,
+     "mean": 212.5
+    },
+    "secs": 2.84
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 211.6,
+     "p50": 212.1,
+     "p90": 212.5,
+     "p99": 212.9,
+     "max": 212.9,
+     "mean": 212.1
+    },
+    "jitter_ms": 0.3,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.21,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128215.714
+   }
+  },
+  "hh-chi/trojan-tls": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 478.6,
+     "p50": 538.2,
+     "p90": 679.6,
+     "p99": 684.4,
+     "max": 684.4,
+     "mean": 547.5
+    },
+    "secs": 2.31
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.344,
+    "ttfb_ms": 553.6,
+    "mbps": 12.48
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.386,
+    "lid": 3,
+    "mbps": 6.05
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 169.7,
+     "p50": 170.0,
+     "p90": 170.1,
+     "p99": 170.1,
+     "max": 170.1,
+     "mean": 169.9
+    },
+    "secs": 2.71
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 186.6,
+     "p50": 187.2,
+     "p90": 187.9,
+     "p99": 561.8,
+     "max": 561.8,
+     "mean": 203.1
+    },
+    "jitter_ms": 3.97,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.56,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128229.92
+   }
+  },
+  "hh-chi/ss-aead": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 311.2,
+     "p50": 386.3,
+     "p90": 444.2,
+     "p99": 472.2,
+     "max": 472.2,
+     "mean": 381.2
+    },
+    "secs": 1.59
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.118,
+    "ttfb_ms": 327.7,
+    "mbps": 15.0
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.13,
+    "lid": 3,
+    "mbps": 7.43
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 204.2,
+     "p50": 204.6,
+     "p90": 207.1,
+     "p99": 207.1,
+     "max": 207.1,
+     "mean": 204.8
+    },
+    "secs": 2.96
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 181.8,
+     "p50": 182.5,
+     "p90": 182.8,
+     "p99": 183.1,
+     "max": 183.1,
+     "mean": 182.5
+    },
+    "jitter_ms": 0.22,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.18,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128243.181
+   }
+  },
+  "hh-chi/ss-2022": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 311.0,
+     "p50": 387.9,
+     "p90": 453.5,
+     "p99": 457.2,
+     "max": 457.2,
+     "mean": 381.3
+    },
+    "secs": 1.75
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.308,
+    "ttfb_ms": 406.4,
+    "mbps": 12.82
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.139,
+    "lid": 3,
+    "mbps": 7.37
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 159.6,
+     "p50": 160.1,
+     "p90": 160.5,
+     "p99": 160.5,
+     "max": 160.5,
+     "mean": 160.0
+    },
+    "secs": 2.42
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 182.2,
+     "p50": 182.6,
+     "p90": 182.9,
+     "p99": 186.6,
+     "max": 186.6,
+     "mean": 182.7
+    },
+    "jitter_ms": 0.28,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.18,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128256.252
+   }
+  },
+  "hh-chi/vmess-kcp": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 206.0,
+     "p50": 229.7,
+     "p90": 265.3,
+     "p99": 289.5,
+     "max": 289.5,
+     "mean": 233.4
+    },
+    "secs": 0.99
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.364,
+    "ttfb_ms": 213.9,
+    "mbps": 12.3
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 0.749,
+    "lid": 3,
+    "mbps": 11.2
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 218.8,
+     "p50": 219.6,
+     "p90": 269.9,
+     "p99": 269.9,
+     "max": 269.9,
+     "mean": 239.0
+    },
+    "secs": 3.11
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 193.7,
+     "p50": 244.2,
+     "p90": 294.1,
+     "p99": 295.0,
+     "max": 295.0,
+     "mean": 242.8
+    },
+    "jitter_ms": 34.41,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.25,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128268.929
+   }
+  },
+  "hh-chi/vless-grpc-tls": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 199.9,
+     "p50": 201.7,
+     "p90": 791.5,
+     "p99": 793.0,
+     "max": 793.0,
+     "mean": 348.8
+    },
+    "secs": 1.4
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.901,
+    "ttfb_ms": 198.8,
+    "mbps": 8.82
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.391,
+    "lid": 3,
+    "mbps": 6.03
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 196.2,
+     "p50": 196.9,
+     "p90": 197.6,
+     "p99": 197.6,
+     "max": 197.6,
+     "mean": 196.8
+    },
+    "secs": 2.67
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 196.1,
+     "p50": 196.7,
+     "p90": 197.1,
+     "p99": 201.4,
+     "max": 201.4,
+     "mean": 196.8
+    },
+    "jitter_ms": 0.45,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.2,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128282.746
+   }
+  },
+  "hh-chi/vless-hu-tls": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 665.4,
+     "p50": 841.4,
+     "p90": 986.3,
+     "p99": 1058.6,
+     "max": 1058.6,
+     "mean": 817.6
+    },
+    "secs": 3.77
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.529,
+    "ttfb_ms": 730.5,
+    "mbps": 10.97
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.481,
+    "lid": 3,
+    "mbps": 5.66
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 177.6,
+     "p50": 178.4,
+     "p90": 178.9,
+     "p99": 178.9,
+     "max": 178.9,
+     "mean": 178.2
+    },
+    "secs": 3.06
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 197.5,
+     "p50": 198.1,
+     "p90": 415.4,
+     "p99": 866.1,
+     "max": 866.1,
+     "mean": 248.6
+    },
+    "jitter_ms": 7.41,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.87,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128299.049
+   }
+  },
+  "hh-chi/hy2": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 340.9,
+     "p50": 342.6,
+     "p90": 1119.1,
+     "p99": 1119.9,
+     "max": 1119.9,
+     "mean": 560.4
+    },
+    "secs": 2.32
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.494,
+    "ttfb_ms": 326.2,
+    "mbps": 11.23
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.261,
+    "lid": 3,
+    "mbps": 6.65
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 170.1,
+     "p50": 170.3,
+     "p90": 170.7,
+     "p99": 170.7,
+     "max": 170.7,
+     "mean": 170.3
+    },
+    "secs": 2.55
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 169.3,
+     "p50": 169.7,
+     "p90": 170.1,
+     "p99": 173.0,
+     "max": 173.0,
+     "mean": 169.8
+    },
+    "jitter_ms": 0.35,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.17,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128313.125
+   }
+  },
+  "hh-chi/hy2-obfs": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 309.1,
+     "p50": 310.8,
+     "p90": 312.1,
+     "p99": 312.5,
+     "max": 312.5,
+     "mean": 310.6
+    },
+    "secs": 1.24
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.856,
+    "ttfb_ms": 309.4,
+    "mbps": 9.04
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.096,
+    "lid": 3,
+    "mbps": 7.65
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 154.0,
+     "p50": 154.6,
+     "p90": 155.0,
+     "p99": 155.0,
+     "max": 155.0,
+     "mean": 154.6
+    },
+    "secs": 2.36
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 153.5,
+     "p50": 154.0,
+     "p90": 154.3,
+     "p99": 155.5,
+     "max": 155.5,
+     "mean": 154.0
+    },
+    "jitter_ms": 0.23,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.16,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128326.134
+   }
+  },
+  "hh-chi/wg": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 337.2,
+     "p50": 337.8,
+     "p90": 507.2,
+     "p99": 507.3,
+     "max": 507.3,
+     "mean": 380.0
+    },
+    "secs": 1.52
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 7.598,
+    "ttfb_ms": 322.7,
+    "mbps": 2.21
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.444,
+    "lid": 3,
+    "mbps": 5.81
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 168.6,
+     "p50": 169.1,
+     "p90": 169.5,
+     "p99": 169.5,
+     "max": 169.5,
+     "mean": 169.1
+    },
+    "secs": 2.53
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 168.4,
+     "p50": 168.8,
+     "p90": 169.2,
+     "p99": 170.4,
+     "max": 170.4,
+     "mean": 168.9
+    },
+    "jitter_ms": 0.25,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.17,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128345.685
+   }
+  },
+  "hh-chi/tgt": {
+   "id": {
+    "n": 20,
+    "ok": 20,
+    "fail": 0,
+    "lids": {
+     "3": 20
+    },
+    "errs": {},
+    "lat_ms": {
+     "n": 20,
+     "min": 308.5,
+     "p50": 375.4,
+     "p90": 442.2,
+     "p99": 469.9,
+     "max": 469.9,
+     "mean": 376.7
+    },
+    "secs": 1.65
+   },
+   "dl": {
+    "ok": true,
+    "bytes": 2097152,
+    "want": 2097152,
+    "bad_off": null,
+    "err": null,
+    "secs": 1.111,
+    "ttfb_ms": 319.0,
+    "mbps": 15.09
+   },
+   "ul": {
+    "ok": true,
+    "sent": 1048576,
+    "reply": [
+     "OK",
+     "1048576",
+     "-1",
+     "3"
+    ],
+    "err": null,
+    "secs": 1.106,
+    "lid": 3,
+    "mbps": 7.58
+   },
+   "echo": {
+    "ok": true,
+    "done": 10,
+    "lid": 3,
+    "err": null,
+    "rtt_ms": {
+     "n": 10,
+     "min": 188.1,
+     "p50": 188.2,
+     "p90": 188.6,
+     "p99": 188.6,
+     "max": 188.6,
+     "mean": 188.3
+    },
+    "secs": 2.76
+   },
+   "udp": {
+    "ok": true,
+    "sent": 100,
+    "recv": 100,
+    "loss_pct": 0.0,
+    "rtt_ms": {
+     "n": 100,
+     "min": 168.7,
+     "p50": 169.1,
+     "p90": 169.3,
+     "p99": 169.5,
+     "max": 169.5,
+     "mean": 169.1
+    },
+    "jitter_ms": 0.13,
+    "late": 0,
+    "dup": 0,
+    "foreign": 0,
+    "damaged": 0,
+    "lids": {
+     "3": 100
+    },
+    "lid_changes": [
+     [
+      0.17,
+      null,
+      3
+     ]
+    ],
+    "outages": [],
+    "reopens": 0,
+    "err": null,
+    "t0": 1795128358.771
+   }
+  }
+ }
+}

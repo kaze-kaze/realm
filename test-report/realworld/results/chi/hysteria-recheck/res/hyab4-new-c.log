@@ -1,0 +1,3 @@
+2026-11-20T02:23:50Z	[34mINFO[0m	client mode
+2026-11-20T02:23:50Z	[34mINFO[0m	connected to server	{"addr": "198.51.100.13:26025", "udpEnabled": true, "tx": 0, "ech": false, "count": 1}
+2026-11-20T02:23:50Z	[34mINFO[0m	TCP forwarding listening	{"addr": "127.0.0.1:15205", "remote": "127.0.0.1:31060"}

@@ -494,4 +494,53 @@ mod balanced {
         }
         assert_eq!(hits(), (4, 10));
     }
+
+    /// Sending for one client fails: the datagrams of other clients that were
+    /// received along with its own are still forwarded.
+    #[tokio::test]
+    async fn udp_failing_client_keeps_the_others() {
+        let _ = env_logger::try_init();
+        let relay = addr("127.0.0.1:31090");
+        let hits = Arc::<AtomicUsize>::default();
+        tokio::spawn(udp_echo("127.0.0.1:31091", Default::default(), hits.clone()));
+        // nothing can be sent to port 0. One failed probe round does not take a
+        // peer down, and there is no second one within this test.
+        tokio::spawn(run_udp(balanced(
+            "127.0.0.1:31090",
+            &["127.0.0.1:31091", "127.0.0.1:0"],
+            Strategy::RoundRobin,
+            opts(60_000, 150),
+        )));
+        sleep(ms(300)).await;
+
+        // two clients, one per peer
+        let (mut good, mut bad) = (None, None);
+        for _ in 0..2 {
+            let c = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+            c.connect(relay).await.unwrap();
+            c.send(b"data:0").await.unwrap();
+            match udp_recv(&c, 300).await {
+                Some(_) => good = Some(c),
+                None => bad = Some(c),
+            }
+        }
+        let (good, bad) = (
+            good.expect("no client on the echo peer"),
+            bad.expect("no client on port 0"),
+        );
+
+        // both datagrams are queued before the relay reads, the failing one first
+        for i in 0..100 {
+            let data = format!("data:{}", i);
+            bad.send(data.as_bytes()).await.unwrap();
+            good.send(data.as_bytes()).await.unwrap();
+            assert_eq!(
+                udp_recv(&good, 500).await.as_deref(),
+                Some(data.as_bytes()),
+                "round {}",
+                i
+            );
+        }
+        assert!(hits.load(SeqCst) > 100);
+    }
 }

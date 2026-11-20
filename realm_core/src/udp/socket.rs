@@ -86,6 +86,8 @@ pub fn associate(raddr: &SocketAddr, conn_opts: &ConnectOpts) -> Result<UdpSocke
 pub(crate) mod no_fragment {
     use std::mem::size_of;
     use std::os::unix::io::AsRawFd;
+    #[cfg(feature = "batched-udp")]
+    use std::sync::Mutex;
     use libc::{c_int, c_void, socklen_t};
 
     fn sockopt(fd: c_int, level: c_int, name: c_int, val: c_int) -> bool {
@@ -120,8 +122,25 @@ pub(crate) mod no_fragment {
         }
     }
 
+    /// Run `send` with fragmenting allowed on `sock`, then turn [`set`] back on.
+    ///
+    /// The option belongs to the socket, and the listening socket is shared by the
+    /// tasks of all associations. Two of them lifting it at the same moment would
+    /// each find it as the other one just left it: one sends while the option is
+    /// already back on and its datagram is refused again. So this is done by one
+    /// task at a time, and `send` must not block or yield.
+    #[cfg(feature = "batched-udp")]
+    pub fn lifted<S: AsRawFd, T>(sock: &S, send: impl FnOnce() -> T) -> T {
+        static LIFTING: Mutex<()> = Mutex::new(());
+        let _one_at_a_time = LIFTING.lock().unwrap_or_else(|e| e.into_inner());
+        set(sock, false);
+        let res = send();
+        set(sock, true);
+        res
+    }
+
     /// Whether [`set`] is in effect on this socket.
-    #[cfg_attr(not(feature = "batched-udp"), allow(dead_code))]
+    #[cfg(test)]
     pub fn is_set<S: AsRawFd>(sock: &S) -> bool {
         let fd = sock.as_raw_fd();
         let get = |level, name| {

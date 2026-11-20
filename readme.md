@@ -285,6 +285,7 @@ remote = "www.google.com:443"
 │   ├── ipv6_only
 │   ├── tcp_timeout
 │   ├── udp_timeout
+│   ├── udp_no_fragment
 │   ├── tcp_keepalive
 │   ├── tcp_keepalive_probe
 │   ├── send_mptcp
@@ -625,6 +626,18 @@ Terminate udp association after `timeout`.
 The timeout value must be properly configured in case of memory leak. Do not use a large `timeout`!
 
 default: 30
+
+#### network.udp_no_fragment: bool
+
+Linux only. Forward UDP the way a router does: a datagram that fits one frame leaves as don't-fragment and is never fragmented on this host.
+
+Without it, once the kernel learns that the path to a destination is narrower than the interface, it fragments large datagrams itself. A QUIC sender (Hysteria, TUIC, HTTP/3) that probes the path MTU through the relay is then told its large packets arrive, keeps using them, and every one of them reaches the client in two fragments. Many networks carry fragments poorly or not at all, so transfers towards clients behind a smaller MTU (mobile networks, tunnels) slow down or stall. With this on, a datagram too large for the path is lost like behind any router, and the sender settles on a size that fits.
+
+Turn it on for QUIC based services. Leave it off for WireGuard endpoints: WireGuard does not look for the path MTU and depends on fragmentation when its MTU is larger than the path allows (better: lower its MTU).
+
+Datagrams that need more than one frame arrived in fragments and are still fragmented.
+
+default: false
 
 #### network.tcp_keepalive: unsigned int
 

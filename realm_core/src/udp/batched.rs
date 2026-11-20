@@ -194,6 +194,7 @@ mod linux {
     use realm_io::AsyncRawIO;
     use realm_io::mmsg::{MmsgHdr, MmsgHdrMut};
     use realm_io::mmsg::send_mul_pkts;
+    use crate::udp::socket::no_fragment;
 
     thread_local! {
         /// Spill area of a batch: `SPILL_SIZE` bytes behind each of its slots, for the
@@ -290,7 +291,18 @@ mod linux {
 
         let mut cursor = 0;
         while cursor < pkt_amt {
-            let n = send_mul_pkts(sock, &mut msgs[cursor..pkt_amt]).await?;
+            let n = match send_mul_pkts(sock, &mut msgs[cursor..pkt_amt]).await {
+                Ok(n) => n,
+                // `udp_no_fragment` refuses a datagram that needs more than one frame.
+                // It came to us in fragments, so send this one the same way.
+                Err(e) if e.raw_os_error() == Some(libc::EMSGSIZE) && no_fragment::is_set(sock) => {
+                    no_fragment::set(sock, false);
+                    let res = send_mul_pkts(sock, &mut msgs[cursor..cursor + 1]).await;
+                    no_fragment::set(sock, true);
+                    res?
+                }
+                Err(e) => return Err(e),
+            };
             cursor += n;
         }
         Ok(())

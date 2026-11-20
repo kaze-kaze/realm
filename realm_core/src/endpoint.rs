@@ -44,6 +44,9 @@ pub struct ConnectOpts {
     pub associate_timeout: usize,
     pub tcp_keepalive: usize,
     pub tcp_keepalive_probe: usize,
+    /// Udp: forward a datagram that fits one frame as don't-fragment and never
+    /// fragment it on this host, see [`crate::udp`]. Linux only.
+    pub udp_no_fragment: bool,
     pub bind_address: Option<SocketAddr>,
     pub bind_interface: Option<String>,
 
@@ -124,6 +127,7 @@ impl Display for ConnectOpts {
             associate_timeout,
             tcp_keepalive,
             tcp_keepalive_probe,
+            udp_no_fragment,
             bind_address,
             bind_interface,
 
@@ -169,6 +173,10 @@ impl Display for ConnectOpts {
             "tcp-keepalive={}s[{}] connect-timeout={}s, associate-timeout={}s; ",
             tcp_keepalive, tcp_keepalive_probe, connect_timeout, associate_timeout
         )?;
+
+        if *udp_no_fragment {
+            write!(f, "udp-no-fragment; ")?;
+        }
 
         #[cfg(feature = "transport")]
         if let Some((ac, cc)) = transport {

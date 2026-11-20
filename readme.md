@@ -377,7 +377,7 @@ A background task probes every peer per protocol. Traffic only moves on probe re
 
 Behavior:
 
-- TCP: new connections dial the active peer. If that dial fails and another peer is ready, the same client connection retries once on it before any data is relayed. Both attempts share `tcp_timeout`, the first one gets half of it when a retry is possible. Established connections are never moved. On Linux, a connection whose peer stops acknowledging (or stops reading while data is pending) is closed after `tcp_keepalive` x (`tcp_keepalive_probe` + 1) seconds (60 by default), idle or not, so its client can reconnect to the active peer. Without this, a connection with data in flight to a dead peer hangs for about 15 minutes. `tcp_keepalive = 0` turns both off.
+- TCP: new connections dial the active peer. If that dial fails, the same client connection retries on other ready peers before any data is relayed: up to three dials in all, so two peers failing at the same moment cost no connection while a third is ready. All dials share `tcp_timeout`, and one that can be retried elsewhere gets half of what is left of it. Established connections are never moved. On Linux, a connection whose peer stops acknowledging (or stops reading while data is pending) is closed after `tcp_keepalive` x (`tcp_keepalive_probe` + 1) seconds (60 by default), idle or not, so its client can reconnect to the active peer. Without this, a connection with data in flight to a dead peer hangs for about 15 minutes. `tcp_keepalive = 0` turns both off.
 - UDP: new associations use the active peer. An existing association keeps its peer until that peer is down, then its next datagram goes to the active peer through the same upstream socket (client and relay ports stay the same). After such a move, late replies from the old peer are dropped.
 
 Probes (from this host, with the same `interface` and `through` ip; a port in `through` is never used by probes):
@@ -422,8 +422,8 @@ tcp_expect = "HTTP/1.1 204"
 
 With both `balance` and `failover` on an endpoint, the peers are not primary and backups: the balancer spreads new TCP connections and new UDP associations over them, and the probes take dead ones out.
 
-- A new session goes to the peer the balancer picks. If that peer is down, it goes to the next peer after it that is alive. One failed probe does not move anything, so `iphash` keeps a client on its peer.
-- TCP: if the dial fails and another peer is ready, the same client connection retries once on it, as above.
+- A new session goes to the peer the balancer picks. If that peer is down, the others share what it would get, in the proportions of their weights: `roundrobin` moves on to its next peer, and with `iphash` each client of the dead peer has its own fixed substitute, so it still stays on one peer and the clients of the other peers are not moved. One failed probe does not move anything.
+- TCP: if the dial fails, the same client connection retries on the next ready peers, as above.
 - UDP: associations are balanced too (with `balance` alone, UDP only uses `remote`). An association keeps its peer until that peer is down, then moves to another one that is alive.
 - A peer that comes back takes new sessions again after `rise` successes. `hold` is not used.
 - `balance` needs one weight per peer.

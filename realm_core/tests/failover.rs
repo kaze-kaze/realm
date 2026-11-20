@@ -128,6 +128,32 @@ async fn tcp_refused_primary_retries_backup_per_connection() {
     assert_eq!(tcp_ask(relay).await.as_deref(), Some(&b"OK-B"[..]));
 }
 
+/// Two peers that pass their probes refuse the connection: the third one takes it, on
+/// the same client connection.
+#[tokio::test]
+async fn tcp_two_refusing_peers_reach_the_third() {
+    let _ = env_logger::try_init();
+    let relay = "127.0.0.1:31070";
+    // the probes go to a port of their own, which answers for all three peers
+    tokio::spawn(tcp_server("127.0.0.1:31074", b"OK", Default::default()));
+    // 31071 and 31072 have no listener
+    tokio::spawn(tcp_server("127.0.0.1:31073", b"OK-C", Default::default()));
+    let opts = FailoverOpts {
+        probe: vec![addr("127.0.0.1:31074"); 3],
+        ..opts(100, 150)
+    };
+    tokio::spawn(run_tcp(endpoint(
+        relay,
+        &["127.0.0.1:31071", "127.0.0.1:31072", "127.0.0.1:31073"],
+        opts,
+    )));
+    sleep(ms(400)).await;
+
+    for _ in 0..5 {
+        assert_eq!(tcp_ask(relay).await.as_deref(), Some(&b"OK-C"[..]));
+    }
+}
+
 #[tokio::test]
 async fn tcp_silent_primary_switch_and_failback() {
     let _ = env_logger::try_init();
@@ -364,17 +390,53 @@ mod balanced {
         // all alive: an even share
         assert_eq!(count(&ask(30).await), (10, 10, 10));
 
-        // B stops answering: once it is down, every connection lands on A or C
+        // B stops answering: once it is down, A and C share what it would get
         mutes[1].store(true, SeqCst);
         sleep(ms(800)).await;
-        let (a, b, c) = count(&ask(30).await);
-        assert_eq!((a + c, b), (30, 0), "a={} b={} c={}", a, b, c);
-        assert!(a >= 10 && c >= 10, "a={} c={}", a, c);
+        assert_eq!(count(&ask(30).await), (15, 0, 15));
 
         // B is back: it gets its share again
         mutes[1].store(false, SeqCst);
         sleep(ms(800)).await;
         assert_eq!(count(&ask(30).await), (10, 10, 10));
+    }
+
+    /// Peers that pass their probes but refuse connections do not cost a connection:
+    /// the dial moves on around the ring, past two of them.
+    #[tokio::test]
+    async fn tcp_balance_retries_past_two_refusing_peers() {
+        let _ = env_logger::try_init();
+        let relay = "127.0.0.1:31080";
+        tokio::spawn(tcp_server("127.0.0.1:31085", b"OK", Default::default()));
+        // 31081 and 31082 have no listener
+        tokio::spawn(tcp_server("127.0.0.1:31083", b"OK-C", Default::default()));
+        tokio::spawn(tcp_server("127.0.0.1:31084", b"OK-D", Default::default()));
+        let opts = FailoverOpts {
+            probe: vec![addr("127.0.0.1:31085"); 4],
+            ..opts(100, 150)
+        };
+        tokio::spawn(run_tcp(balanced(
+            relay,
+            &[
+                "127.0.0.1:31081",
+                "127.0.0.1:31082",
+                "127.0.0.1:31083",
+                "127.0.0.1:31084",
+            ],
+            Strategy::RoundRobin,
+            opts,
+        )));
+        sleep(ms(400)).await;
+
+        let mut served = (0, 0);
+        for _ in 0..20 {
+            match tcp_ask(relay).await.as_deref() {
+                Some(b"OK-C") => served.0 += 1,
+                Some(b"OK-D") => served.1 += 1,
+                other => panic!("unexpected reply {:?}", other),
+            }
+        }
+        assert!(served.0 > 0 && served.1 > 0, "{:?}", served);
     }
 
     /// Udp associations are balanced too, stay on their peer, and move when it goes down.

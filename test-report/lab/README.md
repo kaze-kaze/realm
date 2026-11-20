@@ -31,6 +31,7 @@ docker exec realm-test bash -c 'cd /work/fot && cargo +stable build --release --
 | --- | --- | --- |
 | `scen_fo.py [前缀..]` | 故障转移场景 FO-01 ~ FO-23 | 约 13 分钟 |
 | `scen_lb.py` | 负载均衡回归 LB-01 ~ LB-08（原版对新版） | 约 3 分钟 |
+| `scen_multi.py [前缀..]` | 3 台以上：优先级链、备机先挂、两台同时挂、带健康检查的轮询 / IP 哈希、8 台满配（MN-01 ~ MN-06） | 约 4 分钟 |
 | `extreme.py [前缀..]` | 极端场景 EX-01 ~ EX-09 | 约 10 分钟 |
 | `scen_fp.py 秒数 每档端点数 ["额外配置"] [输出名]` | 劣化链路下的误判统计 | 自定 |
 | `soak.py 秒数` | 混合负载 + 随机故障的长稳测试 | 自定 |

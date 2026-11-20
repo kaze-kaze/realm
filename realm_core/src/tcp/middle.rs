@@ -46,7 +46,7 @@ pub async fn connect_and_relay(
             #[cfg(feature = "hook")]
             hook::pre_connect_hook(&mut local, raddr.as_ref(), extra_raddrs.as_ref()).await?;
 
-            let want = fo.balanced_peer(conn_opts.as_ref(), &local.peer_addr()?.ip());
+            let want = fo.balanced_peer(conn_opts.as_ref(), &local.peer_addr()?.ip(), fo.snapshot());
             let (remote, idx) = socket::connect_failover(fo, conn_opts.as_ref(), want).await?;
             log::info!("[tcp]{} => peer#{} {}", local.peer_addr()?, idx, fo.peer(idx));
             remote

@@ -191,10 +191,9 @@ pub async fn associate_and_relay(
                 // peer for a new association: the active one, or the balancer's choice
                 let (peer, raddr) = match (route, fixed) {
                     (Some((fo, snap)), _) => {
-                        let peer = match fo.balanced_peer(&conn_opts, &laddr.ip()) {
-                            Some(want) => fo.pick(snap, want),
-                            None => snap.active(),
-                        };
+                        let peer = fo
+                            .balanced_peer(&conn_opts, &laddr.ip(), snap)
+                            .unwrap_or_else(|| snap.active());
                         (peer, fo.peer(peer))
                     }
                     (None, Some(raddr)) => (0, raddr),
@@ -216,8 +215,8 @@ pub async fn associate_and_relay(
                     let next = if snap.is_up(cur) {
                         cur
                     } else {
-                        match fo.balanced_peer(&conn_opts, &laddr.ip()) {
-                            Some(want) => fo.repick_balanced(snap, cur, want),
+                        match fo.balanced_peer(&conn_opts, &laddr.ip(), snap) {
+                            Some(next) => Failover::repick_balanced(snap, cur, next),
                             None => Failover::repick(snap, cur),
                         }
                     };

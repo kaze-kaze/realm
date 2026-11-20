@@ -108,18 +108,21 @@ def lb05():
 
 
 def lb06():
-    conf = lb_conf("roundrobin: 1, 1") .replace("[network]", "[network]\ntcp_timeout = 4") + "[endpoints.failover]\n"
+    """balance and failover on one endpoint: rejected by v3.0.0, allowed since v3.1.0"""
+    conf = lb_conf("roundrobin: 1, 1").replace("[network]", "[network]\ntcp_timeout = 4") + "[endpoints.failover]\n"
     conf = conf.replace(f', "{ip4("x")}:5000"', "")
-    path = f"{OUT}/realm-lb06.toml"
-    open(path, "w").write(conf)
-    p = Proc("r", f"{NEW} -c {path}", "realm-new")
-    time.sleep(1)
-    alive = p.alive()
-    text = p.text()
-    p.kill()
-    msg = [l for l in text.split("\n") if "mutually exclusive" in l]
-    record("LB-06", "同一 endpoint 同时配置 balance 和 failover", "PASS" if (not alive and msg) else "FAIL",
-           "启动时拒绝并给出明确报错，而不是悄悄选一个", f"进程存活 {alive}；报错：{msg[0].strip() if msg else text[-200:]}")
+    back, r = up(conf, NEW, start=("a", "b"))
+    time.sleep(2)
+    res = tool("c", f"churn target={R} conns=8 rate=200 secs=3 timeout=3000")
+    alive = r.alive()
+    r.kill()
+    for b in back.values():
+        b.kill()
+    d = dist(res)
+    ok = alive and res["total_err"] == 0 and set(d) == {"A", "B"} and abs(d["A"] - d["B"]) <= 2
+    record("LB-06", "同一 endpoint 同时配置 balance 和 failover", "PASS" if ok else "FAIL",
+           "v3.1.0 起允许同时配置：正常启动，新连接在各节点间均分",
+           f"进程存活 {alive}；失败 {res['total_err']}/{res['sent']}；分布 {d}")
 
 
 def lb07():

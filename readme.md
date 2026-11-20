@@ -349,9 +349,13 @@ Where `remote` is used as default backend server, and `extra_remotes` are used a
 
 Available algorithms (provided by [realm_lb](./realm_lb/)):
 
-- iphash
+- iphash: a client address always gets the same peer, and the peers get client addresses in the proportions of their weights. An IPv4 client counts as the same client on a dual-stack listener (`::ffff:a.b.c.d`). Adding a peer at the end of the list, or changing the weight of one, only moves clients to or from that peer.
 
-- roundrobin
+- roundrobin: connections take turns, in the proportions of the weights.
+
+Builds without the `balance` feature (the slim ones) ignore this option and say so in a warning at startup.
+
+`iphash` was reworked after v3.1.1: before, weights were not followed (`2, 1, 1` gave about 72% / 20% / 8%) and equal weights were off by several points. Upgrading from v3.1.1 or earlier maps the clients of an `iphash` endpoint to peers anew, once. Established connections are not touched.
 
 Example:
 

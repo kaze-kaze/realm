@@ -76,10 +76,12 @@ def lb03():
     o = both(lb_conf("iphash: 2, 1, 1"), f)
     (mo, so), (mn, sn) = o["orig"], o["new"]
     cnt = lambda m: {k: list(m.values()).count(k) for k in "ABC"}
-    ok = so and sn and mo == mn
+    # v3.1.1 之后 IP 哈希重做过：映射与原版不同是有意的，改为检查新版按权重分（40 个 IP 应为 20 / 10 / 10）
+    near = all(abs(cnt(mn)[k] - w) <= 5 for k, w in zip("ABC", (20, 10, 10)))
+    ok = so and sn and near
     record("LB-03", "IP 哈希 2:1:1（40 个来源 IP）", "PASS" if ok else "FAIL",
-           "同一来源 IP 始终落到同一后端；新旧版的映射逐个 IP 完全相同",
-           f"原版：粘性 {so}，分布 {cnt(mo)}；新版：粘性 {sn}，分布 {cnt(mn)}；映射相同 {mo == mn}")
+           "同一来源 IP 始终落到同一后端；新版按权重分（20 / 10 / 10 上下 5 个以内），原版不按权重",
+           f"原版：粘性 {so}，分布 {cnt(mo)}；新版：粘性 {sn}，分布 {cnt(mn)}")
 
 
 def lb04():

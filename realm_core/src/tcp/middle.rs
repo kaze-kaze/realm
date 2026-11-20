@@ -40,12 +40,14 @@ pub async fn connect_and_relay(
     } = conn_opts.as_ref();
 
     let mut remote = match failover.as_ref() {
-        // failover: the hook may still reject, peer selection belongs to failover.
+        // failover: the hook may still reject, peer selection belongs to failover,
+        // which follows the balancer among the peers that are alive.
         Some(fo) => {
             #[cfg(feature = "hook")]
             hook::pre_connect_hook(&mut local, raddr.as_ref(), extra_raddrs.as_ref()).await?;
 
-            let (remote, idx) = socket::connect_failover(fo, conn_opts.as_ref()).await?;
+            let want = fo.balanced_peer(conn_opts.as_ref(), &local.peer_addr()?.ip());
+            let (remote, idx) = socket::connect_failover(fo, conn_opts.as_ref(), want).await?;
             log::info!("[tcp]{} => peer#{} {}", local.peer_addr()?, idx, fo.peer(idx));
             remote
         }

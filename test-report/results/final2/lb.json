@@ -1,0 +1,66 @@
+[
+ {
+  "id": "LB-01",
+  "title": "轮询 1:1:1",
+  "status": "PASS",
+  "expect": "三个后端均分（差值 ≤1），新旧版一致",
+  "observed": "原版 {'A': 947, 'B': 947, 'C': 947}；新版 {'A': 982, 'B': 982, 'C': 981}",
+  "detail": {}
+ },
+ {
+  "id": "LB-02",
+  "title": "加权轮询 4:2:1（16 并发）",
+  "status": "PASS",
+  "expect": "按权重 4:2:1 分配，新旧版一致",
+  "observed": "原版 {'A': 4570, 'B': 2285, 'C': 1142} → [4.0, 2.0, 1.0]；新版 {'A': 4571, 'B': 2286, 'C': 1143} → [4.0, 2.0, 1.0]",
+  "detail": {}
+ },
+ {
+  "id": "LB-03",
+  "title": "IP 哈希 2:1:1（40 个来源 IP）",
+  "status": "PASS",
+  "expect": "同一来源 IP 始终落到同一后端；新旧版的映射逐个 IP 完全相同",
+  "observed": "原版：粘性 True，分布 {'A': 30, 'B': 6, 'C': 4}；新版：粘性 True，分布 {'A': 30, 'B': 6, 'C': 4}；映射相同 True",
+  "detail": {}
+ },
+ {
+  "id": "LB-04",
+  "title": "轮询时一个后端挂掉",
+  "status": "INFO",
+  "expect": "上游原有行为：balance 没有健康检查，分到死节点的 1/3 连接直接失败；新旧版一致（本次未改动）",
+  "observed": "原版 成功 {'A': 596, 'C': 596} 失败 {'reset': 587, 'eof': 9}（33.3%）；新版 成功 {'A': 600, 'C': 600} 失败 {'reset': 600}（33.3%）",
+  "detail": {}
+ },
+ {
+  "id": "LB-05",
+  "title": "balance 模式下的 UDP",
+  "status": "PASS",
+  "expect": "上游原有行为：UDP 不参与负载均衡，只发往 remote；新旧版一致",
+  "observed": "原版 {'A': 1520}（1520/1520）；新版 {'A': 1520}（1520/1520）",
+  "detail": {}
+ },
+ {
+  "id": "LB-06",
+  "title": "同一 endpoint 同时配置 balance 和 failover",
+  "status": "PASS",
+  "expect": "启动时拒绝并给出明确报错，而不是悄悄选一个",
+  "observed": "进程存活 False；报错：endpoint 0.0.0.0:6000: failover and balance are mutually exclusive",
+  "detail": {}
+ },
+ {
+  "id": "LB-07",
+  "title": "不配 balance / failover（仅有 extra_remotes）",
+  "status": "PASS",
+  "expect": "与原版一致：全部走 remote",
+  "observed": "原版 {'A': 1000}；新版 {'A': 1000}",
+  "detail": {}
+ },
+ {
+  "id": "LB-08",
+  "title": "轮询模式短连接压测（veth 拓扑，64 并发）",
+  "status": "PASS",
+  "expect": "新版在 balance 路径上的速率不低于原版的 90%，0 失败",
+  "observed": "原版 53246 连接/秒（失败 0，p99 3327µs）；新版 55788 连接/秒（失败 0，p99 2559µs）",
+  "detail": {}
+ }
+]

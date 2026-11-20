@@ -1,0 +1,6 @@
+# Throwaway credentials of a test run, created by mksecrets.py. Never commit them.
+secrets.json
+pki/
+# Real addresses of the test hosts and clients.
+hosts.local.json
+peers.local

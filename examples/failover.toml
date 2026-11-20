@@ -21,6 +21,8 @@ tcp_send = "GET / HTTP/1.0\r\n\r\n"
 tcp_expect = "HTTP/1.1 204"
 # udp: probe datagrams are this prefix plus a nonce, and must be echoed back
 udp_send = "realm-hc:"
+# udp_probe = "quic" probes a QUIC service (Hysteria 2, TUIC) on its own port instead,
+# without an echo responder: leave `probe` out or point it at the service ports
 interval = 3
 timeout = 1.5
 fall = 3

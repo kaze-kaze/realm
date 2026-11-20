@@ -1,0 +1,72 @@
+{
+ "udp_up_1400": {
+  "musl": {
+   "median_mbps": 870,
+   "min": 832,
+   "max": 931,
+   "n": 5
+  },
+  "gnu": {
+   "median_mbps": 1067,
+   "min": 1026,
+   "max": 1167,
+   "n": 5
+  }
+ },
+ "udp_down_1400": {
+  "musl": {
+   "median_mbps": 913,
+   "min": 837,
+   "max": 960,
+   "n": 5
+  },
+  "gnu": {
+   "median_mbps": 1024,
+   "min": 979,
+   "max": 1108,
+   "n": 5
+  }
+ },
+ "udp_up_200": {
+  "musl": {
+   "median_mbps": 128,
+   "min": 121,
+   "max": 135,
+   "n": 5
+  },
+  "gnu": {
+   "median_mbps": 148,
+   "min": 144,
+   "max": 158,
+   "n": 5
+  }
+ },
+ "tcp_up": {
+  "musl": {
+   "median_mbps": 18819,
+   "min": 17816,
+   "max": 20232,
+   "n": 5
+  },
+  "gnu": {
+   "median_mbps": 19031,
+   "min": 17045,
+   "max": 19645,
+   "n": 5
+  }
+ },
+ "tcp_down": {
+  "musl": {
+   "median_mbps": 18562,
+   "min": 17404,
+   "max": 19510,
+   "n": 5
+  },
+  "gnu": {
+   "median_mbps": 19203,
+   "min": 17965,
+   "max": 20132,
+   "n": 5
+  }
+ }
+}

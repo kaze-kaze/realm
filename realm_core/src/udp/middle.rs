@@ -27,16 +27,19 @@ mod registry {
         groups: Vec<Range>,
         cursor: u16,
         max: usize,
+        /// Some slot holds a large datagram, see [`Packet::release`].
+        large: bool,
     }
 
     impl Registry {
         pub fn new(npkts: usize) -> Self {
             debug_assert!(npkts <= batched::MAX_PACKETS);
             Self {
-                pkts: vec![Packet::new(); npkts],
+                pkts: (0..npkts).map(|_| Packet::new()).collect(),
                 groups: Vec::with_capacity(npkts),
                 cursor: 0u16,
                 max: npkts,
+                large: false,
             }
         }
 
@@ -46,10 +49,11 @@ mod registry {
         pub fn growing(max: usize) -> Self {
             debug_assert!(max <= batched::MAX_PACKETS);
             Self {
-                pkts: vec![Packet::new(); MIN_PACKETS.min(max)],
+                pkts: (0..MIN_PACKETS.min(max)).map(|_| Packet::new()).collect(),
                 groups: Vec::new(),
                 cursor: 0u16,
                 max,
+                large: false,
             }
         }
 
@@ -58,10 +62,19 @@ mod registry {
             // read more per syscall from now on
             let len = self.pkts.len();
             if self.cursor as usize == len && len < self.max {
-                self.pkts.resize((len * 2).min(self.max), Packet::new());
+                self.pkts.resize_with((len * 2).min(self.max), Packet::new);
             }
+
+            // the previous batch has been forwarded: do not sit on its large
+            // datagrams while waiting for the next one
+            if self.large {
+                self.pkts.iter_mut().for_each(Packet::release);
+                self.large = false;
+            }
+
             let n = batched::recv_some(sock, &mut self.pkts).await?;
             self.cursor = n as u16;
+            self.large = self.pkts[..n].iter().any(Packet::is_large);
             Ok(())
         }
 
@@ -172,16 +185,21 @@ pub async fn associate_and_relay(
 
         registry.group_by_addr();
         for pkts in registry.group_iter() {
-            let laddr = pkts[0].addr.clone().into();
-
-            // peer for a new association
-            let (peer, raddr) = match (route, fixed) {
-                (Some((fo, snap)), _) => (snap.active(), fo.peer(snap.active())),
-                (None, Some(raddr)) => (0, raddr),
-                (None, None) => unreachable!(),
-            };
+            let laddr: SocketAddr = pkts[0].addr.clone().into();
 
             let assoc = sockmap.find_or_insert(&laddr, || {
+                // peer for a new association: the active one, or the balancer's choice
+                let (peer, raddr) = match (route, fixed) {
+                    (Some((fo, snap)), _) => {
+                        let peer = match fo.balanced_peer(&conn_opts, &laddr.ip()) {
+                            Some(want) => fo.pick(snap, want),
+                            None => snap.active(),
+                        };
+                        (peer, fo.peer(peer))
+                    }
+                    (None, Some(raddr)) => (0, raddr),
+                    (None, None) => unreachable!(),
+                };
                 let assoc = Arc::new(Assoc::new(socket::associate(&raddr, &conn_opts)?, peer));
                 tokio::spawn(send_back(lis, laddr, assoc.clone(), conn_opts, sockmap, failover));
                 match route {
@@ -192,10 +210,17 @@ pub async fn associate_and_relay(
             })?;
 
             // an existing association sticks to its peer until that peer is down
-            let raddr = match route {
-                Some((fo, snap)) => {
+            let raddr = match (route, fixed) {
+                (Some((fo, snap)), _) => {
                     let cur = assoc.peer();
-                    let next = Failover::repick(snap, cur);
+                    let next = if snap.is_up(cur) {
+                        cur
+                    } else {
+                        match fo.balanced_peer(&conn_opts, &laddr.ip()) {
+                            Some(want) => fo.repick_balanced(snap, cur, want),
+                            None => Failover::repick(snap, cur),
+                        }
+                    };
                     if next != cur {
                         assoc.move_to(next);
                         log::info!(
@@ -208,7 +233,8 @@ pub async fn associate_and_relay(
                     }
                     fo.peer(next)
                 }
-                None => raddr,
+                (None, Some(raddr)) => raddr,
+                (None, None) => unreachable!(),
             };
 
             let raddr: SockAddrStore = raddr.into();

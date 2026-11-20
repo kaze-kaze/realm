@@ -1,0 +1,21 @@
+round 0 done
+round 1 done
+round 2 done
+round 3 done
+round 4 done
+round 5 new-single lost 1 [(0, 0), (0, 0), (1, 0)]
+round 5 done
+round 6 done
+round 7 done
+round 8 done
+round 9 v300-single lost 14 [(0, 0), (0, 0), (7, 7)]
+round 9 done
+round 10 done
+round 11 done
+round 12 done
+round 13 done
+TOTAL new-busy     echo 43680/43680 lost 0 (0.0000%) | push 30240/30240 lost 0 | rounds with loss 0/14 | damaged+foreign 0
+TOTAL og-busy18    echo 43680/43680 lost 0 (0.0000%) | push 30240/30240 lost 0 | rounds with loss 0/14 | damaged+foreign 0
+TOTAL v300-single  echo 43673/43680 lost 7 (0.0160%) | push 30233/30240 lost 7 | rounds with loss 1/14 | damaged+foreign 0
+TOTAL new-single   echo 43679/43680 lost 1 (0.0023%) | push 30240/30240 lost 0 | rounds with loss 1/14 | damaged+foreign 0
+TOTAL og-single    echo 43680/43680 lost 0 (0.0000%) | push 30240/30240 lost 0 | rounds with loss 0/14 | damaged+foreign 0

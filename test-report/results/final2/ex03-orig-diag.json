@@ -1,0 +1,650 @@
+[
+ {
+  "run": 0,
+  "binary": "realm-orig",
+  "delivered": "207224/212837",
+  "ratio": 0.974,
+  "foreign": 5451,
+  "dup": 0,
+  "timeline_t_fd_rssMB_udpsocks_sharedports": [
+   [
+    0.0,
+    8,
+    4,
+    1,
+    0
+   ],
+   [
+    0.8,
+    1253,
+    272,
+    1224,
+    28
+   ],
+   [
+    1.7,
+    2589,
+    559,
+    2565,
+    119
+   ],
+   [
+    2.5,
+    3941,
+    849,
+    3908,
+    274
+   ],
+   [
+    3.3,
+    5008,
+    1078,
+    5001,
+    407
+   ],
+   [
+    4.1,
+    5008,
+    1078,
+    5001,
+    407
+   ],
+   [
+    5.0,
+    5008,
+    1078,
+    5001,
+    407
+   ],
+   [
+    5.8,
+    5003,
+    1077,
+    4996,
+    381
+   ],
+   [
+    6.6,
+    4994,
+    1076,
+    4988,
+    291
+   ],
+   [
+    7.4,
+    4990,
+    1075,
+    4982,
+    154
+   ],
+   [
+    8.3,
+    5008,
+    1079,
+    5000,
+    44
+   ],
+   [
+    9.1,
+    5008,
+    1079,
+    5001,
+    44
+   ]
+  ],
+  "log_kinds": {
+   "[realm_core::udp::middle][INFO][udp]new association ...: => ...: as ..": 5207,
+   "fd: soft=, hard=": 1,
+   "log: level=info, output=stdout": 1,
+   "dns: mode=ipv_and_ipv, protocol=tcp+udp, min-ttl=, max-ttl=, cache-siz": 1,
+   " connect-timeout=s, associate-timeout=s; balance=off": 1
+  },
+  "nstat": [
+   "UdpNoPorts 0",
+   "UdpInErrors 118",
+   "UdpRcvbufErrors 118",
+   "UdpSndbufErrors 0"
+  ],
+  "alive": true
+ },
+ {
+  "run": 1,
+  "binary": "realm-orig",
+  "delivered": "208458/213033",
+  "ratio": 0.979,
+  "foreign": 4575,
+  "dup": 0,
+  "timeline_t_fd_rssMB_udpsocks_sharedports": [
+   [
+    0.0,
+    8,
+    4,
+    1,
+    0
+   ],
+   [
+    0.8,
+    1281,
+    278,
+    1255,
+    22
+   ],
+   [
+    1.7,
+    2625,
+    567,
+    2592,
+    92
+   ],
+   [
+    2.5,
+    3977,
+    857,
+    3944,
+    215
+   ],
+   [
+    3.3,
+    5008,
+    1078,
+    5001,
+    349
+   ],
+   [
+    4.1,
+    5008,
+    1078,
+    5001,
+    349
+   ],
+   [
+    5.0,
+    5008,
+    1078,
+    5001,
+    349
+   ],
+   [
+    5.8,
+    5003,
+    1077,
+    4995,
+    321
+   ],
+   [
+    6.6,
+    4998,
+    1077,
+    4992,
+    263
+   ],
+   [
+    7.5,
+    4987,
+    1074,
+    4977,
+    132
+   ],
+   [
+    8.3,
+    5008,
+    1079,
+    5001,
+    28
+   ],
+   [
+    9.1,
+    5008,
+    1079,
+    5001,
+    28
+   ]
+  ],
+  "log_kinds": {
+   "[realm_core::udp::middle][INFO][udp]new association ...: => ...: as ..": 5176,
+   "fd: soft=, hard=": 1,
+   "log: level=info, output=stdout": 1,
+   "dns: mode=ipv_and_ipv, protocol=tcp+udp, min-ttl=, max-ttl=, cache-siz": 1,
+   " connect-timeout=s, associate-timeout=s; balance=off": 1
+  },
+  "nstat": [
+   "UdpNoPorts 0",
+   "UdpInErrors 118",
+   "UdpRcvbufErrors 118",
+   "UdpSndbufErrors 0"
+  ],
+  "alive": true
+ },
+ {
+  "run": 2,
+  "binary": "realm-orig",
+  "delivered": "208466/213238",
+  "ratio": 0.978,
+  "foreign": 4701,
+  "dup": 0,
+  "timeline_t_fd_rssMB_udpsocks_sharedports": [
+   [
+    0.0,
+    8,
+    4,
+    1,
+    0
+   ],
+   [
+    0.8,
+    1295,
+    281,
+    1263,
+    30
+   ],
+   [
+    1.7,
+    2646,
+    571,
+    2604,
+    110
+   ],
+   [
+    2.5,
+    4009,
+    864,
+    3974,
+    229
+   ],
+   [
+    3.3,
+    5008,
+    1078,
+    5001,
+    353
+   ],
+   [
+    4.1,
+    5008,
+    1078,
+    5001,
+    353
+   ],
+   [
+    5.0,
+    5008,
+    1078,
+    5001,
+    353
+   ],
+   [
+    5.8,
+    5000,
+    1077,
+    4993,
+    319
+   ],
+   [
+    6.6,
+    4996,
+    1076,
+    4989,
+    255
+   ],
+   [
+    7.4,
+    4994,
+    1076,
+    4989,
+    136
+   ],
+   [
+    8.3,
+    5008,
+    1079,
+    5001,
+    30
+   ],
+   [
+    9.1,
+    5008,
+    1079,
+    5001,
+    30
+   ]
+  ],
+  "log_kinds": {
+   "[realm_core::udp::middle][INFO][udp]new association ...: => ...: as ..": 5180,
+   "fd: soft=, hard=": 1,
+   "log: level=info, output=stdout": 1,
+   "dns: mode=ipv_and_ipv, protocol=tcp+udp, min-ttl=, max-ttl=, cache-siz": 1,
+   " connect-timeout=s, associate-timeout=s; balance=off": 1
+  },
+  "nstat": [
+   "UdpNoPorts 0",
+   "UdpInErrors 189",
+   "UdpRcvbufErrors 189",
+   "UdpSndbufErrors 0"
+  ],
+  "alive": true
+ },
+ {
+  "run": 3,
+  "binary": "realm-orig",
+  "delivered": "208265/213418",
+  "ratio": 0.976,
+  "foreign": 4963,
+  "dup": 0,
+  "timeline_t_fd_rssMB_udpsocks_sharedports": [
+   [
+    0.0,
+    9,
+    4,
+    1,
+    0
+   ],
+   [
+    0.8,
+    1291,
+    280,
+    1279,
+    34
+   ],
+   [
+    1.6,
+    2622,
+    566,
+    2598,
+    114
+   ],
+   [
+    2.5,
+    3973,
+    856,
+    3941,
+    247
+   ],
+   [
+    3.3,
+    5008,
+    1078,
+    5001,
+    381
+   ],
+   [
+    4.1,
+    5008,
+    1078,
+    5001,
+    381
+   ],
+   [
+    4.9,
+    5008,
+    1078,
+    5001,
+    381
+   ],
+   [
+    5.8,
+    5003,
+    1077,
+    4996,
+    345
+   ],
+   [
+    6.6,
+    5001,
+    1077,
+    4993,
+    269
+   ],
+   [
+    7.4,
+    4999,
+    1077,
+    4991,
+    146
+   ],
+   [
+    8.2,
+    5007,
+    1079,
+    4999,
+    22
+   ],
+   [
+    9.1,
+    5008,
+    1079,
+    5001,
+    24
+   ]
+  ],
+  "log_kinds": {
+   "[realm_core::udp::middle][INFO][udp]new association ...: => ...: as ..": 5193,
+   "fd: soft=, hard=": 1,
+   "log: level=info, output=stdout": 1,
+   "dns: mode=ipv_and_ipv, protocol=tcp+udp, min-ttl=, max-ttl=, cache-siz": 1,
+   " connect-timeout=s, associate-timeout=s; balance=off": 1
+  },
+  "nstat": [
+   "UdpNoPorts 0",
+   "UdpInErrors 379",
+   "UdpRcvbufErrors 379",
+   "UdpSndbufErrors 0"
+  ],
+  "alive": true
+ },
+ {
+  "run": 4,
+  "binary": "realm-orig",
+  "delivered": "207682/213283",
+  "ratio": 0.974,
+  "foreign": 5114,
+  "dup": 0,
+  "timeline_t_fd_rssMB_udpsocks_sharedports": [
+   [
+    0.0,
+    10,
+    4,
+    1,
+    0
+   ],
+   [
+    0.8,
+    1315,
+    285,
+    1286,
+    43
+   ],
+   [
+    1.7,
+    2627,
+    568,
+    2597,
+    129
+   ],
+   [
+    2.5,
+    3990,
+    860,
+    3952,
+    262
+   ],
+   [
+    3.3,
+    5008,
+    1078,
+    5001,
+    388
+   ],
+   [
+    4.1,
+    5008,
+    1078,
+    5001,
+    388
+   ],
+   [
+    5.0,
+    5008,
+    1078,
+    5001,
+    388
+   ],
+   [
+    5.8,
+    4997,
+    1076,
+    4991,
+    347
+   ],
+   [
+    6.6,
+    4999,
+    1077,
+    4990,
+    258
+   ],
+   [
+    7.4,
+    4996,
+    1076,
+    4985,
+    136
+   ],
+   [
+    8.2,
+    5005,
+    1078,
+    4998,
+    28
+   ],
+   [
+    9.1,
+    5008,
+    1079,
+    5001,
+    28
+   ]
+  ],
+  "log_kinds": {
+   "[realm_core::udp::middle][INFO][udp]new association ...: => ...: as ..": 5198,
+   "fd: soft=, hard=": 1,
+   "log: level=info, output=stdout": 1,
+   "dns: mode=ipv_and_ipv, protocol=tcp+udp, min-ttl=, max-ttl=, cache-siz": 1,
+   " connect-timeout=s, associate-timeout=s; balance=off": 1
+  },
+  "nstat": [
+   "UdpNoPorts 0",
+   "UdpInErrors 829",
+   "UdpRcvbufErrors 829",
+   "UdpSndbufErrors 0"
+  ],
+  "alive": true
+ },
+ {
+  "run": 5,
+  "binary": "realm-orig",
+  "delivered": "208668/213246",
+  "ratio": 0.979,
+  "foreign": 4578,
+  "dup": 0,
+  "timeline_t_fd_rssMB_udpsocks_sharedports": [
+   [
+    0.0,
+    8,
+    4,
+    1,
+    0
+   ],
+   [
+    0.8,
+    1306,
+    284,
+    1276,
+    33
+   ],
+   [
+    1.7,
+    2632,
+    568,
+    2576,
+    111
+   ],
+   [
+    2.5,
+    3990,
+    860,
+    3930,
+    215
+   ],
+   [
+    3.3,
+    5008,
+    1078,
+    5001,
+    348
+   ],
+   [
+    4.2,
+    5008,
+    1078,
+    5001,
+    348
+   ],
+   [
+    5.0,
+    5008,
+    1078,
+    5001,
+    348
+   ],
+   [
+    5.8,
+    5002,
+    1077,
+    4995,
+    317
+   ],
+   [
+    6.6,
+    5001,
+    1077,
+    4994,
+    242
+   ],
+   [
+    7.5,
+    4986,
+    1074,
+    4980,
+    127
+   ],
+   [
+    8.3,
+    5008,
+    1079,
+    5001,
+    22
+   ],
+   [
+    9.1,
+    5008,
+    1079,
+    5001,
+    22
+   ]
+  ],
+  "log_kinds": {
+   "[realm_core::udp::middle][INFO][udp]new association ...: => ...: as ..": 5177,
+   "fd: soft=, hard=": 1,
+   "log: level=info, output=stdout": 1,
+   "dns: mode=ipv_and_ipv, protocol=tcp+udp, min-ttl=, max-ttl=, cache-siz": 1,
+   " connect-timeout=s, associate-timeout=s; balance=off": 1
+  },
+  "nstat": [
+   "UdpNoPorts 0",
+   "UdpInErrors 829",
+   "UdpRcvbufErrors 829",
+   "UdpSndbufErrors 0"
+  ],
+  "alive": true
+ }
+]

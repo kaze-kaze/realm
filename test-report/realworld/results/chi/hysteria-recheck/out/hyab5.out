@@ -1,0 +1,42 @@
+0 new-a down ok 154 Mbit/s | up ok 144
+0 og-a down ok 105 Mbit/s | up FAIL:TimeoutError 47
+0 new-b down FAIL:TimeoutError 0 Mbit/s | up FAIL:TimeoutError 34
+0 og-b down ok 102 Mbit/s | up ok 68
+0 new-c down ok 135 Mbit/s | up ok 124
+0 og-c down ok 163 Mbit/s | up ok 120
+1 og-a down FAIL:ConnectionResetError:104 0 Mbit/s | up ok 34
+1 new-b down FAIL:TimeoutError 21 Mbit/s | up FAIL:TimeoutError 12
+1 og-b down ok 170 Mbit/s | up ok 173
+1 new-c down ok 68 Mbit/s | up ok 156
+1 og-c down ok 68 Mbit/s | up FAIL:TimeoutError 13
+1 new-a down ok 177 Mbit/s | up ok 170
+2 new-b down ok 88 Mbit/s | up ok 39
+2 og-b down ok 207 Mbit/s | up ok 192
+2 new-c down FAIL:TimeoutError 13 Mbit/s | up ok 160
+2 og-c down ok 207 Mbit/s | up ok 65
+2 new-a down ok 194 Mbit/s | up ok 183
+2 og-a down ok 111 Mbit/s | up FAIL:TimeoutError 8
+3 og-b down ok 202 Mbit/s | up ok 183
+3 new-c down ok 28 Mbit/s | up ok 172
+3 og-c down ok 196 Mbit/s | up ok 63
+3 new-a down ok 201 Mbit/s | up ok 179
+3 og-a down ok 140 Mbit/s | up ok 21
+3 new-b down ok 32 Mbit/s | up ok 196
+4 new-c down ok 164 Mbit/s | up FAIL:TimeoutError 13
+4 og-c down ok 202 Mbit/s | up ok 175
+4 new-a down ok 74 Mbit/s | up FAIL:TimeoutError 13
+4 og-a down ok 182 Mbit/s | up ok 168
+4 new-b down ok 78 Mbit/s | up ok 226
+4 og-b down ok 39 Mbit/s | up ok 209
+5 og-c down ok 30 Mbit/s | up ok 212
+5 new-a down ok 29 Mbit/s | up ok 55
+5 og-a down ok 203 Mbit/s | up ok 115
+5 new-b down ok 41 Mbit/s | up ok 196
+5 og-b down ok 79 Mbit/s | up ok 214
+5 new-c down ok 22 Mbit/s | up ok 38
+TOTAL new-a        down median 177 (min 29 max 201) ok 6/6 | up median 170 (min 55 max 183) ok 5/6 | errors 0
+TOTAL og-a         down median 140 (min 105 max 203) ok 5/6 | up median 115 (min 21 max 168) ok 4/6 | errors 0
+TOTAL new-b        down median 78 (min 32 max 88) ok 4/6 | up median 196 (min 39 max 226) ok 4/6 | errors 0
+TOTAL og-b         down median 170 (min 39 max 207) ok 6/6 | up median 192 (min 68 max 214) ok 6/6 | errors 0
+TOTAL new-c        down median 68 (min 22 max 164) ok 5/6 | up median 156 (min 38 max 172) ok 5/6 | errors 0
+TOTAL og-c         down median 196 (min 30 max 207) ok 6/6 | up median 120 (min 63 max 212) ok 5/6 | errors 0

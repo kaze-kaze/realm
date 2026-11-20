@@ -1,0 +1,11 @@
+round 0 done
+round 1 done
+round 2 done
+round 3 done
+round 4 done
+round 5 done
+udp_up_1400     og median 885 (min 839 max 1020) Mbit/s n=6  v300 median 892 (min 853 max 948) Mbit/s n=6  new median 1073 (min 997 max 1268) Mbit/s n=6
+udp_down_1400   og median 916 (min 862 max 1106) Mbit/s n=6  v300 median 913 (min 872 max 1119) Mbit/s n=6  new median 1060 (min 959 max 1140) Mbit/s n=6
+udp_up_200      og median 141 (min 131 max 155) Mbit/s n=6  v300 median 138 (min 123 max 150) Mbit/s n=6  new median 167 (min 146 max 193) Mbit/s n=6
+tcp_up          og median 18889 (min 16425 max 21784) Mbit/s n=6  v300 median 18711 (min 17647 max 19116) Mbit/s n=6  new median 18857 (min 16971 max 21093) Mbit/s n=6
+tcp_down        og median 19046 (min 17091 max 19227) Mbit/s n=6  v300 median 18843 (min 17900 max 19102) Mbit/s n=6  new median 20098 (min 14895 max 20862) Mbit/s n=6

@@ -1,0 +1,235 @@
+[
+ {
+  "id": "EX-01",
+  "title": "1 万条并发 TCP 长连接（每条每 2 秒一次请求）",
+  "status": "PASS",
+  "expect": "0 断连、0 失败、0 误判；每连接内存与原版持平；连接关闭后句柄回到基线",
+  "observed": "原版：RSS 4636→95804 kB（每连接 9.12 kB），fd 峰值 60008，CPU 23%，p99 5631µs；新版+故障转移：RSS 4904→95956 kB（每连接 9.11 kB），fd 峰值 60008→结束 8（基线 8），CPU 20%，p99 12287µs，断 0，失败 0，事件 0",
+  "detail": {
+   "orig": {
+    "base": {
+     "rss_kb": 4636,
+     "fd": 8,
+     "threads": 11
+    },
+    "peak": {
+     "rss_kb": 95804,
+     "fd": 60008,
+     "threads": 11
+    },
+    "end": {
+     "rss_kb": 92088,
+     "fd": 8,
+     "threads": 11
+    },
+    "cpu_pct": 23.3,
+    "died": 0,
+    "err": 0,
+    "peak_alive": 10000,
+    "ok": 134683,
+    "p99_us": 5631,
+    "alive": true,
+    "ev": 0
+   },
+   "new+failover": {
+    "base": {
+     "rss_kb": 4904,
+     "fd": 8,
+     "threads": 11
+    },
+    "peak": {
+     "rss_kb": 95956,
+     "fd": 60008,
+     "threads": 11
+    },
+    "end": {
+     "rss_kb": 95976,
+     "fd": 8,
+     "threads": 11
+    },
+    "cpu_pct": 19.8,
+    "died": 0,
+    "err": 0,
+    "peak_alive": 10000,
+    "ok": 134893,
+    "p99_us": 12287,
+    "alive": true,
+    "ev": 0
+   }
+  }
+ },
+ {
+  "id": "EX-02",
+  "title": "主节点挂掉时 5000 条长连接同时断开并重连",
+  "status": "FAIL",
+  "expect": "已有连接随主节点一起断（真实故障，无法避免）；5000 条重连全部成功落到备，0 个重连失败；进程稳定",
+  "observed": "断开 5009 条；重连阶段建连失败 0；3 秒后失败 0，结束时在线 5000/5000（全在 ['B']）；全局切换 1.49s；RSS 峰值 50612 kB，结束 fd 9",
+  "detail": {
+   "win": {
+    "sent": 17477,
+    "ok": {
+     "A": 343,
+     "B": 12140
+    },
+    "err": {
+     "eof": 5009
+    },
+    "lat_max_ms": 16.1
+   },
+   "after": {
+    "sent": 54857,
+    "ok": {
+     "B": 54857
+    },
+    "err": {},
+    "lat_max_ms": 18.8
+   }
+  }
+ },
+ {
+  "id": "EX-03",
+  "title": "5000 个 UDP 会话（2.5 万包/秒）同时换线",
+  "status": "FAIL",
+  "expect": "全部会话移到备，无旧回包、无重复；换线后丢包 <0.1%；会话超时后句柄回到基线",
+  "observed": "切换 1.77s，中断 1700ms；路径 {'AB': 5000}；总送达 413175/463519，换线后丢 507/217447；旧回包 0，重复 0；RSS 4896→1104948 kB，fd 8→5008→9",
+  "detail": {}
+ },
+ {
+  "id": "EX-04",
+  "title": "满速短连接（256 并发）时主节点被杀",
+  "status": "FAIL",
+  "expect": "只有故障瞬间正在主上传输的连接失败（≤并发数）；其后 0 失败；吞吐不塌",
+  "observed": "故障前 31420 连接/秒，故障后 31276 连接/秒；故障瞬间失败 286（{'eof': 286}），之后失败 0；全局切换 1.47s；切换前靠单连接重试挽回 45727 条（每条一行 warn 日志）",
+  "detail": {
+   "tcp": {
+    "sent": 502566,
+    "ok": {
+     "A": 221701,
+     "B": 280579
+    },
+    "err": {
+     "eof": 286
+    },
+    "lat_max_ms": 1124.7
+   }
+  }
+ },
+ {
+  "id": "EX-05",
+  "title": "中继本机到主节点的临时端口耗尽（只留 100 个端口，开 160 条连接）",
+  "status": "FAIL",
+  "expect": "这是本机资源问题，不是后端故障：不应判主节点下线；溢出的连接逐条改走备，0 失败",
+  "observed": "探测数据端口：分布 {'A': 4640, 'B': 2506}，失败 0，溢出重试 60 条（['Cannot assign requested address (os error 99)']），事件 ['[tcp]0.0.0.0:6000 peer#0 10.9.0.11:5000 is down', '[tcp]0.0.0.0:6000 switch peer#0 10.9.0.11:5000 => peer#1 10.9.0.12:5000']；探测独立端口：分布 {'A': 4630, 'B': 2488}，失败 0，溢出重试 60 条，事件 无",
+  "detail": {
+   "探测数据端口": {
+    "dist": {
+     "A": 4640,
+     "B": 2506
+    },
+    "err": 0,
+    "died": 0,
+    "events": [
+     "[tcp]0.0.0.0:6000 peer#0 10.9.0.11:5000 is down",
+     "[tcp]0.0.0.0:6000 switch peer#0 10.9.0.11:5000 => peer#1 10.9.0.12:5000"
+    ],
+    "retry": 60,
+    "errs": [
+     "Cannot assign requested address (os error 99)"
+    ],
+    "alive": true
+   },
+   "探测独立端口": {
+    "dist": {
+     "A": 4630,
+     "B": 2488
+    },
+    "err": 0,
+    "died": 0,
+    "events": [],
+    "retry": 60,
+    "errs": [
+     "Cannot assign requested address (os error 99)"
+    ],
+    "alive": true
+   }
+  }
+ },
+ {
+  "id": "EX-06",
+  "title": "中继句柄耗尽（nofile=200，同时来 300 条连接）",
+  "status": "FAIL",
+  "expect": "超限的连接可以失败，但进程不能崩、监听不能停；压力过后新连接必须恢复正常；不误判后端",
+  "observed": "原版：存活 True，压力过后 成功 0 / 失败 600，日志 ['failed to accept: Too many open files (os error 24)']；新版：存活 True，压力过后 成功 0 / 失败 600，failover 事件 无，日志 ['failed to accept: Too many open files (os error 24)']",
+  "detail": {
+   "orig": {
+    "alive": true,
+    "fd_after": 7,
+    "hold_ok": 951,
+    "hold_err": 268,
+    "peak": 33,
+    "after_ok": 0,
+    "after_err": 600,
+    "events": [],
+    "errors": [
+     "failed to accept: Too many open files (os error 24)"
+    ]
+   },
+   "new+failover": {
+    "alive": true,
+    "fd_after": 7,
+    "hold_ok": 952,
+    "hold_err": 268,
+    "peak": 33,
+    "after_ok": 0,
+    "after_err": 600,
+    "events": [],
+    "errors": [
+     "failed to accept: Too many open files (os error 24)"
+    ]
+   }
+  }
+ },
+ {
+  "id": "EX-07",
+  "title": "中继只给 1 个 CPU 核并被 TCP+UDP 流量打满（21 个 failover 端点、42 个探测任务）",
+  "status": "PASS",
+  "expect": "探测任务不被转发流量饿死：0 次误判下线、0 次切换",
+  "observed": "快速参数(0.5s/0.3s)：中继 CPU 100%，TCP 14807 连接/秒（失败 0），UDP 送达 3408251/5925980，事件 0 条；默认参数(3s/1.5s)：中继 CPU 100%，TCP 17448 连接/秒（失败 0），UDP 送达 3694648/5925957，事件 0 条",
+  "detail": {
+   "快速参数(0.5s/0.3s)": {
+    "cpu_pct": 99.975,
+    "tcp_rate": 14806.7,
+    "tcp_err": 0,
+    "udp_ok": 3408251,
+    "udp_sent": 5925980,
+    "events": [],
+    "alive": true
+   },
+   "默认参数(3s/1.5s)": {
+    "cpu_pct": 99.975,
+    "tcp_rate": 17447.6,
+    "tcp_err": 0,
+    "udp_ok": 3694648,
+    "udp_sent": 5925957,
+    "events": [],
+    "alive": true
+   }
+  }
+ },
+ {
+  "id": "EX-08",
+  "title": "中继进程自身被冻结再恢复（模拟宿主机卡顿，最长 4 秒 = 8 个探测周期）",
+  "status": "PASS",
+  "expect": "自己卡住不等于后端故障：恢复后 0 误判；期间的连接只是变慢，不失败",
+  "observed": "冻结 7 次；failover 事件 0 条 []；TCP 失败 0/1175，最大耗时 3878.3ms",
+  "detail": {}
+ },
+ {
+  "id": "EX-09",
+  "title": "4 MiB 大包往返校验，期间备节点先抖动、主节点再被杀",
+  "status": "PASS",
+  "expect": "数据逐字节校验 0 错；备节点抖动不影响主上的传输；主被杀时只有正在传的 ≤16 条失败，之后全部成功",
+  "observed": "完成 16748 次（约 7438 MiB/s 双向合计），校验错误 0；主被杀前失败 0，被杀瞬间失败 13（{'reset': 9, 'eof': 4}），之后失败 0，之后分布 {'B': 5149}",
+  "detail": {}
+ }
+]

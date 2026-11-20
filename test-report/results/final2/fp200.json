@@ -1,0 +1,59 @@
+{
+ "secs": 1500,
+ "endpoints": 200,
+ "rounds_per_endpoint": 500.0,
+ "alive": true,
+ "rss_kb": 142724,
+ "cpu_pct_of_one_core": 7.134,
+ "threads": 11,
+ "fds": 1369,
+ "monitors": 1200,
+ "levels": [
+  {
+   "name": "l2",
+   "label": "随机丢包 2%",
+   "spec": "loss 2%",
+   "tcp_down0": 0,
+   "tcp_down1": 0,
+   "tcp_switch": 0,
+   "tcp_back": 0,
+   "udp_down0": 0,
+   "udp_down1": 0,
+   "udp_switch": 0,
+   "udp_back": 0,
+   "tcp_switch_per_day": 0.0,
+   "udp_switch_per_day": 0.0
+  },
+  {
+   "name": "l5",
+   "label": "随机丢包 5%",
+   "spec": "loss 5%",
+   "tcp_down0": 0,
+   "tcp_down1": 0,
+   "tcp_switch": 0,
+   "tcp_back": 0,
+   "udp_down0": 0,
+   "udp_down1": 0,
+   "udp_switch": 0,
+   "udp_back": 0,
+   "tcp_switch_per_day": 0.0,
+   "udp_switch_per_day": 0.0
+  },
+  {
+   "name": "l10",
+   "label": "随机丢包 10%",
+   "spec": "loss 10%",
+   "tcp_down0": 0,
+   "tcp_down1": 0,
+   "tcp_switch": 0,
+   "tcp_back": 0,
+   "udp_down0": 0,
+   "udp_down1": 0,
+   "udp_switch": 0,
+   "udp_back": 0,
+   "tcp_switch_per_day": 0.0,
+   "udp_switch_per_day": 0.0
+  }
+ ],
+ "extra": ""
+}

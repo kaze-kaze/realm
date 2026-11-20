@@ -1,0 +1,10 @@
+[
+ {
+  "id": "FO-19",
+  "title": "UDP 固定出口端口（through = ip:port），后端往返 40ms",
+  "status": "FAIL",
+  "expect": "探测不能和业务会话抢同一个本地端口：业务回包 0 丢失、0 误判",
+  "observed": "送达 18319/20000（丢 1681，8.4%）；failover 事件 0 条 []",
+  "detail": {}
+ }
+]

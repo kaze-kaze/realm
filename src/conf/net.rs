@@ -59,6 +59,10 @@ pub struct NetConf {
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub udp_timeout: Option<usize>,
+
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub udp_no_fragment: Option<bool>,
 }
 
 #[derive(Debug)]
@@ -77,7 +81,7 @@ impl Config for NetConf {
             no_tcp, use_udp, ipv6_only,
             send_mptcp, accept_mptcp,
             send_proxy, accept_proxy, send_proxy_version, accept_proxy_timeout,
-            tcp_keepalive, tcp_keepalive_probe, tcp_timeout, udp_timeout
+            tcp_keepalive, tcp_keepalive_probe, tcp_timeout, udp_timeout, udp_no_fragment
         ]
     }
 
@@ -100,6 +104,7 @@ impl Config for NetConf {
         let tcp_kpa_probe = unbox!(tcp_keepalive_probe, TCP_KEEPALIVE_PROBE);
         let tcp_timeout = unbox!(tcp_timeout, TCP_TIMEOUT);
         let udp_timeout = unbox!(udp_timeout, UDP_TIMEOUT);
+        let udp_no_fragment = unbox!(udp_no_fragment);
 
         let bind_opts = BindOpts {
             ipv6_only,
@@ -112,6 +117,7 @@ impl Config for NetConf {
             tcp_keepalive_probe: tcp_kpa_probe,
             connect_timeout: tcp_timeout,
             associate_timeout: udp_timeout,
+            udp_no_fragment,
 
             // from endpoint
             bind_address: None,
@@ -163,6 +169,7 @@ impl Config for NetConf {
         rst!(self, tcp_keepalive_probe, other);
         rst!(self, tcp_timeout, other);
         rst!(self, udp_timeout, other);
+        rst!(self, udp_no_fragment, other);
         rst!(self, send_proxy, other);
         rst!(self, accept_proxy, other);
         rst!(self, send_proxy_version, other);
@@ -183,6 +190,7 @@ impl Config for NetConf {
         take!(self, tcp_keepalive_probe, other);
         take!(self, tcp_timeout, other);
         take!(self, udp_timeout, other);
+        take!(self, udp_no_fragment, other);
         take!(self, send_proxy, other);
         take!(self, accept_proxy, other);
         take!(self, send_proxy_version, other);
@@ -233,6 +241,7 @@ impl Config for NetConf {
             tcp_keepalive_probe,
             tcp_timeout,
             udp_timeout,
+            udp_no_fragment: None,
             send_proxy,
             accept_proxy,
             send_proxy_version,

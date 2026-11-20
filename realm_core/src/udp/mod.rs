@@ -27,6 +27,10 @@ pub async fn run_udp(endpoint: Endpoint) -> Result<()> {
     let sockmap = SockMap::new();
 
     let lis = socket::bind(&laddr, bind_opts).unwrap_or_else(|e| panic!("[udp]failed to bind {}: {}", laddr, e));
+    #[cfg(target_os = "linux")]
+    if conn_opts.udp_no_fragment {
+        socket::no_fragment::set(&lis, true);
+    }
 
     // without failover, udp only uses `raddr`
     let failover = conn_opts.failover.as_ref().map(|opts| {

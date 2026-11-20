@@ -1,0 +1,20 @@
+0 new-busy down 173.82 up 167.8
+0 og-busy down 155.37 up control socket has closed unexpectedly
+0 v300-single down TimeoutExpired up 156.39
+0 new-single down 174.26 up 2.24
+0 og-single down the server is busy running a test. try again later up 151.62
+1 og-busy down unable to receive control message - port may not be available, the other side may have stopped running, etc.: Connection reset by peer up 158.9
+1 v300-single down unable to receive control message - port may not be available, the other side may have stopped running, etc.: Connection reset by peer up 183.34
+1 new-single down 202.75 up 2.04
+1 og-single down the server is busy running a test. try again later up 120.64
+1 new-busy down 205.93 up 171.73
+2 v300-single down 66.47 up control socket has closed unexpectedly
+2 new-single down TimeoutExpired up 35.65
+2 og-single down the server is busy running a test. try again later up 119.8
+2 new-busy down 201.94 up 8.68
+2 og-busy down 111.75 up 201.56
+3 new-single down 6.92 up 131.93
+3 og-single down the server is busy running a test. try again later up 115.92
+3 new-busy down 208.66 up 123.77
+3 og-busy down 108.0 up 200.0
+3 v300-single down unable to receive control message - port may not be available, the other side may have stopped running, etc.: Connection reset by peer up 8.17

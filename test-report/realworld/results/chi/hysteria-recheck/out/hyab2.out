@@ -1,0 +1,45 @@
+0 new-busy down ok 163 Mbit/s | up ok 143
+0 og-busy down ok 135 Mbit/s | up ok 124
+0 v300-single down FAIL:TimeoutError 24 Mbit/s | up FAIL:TimeoutError 3
+0 new-single down FAIL:TimeoutError 0 Mbit/s | up ok 46
+0 og-single down FAIL:TimeoutError 18 Mbit/s | up FAIL:TimeoutError 3
+1 og-busy down ok 184 Mbit/s | up FAIL:TimeoutError 16
+1 v300-single down FAIL:eof 0 Mbit/s | up ok 95
+1 new-single down FAIL:TimeoutError 22 Mbit/s | up FAIL:TimeoutError 13
+1 og-single down FAIL:eof 0 Mbit/s | up ok 130
+1 new-busy down ok 31 Mbit/s | up ok 187
+2 v300-single down FAIL:TimeoutError 38 Mbit/s | up FAIL:TimeoutError 12
+2 new-single down FAIL:eof 0 Mbit/s | up ok 162
+2 og-single down ok 144 Mbit/s | up ok 177
+2 new-busy down ok 61 Mbit/s | up ok 180
+2 og-busy down ok 153 Mbit/s | up ok 44
+3 new-single down ok 182 Mbit/s | up ok 166
+3 og-single down ok 98 Mbit/s | up FAIL:TimeoutError 15
+3 new-busy down ok 193 Mbit/s | up ok 176
+3 og-busy down ok 85 Mbit/s | up FAIL:TimeoutError 13
+3 v300-single down FAIL:ConnectionResetError:104 0 Mbit/s | up ok 140
+4 og-single down ok 180 Mbit/s | up ok 36
+4 new-busy down ok 154 Mbit/s | up ok 199
+4 og-busy down ok 95 Mbit/s | up ok 22
+4 v300-single down FAIL:TimeoutError 35 Mbit/s | up FAIL:TimeoutError 12
+4 new-single down ok 198 Mbit/s | up ok 115
+5 new-busy down ok 109 Mbit/s | up FAIL:TimeoutError 12
+5 og-busy down ok 168 Mbit/s | up ok 35
+5 v300-single down FAIL:eof 0 Mbit/s | up ok 137
+5 new-single down ok 191 Mbit/s | up ok 176
+5 og-single down ok 74 Mbit/s | up ok 196
+6 og-busy down ok 158 Mbit/s | up ok 30
+6 v300-single down FAIL:TimeoutError 44 Mbit/s | up FAIL:TimeoutError 13
+6 new-single down ok 201 Mbit/s | up ok 188
+6 og-single down ok 38 Mbit/s | up ok 208
+6 new-busy down ok 36 Mbit/s | up ok 71
+7 v300-single down FAIL:eof 0 Mbit/s | up ok 106
+7 new-single down ok 164 Mbit/s | up ok 72
+7 og-single down ok 194 Mbit/s | up FAIL:TimeoutError 12
+7 new-busy down ok 202 Mbit/s | up ok 183
+7 og-busy down ok 21 Mbit/s | up ok 31
+TOTAL new-busy     down median 154 (min 31 max 202) ok 8/8 | up median 180 (min 71 max 199) ok 7/8 | errors 0
+TOTAL og-busy      down median 153 (min 21 max 184) ok 8/8 | up median 35 (min 22 max 124) ok 6/8 | errors 0
+TOTAL v300-single  down all failed | up median 137 (min 95 max 140) ok 4/8 | errors 0
+TOTAL new-single   down median 191 (min 164 max 201) ok 5/8 | up median 162 (min 46 max 188) ok 7/8 | errors 0
+TOTAL og-single    down median 144 (min 38 max 194) ok 6/8 | up median 177 (min 36 max 208) ok 5/8 | errors 0

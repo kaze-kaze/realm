@@ -1,0 +1,21 @@
+0 direct-a down ok 188 Mbit/s | up ok 122
+0 direct-b down ok 193 Mbit/s | up ok 161
+0 direct-c down ok 217 Mbit/s | up ok 162
+1 direct-b down ok 41 Mbit/s | up ok 201
+1 direct-c down ok 217 Mbit/s | up ok 237
+1 direct-a down ok 84 Mbit/s | up ok 186
+2 direct-c down ok 224 Mbit/s | up ok 213
+2 direct-a down FAIL:TimeoutError 0 Mbit/s | up ok 183
+2 direct-b down ok 240 Mbit/s | up ok 191
+3 direct-a down ok 53 Mbit/s | up ok 159
+3 direct-b down ok 239 Mbit/s | up ok 200
+3 direct-c down ok 244 Mbit/s | up ok 222
+4 direct-b down ok 215 Mbit/s | up ok 199
+4 direct-c down ok 177 Mbit/s | up ok 208
+4 direct-a down ok 161 Mbit/s | up ok 147
+5 direct-c down ok 245 Mbit/s | up ok 220
+5 direct-a down ok 172 Mbit/s | up ok 167
+5 direct-b down ok 243 Mbit/s | up ok 191
+TOTAL direct-a     down median 161 (min 53 max 188) ok 5/6 | up median 167 (min 122 max 186) ok 6/6 | errors 0
+TOTAL direct-b     down median 239 (min 41 max 243) ok 6/6 | up median 199 (min 161 max 201) ok 6/6 | errors 0
+TOTAL direct-c     down median 224 (min 177 max 245) ok 6/6 | up median 220 (min 162 max 237) ok 6/6 | errors 0

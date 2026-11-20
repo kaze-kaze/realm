@@ -176,12 +176,24 @@ impl Config for EndpointConf {
         }
 
         if let Some(failover) = &self.failover {
-            if self.balance.is_some() {
-                panic!("endpoint {}: failover and balance are mutually exclusive", self.listen);
-            }
             let remotes: Vec<&str> = std::iter::once(self.remote.as_str())
                 .chain(self.extra_remotes.iter().map(String::as_str))
                 .collect();
+            // with balance, sessions are spread over the peers that are alive: the
+            // balancer must name exactly those peers
+            #[cfg(feature = "balance")]
+            {
+                use realm_core::balance::Strategy;
+                let balancer = &conn_opts.balancer;
+                if balancer.strategy() != Strategy::Off && balancer.total() as usize != remotes.len() {
+                    panic!(
+                        "endpoint {}: failover with balance needs one weight per peer, got {} weight(s) for {} peer(s)",
+                        self.listen,
+                        balancer.total(),
+                        remotes.len()
+                    );
+                }
+            }
             conn_opts.failover = Some(failover.build(&self.listen, &remotes, use_udp));
 
             // the dial deadline is shared by the primary attempt and the one retry

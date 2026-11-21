@@ -15,7 +15,7 @@ license = "MIT"
 realm_io = { version = "0.5" }
 realm_syscall = "0.1"
 realm_hook = { version = "0.1", optional = true }
-realm_lb = { version = "0.1", optional = true }
+realm_lb = { version = "0.2", path = "../realm_lb", optional = true }
 kaminari = { version = "0.14", features = ["ws", "tls", "mix"], optional = true }
 
 # other
@@ -47,4 +47,4 @@ multi-thread = []
 
 [dev-dependencies]
 env_logger = "0.11"
-tokio = { version = "1", features = ["macros"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

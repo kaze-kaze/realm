@@ -166,7 +166,7 @@ mod common {
         }
     }
 
-    pub async fn send_all<'a, 'b, I>(sock: &UdpSocket, pkts: I) -> Result<()>
+    pub async fn send_all<'a, 'b, I>(sock: &UdpSocket, pkts: I, _no_fragment: bool) -> Result<()>
     where
         I: ExactSizeIterator<Item = PacketRef<'a, 'b>>,
     {
@@ -188,9 +188,10 @@ pub use linux::{recv_some, send_all};
 mod linux {
     use super::*;
     use std::cell::RefCell;
-    use std::io::{IoSlice, IoSliceMut};
+    use std::io::{Error, ErrorKind, IoSlice, IoSliceMut};
     use std::mem::MaybeUninit;
     use std::os::unix::io::{AsRawFd, RawFd};
+    use tokio::io::Interest;
     use realm_io::AsyncRawIO;
     use realm_io::mmsg::{MmsgHdr, MmsgHdrMut};
     use realm_io::mmsg::send_mul_pkts;
@@ -269,7 +270,8 @@ mod linux {
         })
     }
 
-    pub async fn send_all<'a, 'b, I>(sock: &UdpSocket, pkts: I) -> Result<()>
+    /// Send every datagram. `no_fragment`: the socket has `udp_no_fragment` on.
+    pub async fn send_all<'a, 'b, I>(sock: &UdpSocket, pkts: I, no_fragment: bool) -> Result<()>
     where
         I: ExactSizeIterator<Item = PacketRef<'a, 'b>>,
     {
@@ -295,16 +297,117 @@ mod linux {
                 Ok(n) => n,
                 // `udp_no_fragment` refuses a datagram that needs more than one frame.
                 // It came to us in fragments, so send this one the same way.
-                Err(e) if e.raw_os_error() == Some(libc::EMSGSIZE) && no_fragment::is_set(sock) => {
-                    no_fragment::set(sock, false);
-                    let res = send_mul_pkts(sock, &mut msgs[cursor..cursor + 1]).await;
-                    no_fragment::set(sock, true);
-                    res?
+                Err(e) if no_fragment && e.raw_os_error() == Some(libc::EMSGSIZE) => {
+                    send_fragmented(sock, &mut msgs[cursor]).await?
                 }
                 Err(e) => return Err(e),
             };
             cursor += n;
         }
         Ok(())
+    }
+
+    /// Send one datagram of a `udp_no_fragment` socket in fragments, see
+    /// [`no_fragment::lifted`]. Returns 1, the number of datagrams sent.
+    async fn send_fragmented(sock: &UdpSocket, msg: &mut MmsgHdr<'_, '_, '_, '_>) -> Result<usize> {
+        let fd = sock.as_raw_fd();
+        loop {
+            sock.writable().await?;
+            let sent = no_fragment::lifted(sock, || {
+                sock.try_io(Interest::WRITABLE, || {
+                    let msg = &mut *msg as *mut MmsgHdr as *mut libc::mmsghdr;
+                    // SAFETY: `MmsgHdr` is a transparent `mmsghdr` that `send_all` filled
+                    // in, and what it points to outlives this call.
+                    match unsafe { libc::sendmmsg(fd, msg, 1, 0) } {
+                        n if n < 0 => Err(Error::last_os_error()),
+                        n => Ok(n as usize),
+                    }
+                })
+            });
+            match sent {
+                Err(e) if e.kind() == ErrorKind::WouldBlock => continue,
+                sent => return sent,
+            }
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use std::sync::Arc;
+
+        /// Many tasks at once send datagrams that need fragments through one
+        /// `udp_no_fragment` socket, the way associations share the listening socket.
+        /// Every one of them must go out, and the option must be on in the end.
+        #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+        async fn no_fragment_large_datagrams_from_many_tasks() {
+            const TASKS: usize = 8;
+            const ROUNDS: usize = 300;
+            const LEN: usize = 3000;
+            const SMALL: usize = 100;
+
+            // Loopback carries any datagram in one piece. An ipv6 socket can be given
+            // a smaller mtu of its own, which makes large datagrams need fragments.
+            let Ok(rx) = UdpSocket::bind("[::1]:0").await else {
+                eprintln!("no ipv6 loopback, skipped");
+                return;
+            };
+            let to: SockAddrStore = rx.local_addr().unwrap().into();
+            let tx = Arc::new(UdpSocket::bind("[::1]:0").await.unwrap());
+            let mtu: libc::c_int = 1280;
+            // SAFETY: plain integer option
+            let ok = unsafe {
+                libc::setsockopt(
+                    tx.as_raw_fd(),
+                    libc::IPPROTO_IPV6,
+                    libc::IPV6_MTU,
+                    &mtu as *const libc::c_int as *const libc::c_void,
+                    std::mem::size_of::<libc::c_int>() as libc::socklen_t,
+                )
+            };
+            assert_eq!(ok, 0);
+            no_fragment::set(&*tx, true);
+
+            // as it is, such a datagram is refused
+            let refused = tx.send_to(&[0u8; LEN], rx.local_addr().unwrap()).await;
+            assert_eq!(refused.unwrap_err().raw_os_error(), Some(libc::EMSGSIZE));
+
+            let received = tokio::spawn(async move {
+                let mut buf = vec![0u8; LEN + 1];
+                let mut large = 0;
+                while let Ok(Ok(n)) = tokio::time::timeout(std::time::Duration::from_secs(1), rx.recv(&mut buf)).await {
+                    assert!(n == LEN || n == SMALL, "a datagram of {} bytes", n);
+                    large += (n == LEN) as usize;
+                }
+                large
+            });
+
+            let senders: Vec<_> = (0..TASKS)
+                .map(|_| {
+                    let (tx, to) = (tx.clone(), to.clone());
+                    tokio::spawn(async move {
+                        // one that fits a frame between two that do not
+                        let mut pkts = [Packet::new(), Packet::new(), Packet::new()];
+                        pkts[0].received(LEN, &[1u8; LEN - PACKET_SIZE]);
+                        pkts[1].received(SMALL, &[]);
+                        pkts[2].received(LEN, &[1u8; LEN - PACKET_SIZE]);
+                        for _ in 0..ROUNDS {
+                            send_all(&tx, pkts.iter().map(|p| p.ref_with_addr(&to)), true).await?;
+                            tokio::task::yield_now().await;
+                        }
+                        Ok::<_, Error>(())
+                    })
+                })
+                .collect();
+            for sender in senders {
+                sender.await.unwrap().expect("a large datagram was refused");
+            }
+
+            assert!(no_fragment::is_set(&*tx));
+            // loopback may drop some under this load, but what arrives is whole
+            let large = received.await.unwrap();
+            println!("{} of {} large datagrams arrived", large, TASKS * ROUNDS * 2);
+            assert!(large > 0);
+        }
     }
 }

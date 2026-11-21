@@ -36,7 +36,11 @@ jobs:
 
       - name: clippy
         run: cargo clippy
+      - name: test lb
+        run: cargo test -p realm_lb --no-fail-fast
+      # the features of a release build that have tests: without `balance` and
+      # `batched-udp` the balancer and the linux udp path would never run here
       - name: test core
-        run: cargo test -p realm_core --no-fail-fast --features proxy
+        run: cargo test -p realm_core --no-fail-fast --features proxy,balance,batched-udp
       - name: test binary
         run: cargo test --no-fail-fast

@@ -187,6 +187,8 @@ pub async fn associate_and_relay(
         for pkts in registry.group_iter() {
             let laddr: SocketAddr = pkts[0].addr.clone().into();
 
+            // A failure below is about this one client. The other clients of the
+            // batch still get their datagrams forwarded.
             let assoc = sockmap.find_or_insert(&laddr, || {
                 // peer for a new association: the active one, or the balancer's choice
                 let (peer, raddr) = match (route, fixed) {
@@ -206,7 +208,14 @@ pub async fn associate_and_relay(
                     None => log::info!("[udp]new association {} => {} as {}", laddr, *rname, raddr),
                 }
                 Result::Ok(assoc)
-            })?;
+            });
+            let assoc = match assoc {
+                Ok(assoc) => assoc,
+                Err(e) => {
+                    log::error!("[udp]failed to associate for {}: {}", laddr, e);
+                    continue;
+                }
+            };
 
             // an existing association sticks to its peer until that peer is down
             let raddr = match (route, fixed) {
@@ -236,8 +245,11 @@ pub async fn associate_and_relay(
                 (None, None) => unreachable!(),
             };
 
-            let raddr: SockAddrStore = raddr.into();
-            batched::send_all(&assoc.sock, pkts.iter().map(|x| x.ref_with_addr(&raddr))).await?;
+            let raddr_s: SockAddrStore = raddr.into();
+            let pkts = pkts.iter().map(|x| x.ref_with_addr(&raddr_s));
+            if let Err(e) = batched::send_all(&assoc.sock, pkts, conn_opts.udp_no_fragment).await {
+                log::error!("[udp]failed to sendto {} for {}: {}", raddr, laddr, e);
+            }
         }
     }
 }
@@ -278,7 +290,7 @@ async fn send_back(
         }
 
         let pkts = registry.iter().map(|pkt| pkt.ref_with_addr(&laddr_s));
-        if let Err(e) = batched::send_all(&lsock, pkts).await {
+        if let Err(e) = batched::send_all(&lsock, pkts, conn_opts.udp_no_fragment).await {
             log::error!("[udp]failed to sendto client{}: {}", laddr, e);
             break;
         }

@@ -43,8 +43,9 @@ pub struct BalanceCtx<'a> {
 }
 
 /// Combinated load balancer.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum Balancer {
+    #[default]
     Off,
     IpHash(Arc<IpHash>),
     RoundRobin(Arc<RoundRobin>),
@@ -100,12 +101,6 @@ impl Balancer {
             .collect();
 
         Self::new(strategy, &weights)
-    }
-}
-
-impl Default for Balancer {
-    fn default() -> Self {
-        Balancer::Off
     }
 }
 

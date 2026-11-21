@@ -142,6 +142,16 @@ impl EndpointConf {
     }
 }
 
+/// Report a setting that is ignored or corrected. This must not depend on the
+/// log, which is off by default: without one it goes to stderr.
+fn warn(msg: String) {
+    if log::log_enabled!(log::Level::Warn) {
+        log::warn!("{}", msg);
+    } else {
+        eprintln!("warning: {}", msg);
+    }
+}
+
 #[derive(Debug)]
 pub struct EndpointInfo {
     pub no_tcp: bool,
@@ -170,9 +180,30 @@ impl Config for EndpointConf {
             use_udp,
         } = self.network.build();
 
+        // the kernel takes at least one probe; linux refuses 0 and every connection with it
+        if conn_opts.tcp_keepalive > 0 && conn_opts.tcp_keepalive_probe == 0 {
+            warn(format!(
+                "endpoint {}: tcp_keepalive_probe = 0 is not valid, using 1; to turn keepalive off, set tcp_keepalive = 0",
+                self.listen
+            ));
+            conn_opts.tcp_keepalive_probe = 1;
+        }
+
         #[cfg(feature = "balance")]
         {
             conn_opts.balancer = self.build_balancer();
+        }
+
+        #[cfg(not(feature = "balance"))]
+        if self.balance.is_some() {
+            warn(format!(
+                "endpoint {}: balance is ignored, this build has no balance feature (the slim builds do not): {}",
+                self.listen,
+                match self.failover {
+                    Some(_) => "the peers are primary and backups",
+                    None => "only remote is used",
+                }
+            ));
         }
 
         if let Some(failover) = &self.failover {
@@ -196,14 +227,19 @@ impl Config for EndpointConf {
             }
             conn_opts.failover = Some(failover.build(&self.listen, &remotes, use_udp));
 
-            // the dial deadline is shared by the primary attempt and the one retry
+            // the dial deadline is shared by all dials of a connection
             let t = conn_opts.connect_timeout;
             if !no_tcp && (t == 0 || t > 10) {
-                log::warn!(
-                    "endpoint {}: failover with tcp_timeout={}s, a blackholed peer stalls new connections that long; 3-5s is recommended",
-                    self.listen,
-                    t
-                );
+                let stall = match t {
+                    0 => {
+                        "no tcp_timeout, a blackholed peer stalls new connections until the system gives up".to_string()
+                    }
+                    t => format!("tcp_timeout={}s, a blackholed peer stalls new connections that long", t),
+                };
+                warn(format!(
+                    "endpoint {}: failover with {}; 3-5s is recommended",
+                    self.listen, stall
+                ));
             }
         }
 
@@ -260,5 +296,32 @@ impl Config for EndpointConf {
             balance: None,
             failover: None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn build(conf: &str) -> EndpointInfo {
+        toml::from_str::<EndpointConf>(conf).unwrap().build()
+    }
+
+    /// A keepalive of zero probes is no keepalive the kernel accepts.
+    #[test]
+    fn keepalive_probe_is_at_least_one() {
+        let ep = |network: &str| {
+            let conf = format!(
+                "listen = \"127.0.0.1:1\"\nremote = \"10.0.0.1:1\"\nnetwork = {{ {} }}",
+                network
+            );
+            let opts = build(&conf).endpoint.conn_opts;
+            (opts.tcp_keepalive, opts.tcp_keepalive_probe)
+        };
+        assert_eq!(ep(""), (15, 3));
+        assert_eq!(ep("tcp_keepalive_probe = 0"), (15, 1));
+        assert_eq!(ep("tcp_keepalive = 5, tcp_keepalive_probe = 2"), (5, 2));
+        // keepalive off: the count is not used
+        assert_eq!(ep("tcp_keepalive = 0, tcp_keepalive_probe = 0"), (0, 0));
     }
 }

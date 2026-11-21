@@ -4,12 +4,44 @@ A simple, high performance relay server written in rust.
 
 <p><img src="https://raw.githubusercontent.com/zhboner/realm/master/assets/realm.png"/></p>
 
-[![realm](https://github.com/zhboner/realm/workflows/ci/badge.svg)](https://github.com/zhboner/realm/actions)
-[![realm](https://github.com/zhboner/realm/workflows/build/badge.svg)](https://github.com/zhboner/realm/actions/workflows/cross_compile.yml)
-[![downloads](https://img.shields.io/github/downloads/zhboner/realm/total?color=green)](https://github.com/zhboner/realm/releases)
+[![ci](https://github.com/kaze-kaze/realm/actions/workflows/ci.yml/badge.svg)](https://github.com/kaze-kaze/realm/actions/workflows/ci.yml)
+[![build](https://github.com/kaze-kaze/realm/actions/workflows/build.yml/badge.svg)](https://github.com/kaze-kaze/realm/actions/workflows/build.yml)
+[![downloads](https://img.shields.io/github/downloads/kaze-kaze/realm/total?color=green)](https://github.com/kaze-kaze/realm/releases)
 <!-- [中文说明](https://zhb.me/realm) -->
 
+## About this fork
+
+This is a fork of [zhboner/realm](https://github.com/zhboner/realm) (v2.9.6). Its own versions start at 3.0.0, and `realm -v` tells the two apart. A config written for upstream runs unchanged, and the new options are off until they are configured. One thing moves on the upgrade: an `iphash` endpoint maps its clients to peers anew, once.
+
+What it adds:
+
+- [failover](#endpointfailover-table): health checked primary and backups, for TCP and UDP.
+- [failover with balance](#failover-with-balance): load balancing that leaves dead peers out, and balances UDP as well.
+- [udp_probe = "quic"](#endpointfailover-table): probe a QUIC service (Hysteria 2, TUIC) on its own port.
+- [udp_no_fragment](#networkudp_no_fragment-bool): do not fragment the datagrams of QUIC based services.
+- [iphash](#endpointbalance-string) that follows the weights.
+- Fixes to what upstream does: UDP datagrams above 1500 bytes are relayed whole instead of cut off, UDP replies no longer reach the wrong client when many associations are open, the listener survives running out of file descriptors, `--tcp-keepalive-probe` is read.
+
+Upstream's binaries and container images ignore the `failover` table without a word: the relay works, and never fails over. Check the version before relying on it.
+
+How it was tested, and what was not: [test-report](test-report/) (in Chinese).
+
+## Install
+
+Download a package from the [releases](https://github.com/kaze-kaze/realm/releases) and unpack it. For containers see [below](#container).
+
+Which Linux package:
+
+| package | for |
+| --- | --- |
+| `realm-<arch>-unknown-linux-gnu` | glibc 2.38 and later: Debian 13, Ubuntu 24.04. On an older system it stops with `GLIBC_2.38 not found`. |
+| `realm-<arch>-unknown-linux-gnu-glibc2.28` | glibc 2.28 and later: Debian 10 to 12, Ubuntu 20.04 and 22.04. |
+| `realm-<arch>-unknown-linux-musl` | static, for Alpine and anything else. On a glibc system prefer a gnu package: it relayed 12-23% more UDP in [our comparison](test-report/REALWORLD.md) (section 8.2), TCP was the same. |
+| `realm-slim-...` | the same three, built without `balance`, `proxy` and `transport`. Failover is included; `balance` is ignored with a warning at startup. |
+
 ## Libs
+
+The crates below are upstream's. This fork's changes to `realm_core` and `realm_lb` are not published to crates.io.
 
 | lib | doc |
 | ----- | ----- |
@@ -40,7 +72,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 Clone this repository:
 
 ```shell
-git clone https://github.com/zhboner/realm && cd realm
+git clone https://github.com/kaze-kaze/realm && cd realm
 ```
 
 Build:
@@ -197,12 +229,14 @@ realm -c config/
 Start with environment variables:
 
 ```shell
-REALM_CONF='{"endpoints":[{"local":"127.0.0.1:5000","remote":"1.1.1.1:443"}]}' realm
+REALM_CONF='{"endpoints":[{"listen":"127.0.0.1:5000","remote":"1.1.1.1:443"}]}' realm
 
 # or
 export REALM_CONF=`cat config.json | jq -c `
 realm
 ```
+
+`REALM_CONF` holds a whole config, in any of the file formats. If it cannot be parsed, realm says why and goes by the command line instead.
 
 Convert a legacy config file:
 
@@ -349,9 +383,13 @@ Where `remote` is used as default backend server, and `extra_remotes` are used a
 
 Available algorithms (provided by [realm_lb](./realm_lb/)):
 
-- iphash
+- iphash: a client address always gets the same peer, and the peers get client addresses in the proportions of their weights. An IPv4 client counts as the same client on a dual-stack listener (`::ffff:a.b.c.d`). Adding a peer at the end of the list, or changing the weight of one, only moves clients to or from that peer.
 
-- roundrobin
+- roundrobin: connections take turns, in the proportions of the weights.
+
+Builds without the `balance` feature (the slim ones) ignore this option and say so in a warning at startup.
+
+`iphash` was reworked after v3.1.1: before, weights were not followed (`2, 1, 1` gave about 72% / 20% / 8%) and equal weights were off by several points. Upgrading from v3.1.1 or earlier maps the clients of an `iphash` endpoint to peers anew, once. Established connections are not touched.
 
 Example:
 
@@ -388,6 +426,10 @@ Probes (from this host, with the same `interface` and `through` ip; a port in `t
 
 To detect failures behind the next hop, point `probe` at a health port on the far end that is relayed along the same path (e.g. a tiny HTTP 204 responder and a UDP echo).
 
+Probes are plain TCP and UDP. They send no PROXY header ([send_proxy](#networksend_proxy-bool)) and do not go through [remote_transport](#endpointremote_transport-string). When the data port expects either, probe it by handshake only (no `tcp_send` and `tcp_expect`), or point `probe` at a health port. A probe with `tcp_expect` against such a port fails every round: all peers are marked down, and nothing ever moves.
+
+A key in the `failover` table that is not one of these is an error at startup, so that a misspelt option does not fall back to its default unnoticed.
+
 | field | default | meaning |
 | --- | --- | --- |
 | probe | data addresses | health targets, one per peer, same order as `[remote, extra_remotes...]` |
@@ -402,6 +444,23 @@ To detect failures behind the next hop, point `probe` at a health port on the fa
 | hold | 30 | seconds before failing back |
 
 With the defaults, a silently failing primary is detected in about 7.5-10.5s. Keep `tcp_timeout` at 3-5s on failover endpoints.
+
+Watching it:
+
+The log is the only place a failover shows, and it is off by default. Set [log.level](#loglevel-string) to `warn` on a host that uses failover. These lines are written at `warn` (shown here without the time, source and level in front):
+
+```
+[failover][tcp]0.0.0.0:5000 peer#0 10.0.0.4:3000 is down
+[failover][tcp]0.0.0.0:5000 switch peer#0 10.0.0.4:3000 => peer#1 10.0.0.5:3000
+[failover][tcp]0.0.0.0:5000 peer#0 10.0.0.4:3000 is up
+[tcp]connect to peer#0 10.0.0.4:3000: connect timeout, retry peer#1 10.0.0.5:3000
+```
+
+- TCP and UDP are probed and reported separately (`[tcp]`, `[udp]`), and `peer#0` is `remote`. With `balance` there is no `switch` line, only `is down` and `is up`.
+- The `retry` line is written once for every dial that is retried. Between a peer dying and the probes taking it out, a relay with many short connections writes one for each of them: tens of thousands of lines within seconds were measured at 30000 connections a second.
+- A log file is never rotated by realm. Rotate it yourself (`copytruncate` with logrotate), or log to stdout and leave it to the service manager.
+- At startup, the `inited:` line of an endpoint shows the failover options in effect.
+- `info` adds a line for every connection and every UDP association with the peer it went to.
 
 Limits:
 
@@ -660,6 +719,8 @@ default: 15
 TCP Keepalive retries.
 
 On Linux, this is equivalent to `ipv4.tcp_keepalive_probes`.
+
+At least 1: with keepalive on, 0 is taken as 1 and reported in a warning at startup (Linux refuses a count of 0, and with it every connection). To turn keepalive off, set `tcp_keepalive = 0`.
 
 default: 3
 

@@ -1,18 +1,29 @@
-use std::net::IpAddr;
+use std::net::{IpAddr, Ipv4Addr};
 
 use super::{Balance, Token};
 
-/// Iphash node.
-#[derive(Debug)]
-struct Node {
-    hash: u32,
-    token: Token,
-}
-
 /// Iphash balancer.
+///
+/// A client address always gets the same peer, and peers get clients in
+/// proportion to their weights.
+///
+/// This is weighted rendezvous hashing. Every peer draws a number from the
+/// address and its own index, and the best draw wins. The draw of a peer of
+/// weight `w` is exponentially distributed with rate `w`, so the peer wins with
+/// probability `w / sum of weights`: the shares are exact, not an approximation
+/// that depends on how many points a ring has.
+///
+/// The draw of a peer depends on nothing but the address, its index and its
+/// weight. So appending a peer, or changing the weight of one, only moves
+/// clients to or from that peer.
+///
+/// The mapping from addresses to peers is part of the behaviour: changing how
+/// it is computed moves the clients of every user on upgrade. See the
+/// `ih_mapping_is_pinned` test.
 #[derive(Debug)]
 pub struct IpHash {
-    nodes: Vec<Node>,
+    /// `1 / weight` of each peer, infinite for a weight of zero.
+    scale: Vec<f64>,
     total: u8,
 }
 
@@ -26,31 +37,8 @@ impl Balance for IpHash {
     fn new(weights: &[u8]) -> Self {
         assert!(weights.len() <= u8::MAX as usize);
 
-        if weights.len() <= 1 {
-            return Self {
-                nodes: Vec::new(),
-                total: weights.len() as u8,
-            };
-        }
-
-        let ratio = replica_ratio(weights);
-        let count = weights.iter().map(|x| *x as usize * ratio as usize).sum();
-        let mut nodes: Vec<Node> = Vec::with_capacity(count);
-
-        for (n, weight) in weights.iter().map(|x| *x as usize * ratio as usize).enumerate() {
-            let token = Token(n as u8);
-
-            for vidx in 0..=weight {
-                let buf = format!("{0} 114514", vidx);
-                let hash = chash(buf.as_bytes());
-                nodes.push(Node { hash, token });
-            }
-        }
-
-        nodes.sort_unstable_by_key(|node| node.hash);
-
         Self {
-            nodes,
+            scale: weights.iter().map(|w| 1.0 / *w as f64).collect(),
             total: weights.len() as u8,
         }
     }
@@ -59,260 +47,342 @@ impl Balance for IpHash {
         if self.total <= 1 {
             return Some(Token(0));
         }
-
-        let hash = match state {
-            IpAddr::V4(x) => chash_for_ip(&x.octets()),
-            IpAddr::V6(x) => chash_for_ip(&x.octets()),
-        };
-
-        let idx = match self.nodes.binary_search_by_key(&hash, |node| node.hash) {
-            Ok(idx) => idx,
-            Err(idx) if idx >= self.nodes.len() as usize => 0,
-            Err(idx) => idx,
-        };
-
-        Some(self.nodes[idx].token)
+        self.next_among(state, |_| true)
     }
 }
 
-use chash::{chash, chash_for_ip};
-mod chash {
-    const SEED: u32 = 0xbc9f1d34;
-    const M: u32 = 0xc6a4a793;
+impl IpHash {
+    /// The peer of `ip` among those that `usable` accepts, `None` if there is none.
+    ///
+    /// It is what [`Balance::next`] gives while that peer is usable. Otherwise it
+    /// is the peer that comes next for this address, always the same one. So with
+    /// some peers out of use, their clients are shared by the others in the
+    /// proportions of their weights, and the clients of the others do not move.
+    pub fn next_among(&self, ip: &IpAddr, usable: impl Fn(usize) -> bool) -> Option<Token> {
+        let seed = seed(ip);
 
-    macro_rules! c_add {
-        ($a:expr, $b:expr) => {
-            $a.wrapping_add($b)
-        };
-    }
-
-    macro_rules! c_mul {
-        ($a:expr, $b:expr) => {
-            $a.wrapping_mul($b)
-        };
-    }
-
-    pub fn chash(buf: &[u8]) -> u32 {
-        let mut h = SEED ^ c_mul!(buf.len() as u32, M);
-        let mut b = buf;
-        let mut len = buf.len();
-
-        while len >= 4 {
-            h = c_add!(
-                h,
-                (b[0] as u32) | ((b[1] as u32) << 8) | ((b[2] as u32) << 16) | ((b[3] as u32) << 24)
-            );
-
-            h = c_mul!(h, M);
-            h ^= h >> 16;
-            b = &b[4..];
-            len -= 4;
+        // A peer of weight zero draws infinity: it only wins when the other usable
+        // peers have no weight either, and then the first of them does.
+        let mut best: Option<(usize, f64)> = None;
+        for (i, scale) in self.scale.iter().enumerate().filter(|(i, _)| usable(*i)) {
+            let draw = exponential(stream(seed, i as u64)) * scale;
+            if best.is_none_or(|(_, best)| draw < best) {
+                best = Some((i, draw));
+            }
         }
 
-        if len == 3 {
-            h = c_add!(h, (b[2] as u32) << 16);
-            len -= 1;
-        }
-
-        if len == 2 {
-            h = c_add!(h, (b[1] as u32) << 8);
-            len -= 1;
-        }
-
-        if len == 1 {
-            h = c_add!(h, b[0] as u32);
-            h = c_mul!(h, M);
-            h ^= h >> 24;
-        }
-
-        h
-    }
-
-    pub fn chash_for_ip(buf: &[u8]) -> u32 {
-        let mut h = SEED ^ c_mul!(buf.len() as u32, M);
-
-        let (_, buf, _) = unsafe { buf.align_to::<u32>() };
-
-        for b in buf.iter().map(|x| x.to_le()) {
-            h = c_add!(h, b);
-            h = c_mul!(h, M);
-            h ^= h >> 16;
-        }
-
-        h
+        best.map(|(i, _)| Token(i as u8))
     }
 }
 
-fn replica_ratio(weights: &[u8]) -> u8 {
-    const MIN_REPLICA: u8 = 128;
-
-    let max = *weights.iter().max().unwrap();
-
-    if max >= MIN_REPLICA {
-        1
-    } else {
-        f64::ceil(MIN_REPLICA as f64 / max as f64) as u8
+/// One number per address. An ipv4 client is the same client whether it shows
+/// up as `a.b.c.d` or, on a dual-stack listener, as `::ffff:a.b.c.d`.
+fn seed(ip: &IpAddr) -> u64 {
+    let v4 = |x: Ipv4Addr| mix(u32::from(x) as u64);
+    match ip {
+        IpAddr::V4(x) => v4(*x),
+        IpAddr::V6(x) => match x.to_ipv4_mapped() {
+            Some(x) => v4(x),
+            None => {
+                let x = u128::from(*x);
+                mix(mix((x >> 64) as u64) ^ x as u64)
+            }
+        },
     }
+}
+
+/// The `i`-th number of the splitmix64 sequence that starts at `seed`: unrelated
+/// numbers for the peers of one address, and for one peer across addresses.
+#[inline]
+fn stream(seed: u64, i: u64) -> u64 {
+    const GOLDEN: u64 = 0x9e37_79b9_7f4a_7c15;
+    mix(seed.wrapping_add((i + 1).wrapping_mul(GOLDEN)))
+}
+
+/// Finalizer of splitmix64 (Stafford's mix13): every input bit flips every
+/// output bit about half of the time, so addresses that differ in one bit, as
+/// neighbours in a subnet do, end up unrelated.
+#[inline]
+fn mix(mut x: u64) -> u64 {
+    x ^= x >> 30;
+    x = x.wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    x ^= x >> 27;
+    x = x.wrapping_mul(0x94d0_49bb_1331_11eb);
+    x ^ (x >> 31)
+}
+
+/// Turn 64 random bits into an exponentially distributed number of rate 1.
+#[inline]
+fn exponential(bits: u64) -> f64 {
+    // the middle of one of 2^52 equal steps of (0, 1): never 0 or 1, and exact
+    // in a f64, so the logarithm is finite and not zero
+    let uniform = ((bits >> 12) as f64 + 0.5) * (1.0 / (1u64 << 52) as f64);
+    -uniform.ln()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use average::{Max, Mean, Min};
-    use std::net::{Ipv4Addr, Ipv6Addr};
+    use std::net::Ipv6Addr;
 
-    #[test]
-    fn ih_replica_ratios() {
-        macro_rules! run {
-            ($weights: expr, $ratio: expr) => {{
-                assert_eq!(replica_ratio($weights), $ratio);
-            }};
-        }
-
-        run!(&[1], 128);
-        run!(&[1, 1, 2], 64);
-        run!(&[1, 1, 2, 2, 3], 43);
-        run!(&[1, 1, 2, 2, 3, 3, 4], 32);
-        run!(&[1, 1, 2, 2, 3, 3, 4, 4, 5], 26);
-        run!(&[1, 1, 2, 2, 3, 3, 4, 4, 5, 10], 13);
-        run!(&[1, 1, 2, 2, 3, 3, 4, 4, 5, 10, 20], 7);
-        run!(&[1, 1, 2, 2, 3, 3, 4, 4, 5, 10, 20, 30], 5);
-        run!(&[1, 1, 2, 2, 3, 3, 4, 4, 5, 10, 20, 30, 50], 3);
-        run!(&[1, 1, 2, 2, 3, 3, 4, 4, 5, 10, 20, 30, 50, 100], 2);
-        run!(&[1, 2, 3, 4, 128], 1);
-        run!(&[1, 2, 3, 4, 200], 1);
-        run!(&[1, 2, 3, 4, 255], 1);
+    fn v4(x: u32) -> IpAddr {
+        Ipv4Addr::from(x).into()
     }
 
-    #[test]
-    fn ih_any_hash() {
-        macro_rules! run {
-            ($str: expr, $res: expr) => {{
-                assert_eq!(chash($str), $res);
-            }};
-        }
-
-        run!(b"", 3164544308);
-        run!(b"123", 4219602657);
-        run!(b"1234567", 897539970);
-        run!(b"abc", 2237464879);
-        run!(b"abcdefg", 2383090994);
-        run!(b"123abc", 2851751921);
-        run!(b"abc123", 4002724297);
-        run!(b"realm", 885396906);
-        run!(b"1 realm", 4115282535);
-        run!(b"2 realm", 1326782105);
-        run!(b"3 realm", 1796078392);
-        run!(b"10 realm", 2265248424);
-        run!(b"100 realm", 4289654351);
+    /// Addresses all over the ipv4 space, about 430 thousand of them.
+    fn scattered() -> impl Iterator<Item = IpAddr> {
+        (0..=u32::MAX).step_by(9973).map(v4)
     }
 
-    #[test]
-    fn ih_ip_hash() {
-        macro_rules! run {
-            ($ip: expr) => {{
-                let b = $ip.octets();
-                assert_eq!(chash(&b), chash_for_ip(&b));
-            }};
-            (=> $ip: expr) => {{
-                let ip = $ip.parse::<Ipv6Addr>().unwrap();
-                run!(ip);
-            }};
-        }
-
-        for i in (0..=u32::MAX).step_by(127) {
-            run!(Ipv4Addr::from(i));
-        }
-
-        run!(=>"::0");
-        run!(=>"::1");
-        run!(=>"::ffff:127.0.0.1");
-        run!(=>"2001:4860:4860::8844");
-        run!(=>"2001:4860:4860::8888");
-        run!(=>"2606:4700:4700::1001");
-        run!(=>"2606:4700:4700::1111");
-        run!(=>"fd9d:bb35:94bf:c38a:ee1:c75d:8df3:c909");
+    fn pick(iphash: &IpHash, ip: &IpAddr) -> usize {
+        iphash.next(ip).unwrap().0 as usize
     }
 
-    #[test]
-    fn ih_same_ip() {
-        let ip1 = "1.1.1.1".parse::<IpAddr>().unwrap();
-        let ip2 = "8.8.8.8".parse::<IpAddr>().unwrap();
-        let ip3 = "114.51.4.19".parse::<IpAddr>().unwrap();
-        let ip4 = "2001:4860:4860::8888".parse::<IpAddr>().unwrap();
-
-        let iphash = IpHash::new(&vec![1, 2, 3, 4]);
-        assert_eq!(iphash.total, 4);
-        assert!(iphash.nodes.len() >= (1 + 2 + 3 + 4) * 128 / 4);
-
-        let ip1_node = iphash.next(&ip1);
-        let ip2_node = iphash.next(&ip2);
-        let ip3_node = iphash.next(&ip3);
-        let ip4_node = iphash.next(&ip4);
-
-        for _ in 0..16 {
-            assert_eq!(iphash.next(&ip1), ip1_node);
-            assert_eq!(iphash.next(&ip2), ip2_node);
-            assert_eq!(iphash.next(&ip3), ip3_node);
-            assert_eq!(iphash.next(&ip4), ip4_node);
-        }
-    }
-
-    #[test]
-    fn ih_same_weight() {
-        let iphash = IpHash::new(&vec![1; 16]);
-        let mut distro = [0f64; 16];
-
-        let mut total: usize = 0;
-        for ip in (0..=u32::MAX).map(Ipv4Addr::from).map(IpAddr::from).step_by(127) {
-            let token = iphash.next(&ip).unwrap();
-            distro[token.0 as usize] += 1 as f64;
+    /// Share of each peer in percent, and the number of addresses.
+    fn shares(weights: &[u8], ips: impl Iterator<Item = IpAddr>) -> (Vec<f64>, usize) {
+        let iphash = IpHash::new(weights);
+        let mut count = vec![0usize; weights.len()];
+        let mut total = 0;
+        for ip in ips {
+            count[pick(&iphash, &ip)] += 1;
             total += 1;
         }
+        let shares = count.iter().map(|n| *n as f64 * 100.0 / total as f64).collect();
+        (shares, total)
+    }
 
-        let diffs: Vec<f64> = distro
-            .iter()
-            .map(|x| *x / total as f64 - 1.0 / 16.0)
-            .map(f64::abs)
-            .collect();
-
-        let min_diff: Min = diffs.iter().collect();
-        let max_diff: Max = diffs.iter().collect();
-        let mean_diff: Mean = diffs.iter().collect();
-
-        println!("{:?}", distro);
-        println!("min diff: {}", min_diff.min());
-        println!("max diff: {}", max_diff.max());
-        println!("mean diff: {}", mean_diff.mean());
+    /// Every peer gets its weight's share of the addresses, give or take what
+    /// that many random picks would be off by (five standard deviations).
+    fn assert_shares(weights: &[u8], ips: impl Iterator<Item = IpAddr>) {
+        let (shares, total) = shares(weights, ips);
+        let sum: f64 = weights.iter().map(|w| *w as f64).sum();
+        println!("{:?} over {} addresses: {:.2?}", weights, total, shares);
+        for (i, (share, weight)) in shares.iter().zip(weights).enumerate() {
+            let p = *weight as f64 / sum;
+            let sigma = (p * (1.0 - p) / total as f64).sqrt() * 100.0;
+            let off = (share - p * 100.0).abs();
+            assert!(
+                off <= 5.0 * sigma,
+                "weights {:?}: peer {} got {:.2}% of {} addresses, expected {:.2}% within {:.2}",
+                weights,
+                i,
+                share,
+                total,
+                p * 100.0,
+                5.0 * sigma
+            );
+        }
     }
 
     #[test]
-    fn ih_all_weights() {
-        let weights: Vec<u8> = (1..=16).collect();
-        let iphash = IpHash::new(&weights);
-        let mut distro = [0f64; 16];
-
-        let mut total: usize = 0;
-        for ip in (0..=u32::MAX).map(Ipv4Addr::from).map(IpAddr::from).step_by(127) {
-            let token = iphash.next(&ip).unwrap();
-            distro[token.0 as usize] += 1 as f64;
-            total += 1;
-        }
-
-        let diffs: Vec<f64> = distro
-            .iter()
-            .enumerate()
-            .map(|(i, x)| *x / total as f64 - (i as f64 + 1.0) / 16.0)
-            .map(f64::abs)
-            .collect();
-
-        let min_diff: Min = diffs.iter().collect();
-        let max_diff: Max = diffs.iter().collect();
-        let mean_diff: Mean = diffs.iter().collect();
-
-        println!("{:?}", distro);
-        println!("min diff: {}", min_diff.min());
-        println!("max diff: {}", max_diff.max());
-        println!("mean diff: {}", mean_diff.mean());
+    fn ih_shares_follow_weights() {
+        assert_shares(&[1, 1], scattered());
+        assert_shares(&[1, 1, 1], scattered());
+        assert_shares(&[1, 1, 1, 1], scattered());
+        assert_shares(&[2, 1, 1], scattered());
+        assert_shares(&[4, 2, 1], scattered());
+        assert_shares(&[1, 3, 1, 1], scattered());
+        assert_shares(&[80, 1, 1], scattered());
+        assert_shares(&[255, 1], scattered());
+        assert_shares(&[1; 8], scattered());
+        assert_shares(&(1..=16).collect::<Vec<u8>>(), scattered());
+        assert_shares(&[1; 255], scattered());
     }
+
+    /// Clients are not spread all over the address space: they sit next to each
+    /// other in a few networks.
+    #[test]
+    fn ih_neighbours_are_spread_too() {
+        let subnet = |base: [u8; 4], bits: u32| {
+            let base = u32::from(Ipv4Addr::from(base));
+            (0..1u32 << (32 - bits)).map(move |i| v4(base + i))
+        };
+        for weights in [&[1, 1, 1][..], &[2, 1, 1], &[4, 2, 1]] {
+            assert_shares(weights, subnet([10, 0, 0, 0], 14));
+            assert_shares(weights, subnet([100, 64, 0, 0], 16));
+            assert_shares(weights, subnet([192, 168, 0, 0], 16));
+            assert_shares(weights, subnet([203, 0, 112, 0], 20));
+            // the same host number in every /24 of a /8
+            assert_shares(weights, (0..1u32 << 16).map(|i| v4(0x0b00_0001 + (i << 8))));
+        }
+    }
+
+    #[test]
+    fn ih_ipv6_shares_follow_weights() {
+        let net = u128::from("2001:db8::".parse::<Ipv6Addr>().unwrap());
+        // hosts of one /64, then the first host of many /64
+        let hosts = || (1..=200_000u128).map(move |i| IpAddr::from(Ipv6Addr::from(net + i)));
+        let nets = || (1..=200_000u128).map(move |i| IpAddr::from(Ipv6Addr::from(net + (i << 64) + 1)));
+        for weights in [&[1, 1, 1][..], &[2, 1, 1], &[4, 2, 1]] {
+            assert_shares(weights, hosts());
+            assert_shares(weights, nets());
+        }
+    }
+
+    #[test]
+    fn ih_same_ip_same_peer() {
+        let iphash = IpHash::new(&[1, 2, 3, 4]);
+        assert_eq!(iphash.total(), 4);
+        for ip in ["1.1.1.1", "8.8.8.8", "114.51.4.19", "2001:4860:4860::8888"] {
+            let ip = ip.parse::<IpAddr>().unwrap();
+            let peer = iphash.next(&ip);
+            for _ in 0..16 {
+                assert_eq!(iphash.next(&ip), peer);
+            }
+        }
+        // a balancer built again from the same weights agrees
+        let again = IpHash::new(&[1, 2, 3, 4]);
+        for ip in scattered().take(10_000) {
+            assert_eq!(iphash.next(&ip), again.next(&ip));
+        }
+    }
+
+    #[test]
+    fn ih_ipv4_mapped_is_ipv4() {
+        let iphash = IpHash::new(&[1, 1, 1, 1, 1]);
+        for ip in scattered().take(10_000) {
+            let IpAddr::V4(x) = ip else { unreachable!() };
+            let mapped = IpAddr::V6(x.to_ipv6_mapped());
+            assert_eq!(iphash.next(&ip), iphash.next(&mapped));
+        }
+    }
+
+    #[test]
+    fn ih_single_or_no_peer() {
+        let ip = v4(0x0102_0304);
+        assert_eq!(IpHash::new(&[]).next(&ip), Some(Token(0)));
+        assert_eq!(IpHash::new(&[7]).next(&ip), Some(Token(0)));
+    }
+
+    #[test]
+    fn ih_zero_weight_gets_nothing() {
+        let (shares, _) = shares(&[0, 1, 1], scattered());
+        assert_eq!(shares[0], 0.0);
+        assert_shares(&[0, 2, 1], scattered());
+        assert_shares(&[3, 0, 1, 0], scattered());
+        // nothing to choose from: the first peer
+        let (shares, _) = shares_of_all_zero();
+        assert_eq!(shares, vec![100.0, 0.0, 0.0]);
+    }
+
+    fn shares_of_all_zero() -> (Vec<f64>, usize) {
+        shares(&[0, 0, 0], scattered().take(10_000))
+    }
+
+    /// One more peer takes its share from the others and moves nobody else.
+    #[test]
+    fn ih_new_peer_moves_only_its_clients() {
+        let before = IpHash::new(&[2, 1, 1]);
+        let after = IpHash::new(&[2, 1, 1, 2]);
+        let mut moved = 0;
+        for ip in scattered() {
+            let (old, new) = (pick(&before, &ip), pick(&after, &ip));
+            if new != old {
+                assert_eq!(new, 3);
+                moved += 1;
+            }
+        }
+        // a third of the clients: its weight out of the new total
+        let total = scattered().count();
+        let share = moved as f64 / total as f64;
+        assert!((share - 1.0 / 3.0).abs() < 0.005, "moved {} of {}", moved, total);
+    }
+
+    /// A different weight for one peer only moves clients to or from that peer.
+    #[test]
+    fn ih_new_weight_moves_only_its_clients() {
+        let before = IpHash::new(&[1, 1, 1]);
+        let more = IpHash::new(&[1, 3, 1]);
+        let less = IpHash::new(&[3, 1, 3]);
+        for ip in scattered() {
+            let old = pick(&before, &ip);
+            let new = pick(&more, &ip);
+            assert!(new == old || new == 1);
+            // `3, 1, 3` is `1, 1/3, 1`: peer 1 loses clients and gains none
+            let new = pick(&less, &ip);
+            assert!(new == old || old == 1);
+        }
+    }
+
+    /// With a peer out of use, its clients go to the others by weight, however
+    /// large its own share was, and nobody else moves.
+    #[test]
+    fn ih_next_among_shares_follow_weights() {
+        let among = |weights: &[u8], out: &[usize], want: &[f64]| {
+            let iphash = IpHash::new(weights);
+            let mut count = vec![0usize; weights.len()];
+            let mut total = 0;
+            for ip in scattered() {
+                let home = pick(&iphash, &ip);
+                let now = iphash.next_among(&ip, |i| !out.contains(&i)).unwrap().0 as usize;
+                assert!(!out.contains(&now));
+                assert!(now == home || out.contains(&home));
+                count[now] += 1;
+                total += 1;
+            }
+            for (i, (n, want)) in count.iter().zip(want).enumerate() {
+                let got = *n as f64 / total as f64;
+                let sigma = (want * (1.0 - want) / total as f64).sqrt();
+                assert!(
+                    (got - want).abs() <= 5.0 * sigma,
+                    "weights {:?} without {:?}: peer {} got {:.4}, expected {:.4}",
+                    weights,
+                    out,
+                    i,
+                    got,
+                    want
+                );
+            }
+        };
+        among(&[1, 1, 1], &[], &[1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0]);
+        among(&[1, 1, 1], &[1], &[0.5, 0.0, 0.5]);
+        among(&[2, 1, 1], &[0], &[0.0, 0.5, 0.5]);
+        among(&[4, 2, 1], &[1], &[0.8, 0.0, 0.2]);
+        among(&[80, 1, 1], &[0], &[0.0, 0.5, 0.5]);
+        among(&[1, 2, 3, 2], &[2, 3], &[1.0 / 3.0, 2.0 / 3.0, 0.0, 0.0]);
+
+        let iphash = IpHash::new(&[1, 2, 3]);
+        let ip = v4(0x0102_0304);
+        assert_eq!(iphash.next_among(&ip, |_| false), None);
+        assert_eq!(iphash.next_among(&ip, |i| i == 2), Some(Token(2)));
+        // weightless peers are the last resort, in order
+        let iphash = IpHash::new(&[0, 0, 1]);
+        assert_eq!(iphash.next_among(&ip, |_| true), Some(Token(2)));
+        assert_eq!(iphash.next_among(&ip, |i| i != 2), Some(Token(0)));
+    }
+
+    /// The mapping must not change by accident: a change moves the clients of
+    /// every `iphash` endpoint on upgrade, and that belongs in the release notes.
+    #[test]
+    fn ih_mapping_is_pinned() {
+        let peers = |weights: &[u8]| -> Vec<usize> {
+            let iphash = IpHash::new(weights);
+            [
+                "1.1.1.1",
+                "8.8.8.8",
+                "10.0.0.1",
+                "10.0.0.2",
+                "100.64.7.9",
+                "192.168.1.1",
+                "198.51.100.23",
+                "203.0.113.77",
+                "::1",
+                "2001:db8::1",
+                "2001:db8::2",
+                "2001:db8:1::1",
+                "fd9d:bb35:94bf:c38a:ee1:c75d:8df3:c909",
+                "::ffff:10.0.0.1",
+            ]
+            .iter()
+            .map(|ip| pick(&iphash, &ip.parse().unwrap()))
+            .collect()
+        };
+        assert_eq!(peers(&[1, 1, 1]), PINNED_EQUAL);
+        assert_eq!(peers(&[4, 2, 1]), PINNED_WEIGHTED);
+        assert_eq!(peers(&[1, 1, 1, 1, 1, 1, 1, 1]), PINNED_EIGHT);
+    }
+
+    const PINNED_EQUAL: [usize; 14] = [1, 1, 1, 2, 0, 0, 0, 0, 0, 2, 2, 1, 2, 1];
+    const PINNED_WEIGHTED: [usize; 14] = [0, 1, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 2, 0];
+    const PINNED_EIGHT: [usize; 14] = [7, 1, 6, 2, 7, 0, 4, 0, 3, 6, 5, 1, 2, 6];
 }

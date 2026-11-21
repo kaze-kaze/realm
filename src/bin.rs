@@ -24,8 +24,10 @@ cfg_if! {
 fn main() {
     let conf = 'blk: {
         if let Ok(conf_str) = env::var(ENV_CONFIG) {
-            if let Ok(conf) = FullConf::from_conf_str(&conf_str) {
-                break 'blk conf;
+            match conf_from_env(&conf_str) {
+                Ok(conf) => break 'blk conf,
+                // the command line is used instead, as before, but not without a word
+                Err(e) => eprintln!("warning: {} is not a valid config, ignored: {}", ENV_CONFIG, e),
             }
         };
 
@@ -46,6 +48,14 @@ fn main() {
     };
 
     start_from_conf(conf);
+}
+
+/// The config in `REALM_CONF`. Its global options reach the endpoints like those of
+/// a config file do.
+fn conf_from_env(conf_str: &str) -> std::io::Result<FullConf> {
+    let mut conf = FullConf::from_conf_str(conf_str)?;
+    conf.apply_global_opts();
+    Ok(conf)
 }
 
 fn start_from_conf(full: FullConf) {
@@ -148,4 +158,32 @@ async fn run(endpoints: Vec<EndpointInfo>) {
     workers.shrink_to_fit();
 
     join_all(workers).await;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The global `network` of a config in `REALM_CONF` was once left out: `use_udp`
+    /// there started no udp relay.
+    #[test]
+    fn env_config_takes_global_options() {
+        let conf = conf_from_env(
+            r#"{
+                "network": { "use_udp": true, "tcp_timeout": 4 },
+                "endpoints": [
+                    { "listen": "127.0.0.1:1", "remote": "10.0.0.1:1" },
+                    { "listen": "127.0.0.1:2", "remote": "10.0.0.1:2", "network": { "tcp_timeout": 7 } }
+                ]
+            }"#,
+        )
+        .unwrap();
+        let eps: Vec<EndpointInfo> = conf.endpoints.into_iter().map(Config::build).collect();
+        assert!(eps[0].use_udp && eps[1].use_udp);
+        assert_eq!(eps[0].endpoint.conn_opts.connect_timeout, 4);
+        // an endpoint's own option still wins
+        assert_eq!(eps[1].endpoint.conn_opts.connect_timeout, 7);
+
+        assert!(conf_from_env("not a config").is_err());
+    }
 }

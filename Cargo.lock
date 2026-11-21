@@ -1589,7 +1589,7 @@ dependencies = [
  "proxy-protocol",
  "realm_hook 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "realm_io 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "realm_lb 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "realm_lb",
  "realm_syscall 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio",
 ]
@@ -1634,16 +1634,10 @@ dependencies = [
 
 [[package]]
 name = "realm_lb"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "average",
 ]
-
-[[package]]
-name = "realm_lb"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "438429e28c3053702b68b2aad8792c774d4ae5b43eca88298ec928be7e15a025"
 
 [[package]]
 name = "realm_syscall"

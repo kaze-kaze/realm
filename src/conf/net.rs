@@ -221,7 +221,7 @@ impl Config for NetConf {
         let accept_mptcp = use_mptcp;
 
         let tcp_keepalive = unpack!("tcp_keepalive", usize);
-        let tcp_keepalive_probe = unpack!("tcp_keepalive", usize);
+        let tcp_keepalive_probe = unpack!("tcp_keepalive_probe", usize);
         let tcp_timeout = unpack!("tcp_timeout", usize);
         let udp_timeout = unpack!("udp_timeout", usize);
 

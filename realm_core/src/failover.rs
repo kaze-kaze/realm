@@ -269,12 +269,11 @@ impl Failover {
     /// With `balance` on: the peer for a new session from `src`.
     ///
     /// It is the balancer's choice while that peer is alive, even right after one
-    /// failed probe, so `iphash` stays sticky. When it is down the balancer is
-    /// asked again until it names a ready peer, so that what the dead peer would
-    /// get is shared by the others in their own proportions instead of all of it
-    /// falling on its neighbour: round robin just moves on, ip hash is asked for
-    /// other addresses derived from `src`, the same ones every time, which keeps a
-    /// client on one peer.
+    /// failed probe, so `iphash` stays sticky. When it is down, what the dead peer
+    /// would get is shared by the others in their own proportions instead of all
+    /// of it falling on its neighbour: round robin is asked again until it names a
+    /// ready peer, ip hash names the peer that comes next for `src` among the ready
+    /// ones, the same one every time, which keeps a client on one peer.
     pub(crate) fn balanced_peer(&self, conn_opts: &ConnectOpts, src: &IpAddr, snap: Snapshot) -> Option<usize> {
         #[cfg(feature = "balance")]
         if self.balanced {
@@ -290,10 +289,17 @@ impl Failover {
             if snap.is_up(want) || !snap.any_up() {
                 return Some(want);
             }
-            let hashed = conn_opts.balancer.strategy() == realm_lb::Strategy::IpHash;
-            for k in 1..=TRIES {
-                let next = if hashed { ask(&salted(src, k)) } else { ask(src) };
-                match next {
+            if let realm_lb::Balancer::IpHash(iphash) = &conn_opts.balancer {
+                let among = |ok: &dyn Fn(usize) -> bool| {
+                    let next = iphash.next_among(src, |i| i < n && ok(i));
+                    next.map(|t| t.0 as usize)
+                };
+                // ready peers first, then, as `pick_among` does, those merely alive
+                let next = among(&|i| snap.is_ready(i)).or_else(|| among(&|i| snap.is_up(i)));
+                return Some(next.unwrap_or(want));
+            }
+            for _ in 0..TRIES {
+                match ask(src) {
                     Some(i) if snap.is_ready(i) => return Some(i),
                     _ => {}
                 }
@@ -328,18 +334,6 @@ impl Failover {
     #[inline]
     pub fn is_stale(&self, src: &SocketAddr, cur: usize) -> bool {
         self.peers.iter().enumerate().any(|(i, p)| i != cur && p == src)
-    }
-}
-
-/// Another address for every `k`, always the same one for the same `ip` and `k`.
-#[cfg(feature = "balance")]
-fn salted(ip: &IpAddr, k: u32) -> IpAddr {
-    match ip {
-        IpAddr::V4(ip) => IpAddr::V4(u32::from(*ip).wrapping_add(k.wrapping_mul(0x9e37_79b9)).into()),
-        IpAddr::V6(ip) => {
-            let salt = (k as u128).wrapping_mul(0x9e37_79b9_7f4a_7c15_f39c_c060_5ced_c835);
-            IpAddr::V6(u128::from(*ip).wrapping_add(salt).into())
-        }
     }
 }
 
@@ -896,6 +890,52 @@ mod tests {
         for n in &moved[1..] {
             assert!(n * 5 > total, "clients of the dead peer went to {:?}", moved);
         }
+
+        // ip hash: weights keep their meaning too, among all peers and among
+        // those that are left
+        opts.balancer = Balancer::new(Strategy::IpHash, &[1, 2, 3, 2]);
+        let clients: Vec<IpAddr> = (0..40_000u32)
+            .map(|i| Ipv4Addr::from(0x0a00_0000 + i * 7919).into())
+            .collect();
+        let shares = |opts: &ConnectOpts, up: u8, want: [f64; 4]| {
+            let mut n = [0usize; 4];
+            for ip in &clients {
+                n[fo.balanced_peer(opts, ip, snap(up)).unwrap()] += 1;
+            }
+            for (n, want) in n.iter().zip(want) {
+                let got = *n as f64 / clients.len() as f64;
+                assert!(
+                    (got - want).abs() < 0.01,
+                    "up {:#06b}: {:?} of {}",
+                    up,
+                    n,
+                    clients.len()
+                );
+            }
+        };
+        shares(&opts, 0b1111, [1.0 / 8.0, 2.0 / 8.0, 3.0 / 8.0, 2.0 / 8.0]);
+        shares(&opts, 0b0111, [1.0 / 6.0, 2.0 / 6.0, 3.0 / 6.0, 0.0]);
+        shares(&opts, 0b1011, [1.0 / 5.0, 2.0 / 5.0, 0.0, 2.0 / 5.0]);
+        shares(&opts, 0b1001, [1.0 / 3.0, 0.0, 0.0, 2.0 / 3.0]);
+        // peers that are alive but failed their latest probe only take over when
+        // no ready peer is left
+        let ready = |up: u8, ready: u8| -> Vec<usize> {
+            let snap = Snapshot::pack(0, up, ready);
+            let mut n = vec![0usize; 4];
+            for ip in &clients {
+                n[fo.balanced_peer(&opts, ip, snap).unwrap()] += 1;
+            }
+            n
+        };
+        let n = ready(0b0111, 0b0011);
+        assert!(n[0] > 0 && n[1] > 0 && n[3] == 0);
+        assert!(n[2] > clients.len() / 4, "clients of an alive peer stay: {:?}", n);
+        let n = ready(0b0110, 0b0000);
+        assert!(n[0] == 0 && n[1] > 0 && n[2] > 0 && n[3] == 0);
+
+        // however large the share of the dead peer was
+        opts.balancer = Balancer::new(Strategy::IpHash, &[80, 1, 1, 2]);
+        shares(&opts, 0b1110, [0.0, 0.25, 0.25, 0.5]);
     }
 
     #[test]

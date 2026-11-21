@@ -133,3 +133,28 @@ fn parse_global_opts(matches: &ArgMatches) -> CmdOverride {
     let network = NetConf::from_cmd_args(matches);
     CmdOverride { log, dns, network }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `--tcp-keepalive` once set the probe count as well, and `--tcp-keepalive-probe` did nothing.
+    #[test]
+    fn keepalive_options_are_separate() {
+        let net = |args: &[&str]| {
+            let app = Command::new("realm").disable_help_flag(true).disable_version_flag(true);
+            let matches = flag::add_all(app)
+                .try_get_matches_from(std::iter::once(&"realm").chain(args))
+                .unwrap();
+            let net = NetConf::from_cmd_args(&matches);
+            (net.tcp_keepalive, net.tcp_keepalive_probe)
+        };
+        assert_eq!(net(&[]), (None, None));
+        assert_eq!(net(&["--tcp-keepalive", "30"]), (Some(30), None));
+        assert_eq!(net(&["--tcp-keepalive-probe", "2"]), (None, Some(2)));
+        assert_eq!(
+            net(&["--tcp-keepalive", "5", "--tcp-keepalive-probe", "2"]),
+            (Some(5), Some(2))
+        );
+    }
+}

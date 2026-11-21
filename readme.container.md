@@ -1,28 +1,40 @@
 # Use realm in container
 
-Github workflow pushes the images to [Github Container Registry](https://ghcr.io).
+The `docker` workflow pushes the images of this fork to the [GitHub Container Registry](https://ghcr.io):
 
-Image list:
+- `ghcr.io/kaze-kaze/realm2`: standard realm image
+- `ghcr.io/kaze-kaze/realm2-slim`: tailored realm image with only TCP+UDP support. Failover is included; `balance`, `proxy` and `transport` are not.
 
-- `ghcr.io/zhboner/realm2:latest` standard realm image
-- `ghcr.io/zhboner/realm2-slim:latest` tailored realm image with only TCP+UDP support
+Both hold the static musl build, for amd64 and arm64.
+
+Tags:
+
+| tag | what it is |
+| --- | --- |
+| `vX.Y.Z` | that release. Use this one in production. |
+| `latest` | the latest release |
+| `master` | the tip of the master branch. It moves with every merge, released or not. |
+
+The releases up to v3.1.1 were only ever pushed as `master` and have no tag of their own.
 
 ## Notice
-~~The [package](https://github.com/zhboner/realm/pkgs/container/realm) is no longer accessible. See https://github.com/zhboner/realm/issues/61.~~ `realm` remains private while `realm2` is public. Please use `realm2` or `realm2-slim` instead:
+
+`ghcr.io/zhboner/realm2` is upstream's image, without failover. It runs a config that has a `failover` table and never fails over: the table is ignored without a word. To see what an image is, ask it: this fork reports 3.x.
+
 ```bash
-docker run ghcr.io/zhboner/realm2:latest
+docker run --rm ghcr.io/kaze-kaze/realm2:latest -v
 ```
 
+You can also build your own image from the released binaries:
 
-As it was mentioned in the [issue](https://github.com/zhboner/realm/issues/61#issuecomment-1145760482) that, users could also build their own images based on the released binaries:
 ```dockerfile
 FROM alpine:latest
 
-ARG VERSION="v2.3.4"
+ARG VERSION="v3.1.1"
 
 WORKDIR /realm
 
-RUN wget https://github.com/zhboner/realm/releases/download/${VERSION}/realm-x86_64-unknown-linux-musl.tar.gz \
+RUN wget https://github.com/kaze-kaze/realm/releases/download/${VERSION}/realm-x86_64-unknown-linux-musl.tar.gz \
   && tar -zxvf realm-x86_64-unknown-linux-musl.tar.gz \
   && cp realm /usr/bin/realm \
   && chmod +x /usr/bin/realm
@@ -35,8 +47,18 @@ ENTRYPOINT ["/usr/bin/realm"]
 ## Docker
 
 ```bash
-docker run -d -p 9000:9000 ghcr.io/zhboner/realm2:latest -l 0.0.0.0:9000 -r 192.168.233.2:9000
+docker run -d -p 9000:9000 ghcr.io/kaze-kaze/realm2:latest -l 0.0.0.0:9000 -r 192.168.233.2:9000
 ```
+
+Failover, like everything of an endpoint beyond `-l` and `-r`, is set in a config file:
+
+```bash
+docker run -d --name realm --restart unless-stopped --network host \
+  -v /etc/realm/config.toml:/etc/realm/config.toml:ro \
+  ghcr.io/kaze-kaze/realm2:latest -c /etc/realm/config.toml
+```
+
+With `log.level = "warn"` and the default `log.output` (stdout), `docker logs realm` shows when a peer goes down or comes back, see [failover](readme.md#endpointfailover-table).
 
 ## Docker Swarm (Docker Compose)
 
@@ -45,7 +67,7 @@ docker run -d -p 9000:9000 ghcr.io/zhboner/realm2:latest -l 0.0.0.0:9000 -r 192.
 version: '3'
 services:
   port-9000:
-    image: ghcr.io/zhboner/realm2:latest
+    image: ghcr.io/kaze-kaze/realm2:latest
     ports:
       - 9000:9000
     command: -l 0.0.0.0:9000 -r 192.168.233.2:9000
@@ -78,7 +100,7 @@ spec:
     spec:
       containers:
       - name: realm
-        image: ghcr.io/zhboner/realm2:latest
+        image: ghcr.io/kaze-kaze/realm2:latest
         args:
           - "-l=0.0.0.0:9000"
           - "-r=192.168.233.2:9000"

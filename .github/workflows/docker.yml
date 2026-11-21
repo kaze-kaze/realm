@@ -8,6 +8,9 @@ on:
   push:
     paths-ignore: ["**.md"]
     branches: [master]
+    # a release tag: the images get that tag and `latest` (the defaults of
+    # docker/metadata-action); a push to master only moves `master`
+    tags: ["v*.*.*"]
 
 jobs:
   docker:

@@ -227,14 +227,19 @@ impl Config for EndpointConf {
             }
             conn_opts.failover = Some(failover.build(&self.listen, &remotes, use_udp));
 
-            // the dial deadline is shared by the primary attempt and the one retry
+            // the dial deadline is shared by all dials of a connection
             let t = conn_opts.connect_timeout;
             if !no_tcp && (t == 0 || t > 10) {
-                log::warn!(
-                    "endpoint {}: failover with tcp_timeout={}s, a blackholed peer stalls new connections that long; 3-5s is recommended",
-                    self.listen,
-                    t
-                );
+                let stall = match t {
+                    0 => {
+                        "no tcp_timeout, a blackholed peer stalls new connections until the system gives up".to_string()
+                    }
+                    t => format!("tcp_timeout={}s, a blackholed peer stalls new connections that long", t),
+                };
+                warn(format!(
+                    "endpoint {}: failover with {}; 3-5s is recommended",
+                    self.listen, stall
+                ));
             }
         }
 

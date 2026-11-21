@@ -6,7 +6,12 @@ use realm_core::failover::{FailoverOpts, UdpProbe, MAX_PEERS};
 
 /// Health checked failover: `remote` is the primary and `extra_remotes` are backups in priority
 /// order, or with `balance`, all of them share new sessions while they are alive.
+///
+/// A key that is not known is an error. Left alone, a misspelt one would fall back to
+/// its default without a word: `udp_prob = "quic"` probes with echo, no peer answers,
+/// and udp never fails over.
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct FailoverConf {
     /// Health check targets, one per peer; empty probes the data addresses.
     #[serde(default)]
@@ -161,6 +166,34 @@ mod tests {
     fn reject_unknown_udp_probe() {
         let conf: FailoverConf = toml::from_str(r#"udp_probe = "ping""#).unwrap();
         conf.build("l", &["10.0.0.1:1", "10.0.0.2:1"], true);
+    }
+
+    /// A misspelt key must not pass for a default.
+    #[test]
+    fn reject_unknown_key() {
+        use crate::conf::FullConf;
+        let conf = |failover: &str| {
+            format!(
+                "[[endpoints]]\nlisten = \"127.0.0.1:1\"\nremote = \"10.0.0.1:1\"\n\
+                 extra_remotes = [\"10.0.0.2:1\"]\n[endpoints.failover]\n{}\n",
+                failover
+            )
+        };
+        assert!(FullConf::from_conf_str(&conf("udp_probe = \"quic\"")).is_ok());
+        let err = FullConf::from_conf_str(&conf("udp_prob = \"quic\""))
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("unknown field `udp_prob`"), "{}", err);
+        // json as well
+        let json = |key: &str| {
+            format!(
+                r#"{{"endpoints":[{{"listen":"127.0.0.1:1","remote":"10.0.0.1:1","extra_remotes":["10.0.0.2:1"],"failover":{{"{}":2}}}}]}}"#,
+                key
+            )
+        };
+        assert!(FullConf::from_conf_str(&json("interval")).is_ok());
+        let err = FullConf::from_conf_str(&json("intervall")).unwrap_err().to_string();
+        assert!(err.contains("unknown field `intervall`"), "{}", err);
     }
 
     #[test]

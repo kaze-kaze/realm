@@ -348,6 +348,9 @@ pub async fn finish_send(
         };
         batch.discard_rest(error);
     }
+    // Direct sends bypass Tokio's readiness polling and its scheduling budget.
+    // Charge the send once both the initial attempt and any locked retries are done.
+    tokio::task::coop::consume_budget().await;
     batch.stats
 }
 

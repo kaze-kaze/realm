@@ -127,6 +127,12 @@ mod registry {
             }
 
             let n = batched::recv_some(sock, &mut self.pkts).await?;
+            #[cfg(test)]
+            super::tests::AFTER_RECEIVE.with_borrow_mut(|hook| {
+                if let Some(hook) = hook {
+                    hook(n);
+                }
+            });
             self.cursor = n;
             self.large = self.pkts[..n].iter().any(Packet::is_large);
             if let Some(growth) = &mut self.growth {
@@ -610,7 +616,170 @@ async fn send_back(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use futures::StreamExt;
     use crate::failover::{FailoverOpts, Proto};
+    use std::cell::RefCell;
+    use std::future::Future;
+    use std::net::UdpSocket as StdUdpSocket;
+    use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
+
+    type ReceiveHook = Box<dyn FnMut(usize)>;
+
+    thread_local! {
+        pub(super) static AFTER_RECEIVE: RefCell<Option<ReceiveHook>> = const { RefCell::new(None) };
+    }
+
+    fn loopback_socket() -> StdUdpSocket {
+        StdUdpSocket::bind("127.0.0.1:0").unwrap()
+    }
+
+    async fn check_forwarding_budget(
+        sink: StdUdpSocket,
+        mut refill: impl FnMut(usize) + 'static,
+        relay: impl Future<Output = ()> + Send + 'static,
+    ) {
+        const MAX_OPERATIONS: usize = 144;
+        sink.set_nonblocking(true).unwrap();
+        let sink = Arc::new(sink);
+        let operations = Arc::new(AtomicUsize::new(0));
+        let drain = move || {
+            let mut forwarded = 0;
+            loop {
+                match sink.recv(&mut [0]) {
+                    Ok(1) => forwarded += 1,
+                    Err(error) if error.kind() == ErrorKind::WouldBlock => return forwarded,
+                    result => panic!("unexpected forwarded datagram: {result:?}"),
+                }
+            }
+        };
+
+        // Keep the receiver readable without relying on kernel queue limits or
+        // a producer task that would itself need the relay to yield first.
+        let (mut wake_observer, mut receives) = futures::channel::mpsc::channel(0);
+        let observe = {
+            let drain = drain.clone();
+            let operations = operations.clone();
+            move || {
+                let sent = drain();
+                operations.fetch_add(sent, Relaxed) + sent
+            }
+        };
+        AFTER_RECEIVE.with_borrow_mut(|hook| {
+            let operations = operations.clone();
+            *hook = Some(Box::new(move |received| {
+                operations.fetch_add(1 + drain(), Relaxed);
+                refill(received);
+                let _ = wake_observer.try_send(());
+            }));
+        });
+
+        let (started, ready) = futures::channel::oneshot::channel();
+        let observer = tokio::spawn(async move {
+            let mut previous = observe();
+            started.send(()).unwrap();
+            let mut intervals = [0; 2];
+            for interval in &mut intervals {
+                loop {
+                    receives.next().await.unwrap();
+                    let current = observe();
+                    if current != previous {
+                        *interval = current - previous;
+                        previous = current;
+                        break;
+                    }
+                }
+            }
+            intervals
+        });
+        ready.await.unwrap();
+        let relay = tokio::spawn(relay);
+        let intervals = tokio::time::timeout(Duration::from_secs(2), observer).await;
+        relay.abort();
+        assert!(relay.await.unwrap_err().is_cancelled());
+        AFTER_RECEIVE.with_borrow_mut(|hook| *hook = None);
+        let intervals = intervals.expect("the observer must run during forwarding").unwrap();
+        assert!(
+            intervals.iter().all(|&count| count <= MAX_OPERATIONS),
+            "relay completed {intervals:?} receive and send operations between observer runs (limit {MAX_OPERATIONS})"
+        );
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn upstream_udp_sends_share_the_receive_cooperative_budget() {
+        const SOURCES: usize = 64;
+        let listener = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let destination = listener.local_addr().unwrap();
+        let sink = loopback_socket();
+        let remote = RemoteAddr::SocketAddr(sink.local_addr().unwrap());
+        let sockmap = Arc::new(SockMap::new());
+        let mut sources = Vec::with_capacity(SOURCES);
+        for _ in 0..SOURCES {
+            let source = loopback_socket();
+            let association = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+            sockmap.insert(
+                source.local_addr().unwrap(),
+                Arc::new(Assoc::new(association, true, 0, 0)),
+            );
+            source.send_to(b"a", destination).unwrap();
+            sources.push(source);
+        }
+        // Refill in source order. Each batch contains at most one datagram per
+        // source, so each received datagram at the sink represents one send.
+        let mut next_source = 0;
+        let refill = move |received| {
+            for _ in 0..received {
+                sources[next_source].send_to(b"a", destination).unwrap();
+                next_source = (next_source + 1) % SOURCES;
+            }
+        };
+        let relay = async move {
+            let opts = ConnectOpts::default();
+            let failover = None;
+            associate_and_relay(
+                Ref::new(&listener),
+                Ref::new(&remote),
+                Ref::new(&opts),
+                sockmap,
+                Ref::new(&failover),
+            )
+            .await;
+        };
+        check_forwarding_budget(sink, refill, relay).await;
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn reply_udp_sends_share_the_receive_cooperative_budget() {
+        let listener = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let assoc = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let destination = assoc.local_addr().unwrap();
+        let assoc = Arc::new(Assoc::new(assoc, true, 0, 0));
+        let upstream = loopback_socket();
+        let sink = loopback_socket();
+        let client = sink.local_addr().unwrap();
+        let sockmap = Arc::new(SockMap::new());
+        sockmap.insert(client, assoc.clone());
+        upstream.send_to(b"a", destination).unwrap();
+        // One queued reply makes each batch result in a single send on both paths.
+        let refill = move |received| {
+            assert_eq!(received, 1);
+            upstream.send_to(b"a", destination).unwrap();
+        };
+        let relay = async move {
+            let opts = ConnectOpts::default();
+            let failover = None;
+            send_back(
+                Ref::new(&listener),
+                client,
+                assoc,
+                false,
+                Ref::new(&opts),
+                sockmap,
+                Ref::new(&failover),
+            )
+            .await;
+        };
+        check_forwarding_budget(sink, refill, relay).await;
+    }
 
     #[test]
     fn selects_the_first_upstream_matching_through() {

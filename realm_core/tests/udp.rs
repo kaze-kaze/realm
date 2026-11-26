@@ -1,4 +1,4 @@
-use std::net::SocketAddr;
+use std::net::{Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
 use tokio::net::UdpSocket;
@@ -190,8 +190,10 @@ async fn udp_upload_to_a_silent_upstream_keeps_the_source_port_until_idle() {
         assert_eq!(from, *source.get_or_insert(from));
     }
 
-    // The upstream port is exclusive until the association is dropped.
-    let source = source.unwrap();
+    // The upstream port is exclusive until the association is dropped. The association
+    // is bound to the wildcard address, so that is the address to try: windows lets a
+    // second socket take the same port on a specific address.
+    let source = SocketAddr::from((Ipv4Addr::UNSPECIFIED, source.unwrap().port()));
     assert_eq!(
         std::net::UdpSocket::bind(source).unwrap_err().kind(),
         std::io::ErrorKind::AddrInUse

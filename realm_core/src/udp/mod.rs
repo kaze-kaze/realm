@@ -7,6 +7,7 @@ mod batched;
 
 use std::io::Result;
 use std::net::UdpSocket;
+use std::sync::Arc;
 
 use crate::trick::Ref;
 use crate::endpoint::Endpoint;
@@ -38,7 +39,7 @@ pub async fn run(lis: UdpSocket, endpoint: Endpoint) -> Result<()> {
         ..
     } = endpoint;
 
-    let sockmap = SockMap::new();
+    let sockmap = Arc::new(SockMap::new());
 
     #[cfg(target_os = "linux")]
     if conn_opts.udp_no_fragment {
@@ -60,7 +61,6 @@ pub async fn run(lis: UdpSocket, endpoint: Endpoint) -> Result<()> {
     let lis = Ref::new(&lis);
     let raddr = Ref::new(&raddr);
     let conn_opts = Ref::new(&conn_opts);
-    let sockmap = Ref::new(&sockmap);
     let failover = Ref::new(&failover);
     associate_and_relay(lis, raddr, conn_opts, sockmap, failover).await
 }

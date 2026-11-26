@@ -8,9 +8,10 @@ use tokio::net::UdpSocket;
 
 const TICK_MILLIS: u64 = 100;
 
-fn activity_tick() -> u32 {
+pub(super) fn activity_tick() -> u32 {
     static EPOCH: OnceLock<Instant> = OnceLock::new();
-    let elapsed = EPOCH.get_or_init(Instant::now).elapsed();
+    let now = Instant::now();
+    let elapsed = now.saturating_duration_since(*EPOCH.get_or_init(|| now));
     (elapsed.as_secs() as u32)
         .wrapping_mul(10)
         .wrapping_add(elapsed.subsec_millis() / TICK_MILLIS as u32)
@@ -28,23 +29,23 @@ pub struct Assoc {
 impl Assoc {
     const MOVED: u8 = 0x80;
 
-    pub fn new(sock: UdpSocket, peer: usize) -> Self {
+    pub fn new(sock: UdpSocket, peer: usize, tick: u32) -> Self {
         Self {
             sock,
             route: AtomicU8::new(peer as u8),
-            activity: AtomicU32::new(activity_tick()),
+            activity: AtomicU32::new(tick),
         }
     }
 
-    pub fn touch(&self) {
-        // Sample again if the other direction renewed the association while we
-        // read the clock, so a delayed update cannot move its activity backwards.
+    pub fn touch(&self, tick: u32) {
         let mut last = self.activity.load(Relaxed);
-        while let Err(updated) = self
-            .activity
-            .compare_exchange_weak(last, activity_tick(), Relaxed, Relaxed)
-        {
-            last = updated;
+        // Compare wrapping ticks so a sample from either direction cannot
+        // replace a newer one, including at the wrap boundary.
+        while (tick.wrapping_sub(last) as i32) > 0 {
+            match self.activity.compare_exchange_weak(last, tick, Relaxed, Relaxed) {
+                Ok(_) => break,
+                Err(updated) => last = updated,
+            }
         }
     }
 
@@ -91,9 +92,12 @@ impl SockMap {
         self.0.write().unwrap().insert(addr, assoc);
     }
 
-    /// Check activity under the same lock that protects an upstream send and
-    /// its renewal. Return the remaining idle time if the association must stay.
+    /// Return the remaining idle time if the association must stay. Recheck
+    /// expiry under the lock that protects an upstream send and its renewal.
     pub fn expire(&self, addr: &SocketAddr, assoc: &Arc<Assoc>, timeout: Duration) -> Option<Duration> {
+        if let Some(remaining) = assoc.idle_remaining(timeout) {
+            return Some(remaining);
+        }
         let mut sockets = self.0.write().unwrap();
         if !sockets.get(addr).is_some_and(|current| Arc::ptr_eq(current, assoc)) {
             return None;
@@ -106,9 +110,46 @@ impl SockMap {
     }
 
     pub fn remove(&self, addr: &SocketAddr, assoc: &Arc<Assoc>) {
-        let mut sockets = self.0.write().unwrap();
+        let mut sockets = self.0.write().unwrap_or_else(|e| e.into_inner());
         if sockets.get(addr).is_some_and(|current| Arc::ptr_eq(current, assoc)) {
             sockets.remove(addr);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn activity_does_not_go_backwards_when_ticks_arrive_out_of_order() {
+        let sock = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let assoc = Assoc::new(sock, 0, u32::MAX - 1);
+        for (sample, latest) in [(u32::MAX, u32::MAX), (0, 0), (u32::MAX, 0), (0, 0), (1, 1), (0, 1)] {
+            assoc.touch(sample);
+            assert_eq!(assoc.activity.load(Relaxed), latest);
+        }
+    }
+
+    #[tokio::test]
+    async fn an_active_association_does_not_acquire_the_map_write_lock() {
+        use std::sync::mpsc;
+
+        let sock = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let addr = sock.local_addr().unwrap();
+        let assoc = Arc::new(Assoc::new(sock, 0, activity_tick()));
+        let sockmap = SockMap::new();
+        sockmap.insert(addr, assoc.clone());
+
+        let timeout = Duration::from_secs(2);
+        let read = sockmap.0.read().unwrap();
+        let (reply, result) = mpsc::channel();
+        let remaining = std::thread::scope(|scope| {
+            scope.spawn(|| reply.send(sockmap.expire(&addr, &assoc, timeout)).unwrap());
+            let remaining = result.recv_timeout(Duration::from_secs(1));
+            drop(read);
+            remaining
+        });
+        assert!(remaining.unwrap().is_some());
     }
 }

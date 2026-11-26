@@ -1,7 +1,8 @@
 use std::io::{Error, ErrorKind, Result};
-use std::time::Duration;
-use tokio::time::{Instant, timeout_at};
 use std::net::SocketAddr;
+use std::time::Duration;
+use tokio::io::Interest;
+use tokio::time::{Instant, timeout_at};
 use tokio::net::UdpSocket;
 
 /// Bytes of a datagram kept inline in every slot: whatever fits one ethernet frame.
@@ -11,6 +12,7 @@ pub const PACKET_SIZE: usize = 1500;
 /// is never cut short.
 const SPILL_SIZE: usize = 1 << 16;
 pub const MAX_PACKETS: usize = 128;
+const MAX_READY_WITHOUT_PROGRESS: u8 = 4;
 
 #[repr(transparent)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -196,13 +198,7 @@ impl SendBatch {
     /// Process the packets covered by the prepared send buffers. A short
     /// `sendmmsg` only reports the sent prefix; the next call tries the rest.
     #[inline]
-    fn drive(
-        &mut self,
-        end: usize,
-        no_fragment: bool,
-        one_attempt: bool,
-        mut send: impl FnMut(usize, bool) -> Result<usize>,
-    ) {
+    fn drive(&mut self, end: usize, no_fragment: bool, mut send: impl FnMut(usize, bool) -> Result<usize>) {
         let start = self.processed();
         loop {
             match send(self.processed() - start, self.fragmented) {
@@ -223,7 +219,7 @@ impl SendBatch {
                     self.fragmented = false;
                 }
             }
-            if one_attempt || self.processed() == end {
+            if self.processed() == end {
                 return;
             }
         }
@@ -246,18 +242,17 @@ pub fn send_now<'a, 'b>(
     no_fragment: bool,
     budget: &mut SendBudget,
 ) -> SendBatch {
-    start_send(pkts.len(), budget, |one_attempt, batch| {
-        send_available(sock, pkts, no_fragment, false, one_attempt, batch);
+    start_send(pkts.len(), budget, |batch| {
+        send_available(sock, pkts, no_fragment, false, batch);
     })
 }
 
 #[inline]
-fn start_send(total: usize, budget: &mut SendBudget, send: impl FnOnce(bool, &mut SendBatch)) -> SendBatch {
+fn start_send(total: usize, budget: &mut SendBudget, send: impl FnOnce(&mut SendBatch)) -> SendBatch {
     let mut batch = SendBatch::new(total);
-    let one_attempt = budget.expired();
-    send(one_attempt, &mut batch);
+    send(&mut batch);
     if !batch.is_done() {
-        if one_attempt {
+        if budget.expired() {
             batch.discard_rest(ErrorKind::TimedOut.into());
         } else {
             budget.deadline();
@@ -272,7 +267,29 @@ pub fn retry_send<'a, 'b>(
     no_fragment: bool,
     batch: &mut SendBatch,
 ) {
-    send_available(sock, pkts, no_fragment, true, false, batch);
+    send_available(sock, pkts, no_fragment, true, batch);
+}
+
+#[inline]
+fn try_send(
+    sock: &UdpSocket,
+    check_ready: bool,
+    fragmented: bool,
+    send: impl FnOnce() -> Result<usize>,
+) -> Result<usize> {
+    let send = || {
+        #[cfg(target_os = "linux")]
+        if fragmented {
+            return crate::udp::socket::no_fragment::lifted(sock, send);
+        }
+        let _ = fragmented;
+        send()
+    };
+    if check_ready {
+        sock.try_io(Interest::WRITABLE, send)
+    } else {
+        send()
+    }
 }
 
 /// The first retry consumes stale write readiness on WouldBlock before waiting
@@ -283,6 +300,8 @@ pub async fn finish_send(
     mut batch: SendBatch,
     mut retry: impl FnMut(&mut SendBatch) -> bool,
 ) -> SendStats {
+    let mut last_wait = None;
+    let mut stalled = 0;
     while !batch.is_done() {
         let deadline = budget.deadline();
         let error = if Instant::now() >= deadline {
@@ -292,10 +311,19 @@ pub async fn finish_send(
         } else if batch.is_done() {
             break;
         } else {
-            match timeout_at(deadline, sock.writable()).await {
-                Ok(Ok(())) => continue,
-                Ok(Err(e)) => e,
-                Err(_) => ErrorKind::TimedOut.into(),
+            let processed = batch.processed();
+            stalled = if last_wait == Some(processed) { stalled + 1 } else { 0 };
+            // Closed readiness cannot be cleared. Stop if it keeps waking a
+            // writer that cannot make any progress.
+            if stalled == MAX_READY_WITHOUT_PROGRESS {
+                ErrorKind::TimedOut.into()
+            } else {
+                last_wait = Some(processed);
+                match timeout_at(deadline, sock.writable()).await {
+                    Ok(Ok(())) => continue,
+                    Ok(Err(e)) => e,
+                    Err(_) => ErrorKind::TimedOut.into(),
+                }
             }
         };
         batch.discard_rest(error);
@@ -323,6 +351,10 @@ use common::send_available;
 mod common {
     use super::*;
     use std::cell::RefCell;
+    use std::future::poll_fn;
+    use std::task::{Poll, ready};
+    use realm_syscall::socket2::{SockAddr, SockRef};
+    use tokio::io::ReadBuf;
 
     thread_local! {
         /// Receive buffer for one datagram of any size. Only used between a socket
@@ -331,58 +363,116 @@ mod common {
     }
 
     pub async fn recv_some(sock: &UdpSocket, pkts: &mut [Packet]) -> Result<usize> {
-        debug_assert!(!pkts.is_empty());
-        let pkt = &mut pkts[0];
-        loop {
-            sock.readable().await?;
-            let res: Result<SocketAddr> = SCRATCH.with(|scratch| {
+        let Some(pkt) = pkts.first_mut() else { return Ok(0) };
+        poll_fn(|cx| {
+            SCRATCH.with(|scratch| {
                 let mut scratch = scratch.borrow_mut();
-                let (n, addr) = sock.try_recv_from(&mut scratch)?;
+                let mut buf = ReadBuf::new(&mut scratch);
+                let addr = ready!(sock.poll_recv_from(cx, &mut buf))?;
+                let n = buf.filled().len();
                 let inline = n.min(PACKET_SIZE);
                 pkt.buf[..inline].copy_from_slice(&scratch[..inline]);
                 pkt.received(n, &scratch[inline..n]);
-                Ok(addr)
-            });
-            match res {
-                Ok(addr) => {
-                    pkt.addr.inner = addr;
-                    return Ok(1);
-                }
-                Err(e) if e.kind() == ErrorKind::WouldBlock => continue,
-                Err(e) => return Err(e),
-            }
-        }
+                pkt.addr.inner = addr;
+                Poll::Ready(Ok(1))
+            })
+        })
+        .await
     }
 
     pub(super) fn send_available<'a, 'b>(
         sock: &UdpSocket,
         pkts: impl ExactSizeIterator<Item = PacketRef<'a, 'b>>,
         no_fragment: bool,
-        _check_ready: bool,
-        one_attempt: bool,
+        check_ready: bool,
         batch: &mut SendBatch,
     ) {
+        let raw = SockRef::from(sock);
         for pkt in pkts.skip(batch.processed()) {
-            let whole;
-            let bytes = if pkt.tail.is_empty() {
-                pkt.buf
-            } else {
-                whole = [pkt.buf, pkt.tail].concat();
-                &whole
-            };
+            let addr = SockAddr::from(pkt.addr.inner);
             let end = batch.processed() + 1;
-            batch.drive(end, no_fragment, one_attempt, |_, fragmented| {
-                let send = || sock.try_send_to(bytes, pkt.addr.inner).map(|_| 1);
-                #[cfg(target_os = "linux")]
-                if fragmented {
-                    return crate::udp::socket::no_fragment::lifted(sock, send);
-                }
-                let _ = fragmented;
-                send()
+            batch.drive(end, no_fragment, |_, fragmented| {
+                try_send(sock, check_ready, fragmented, || {
+                    send_packet(&raw, pkt, &addr).map(|_| 1)
+                })
             });
-            if one_attempt || batch.processed() < end {
+            if batch.processed() < end {
                 return;
             }
+        }
+    }
+
+    fn send_packet(raw: &SockRef<'_>, pkt: PacketRef<'_, '_>, addr: &SockAddr) -> Result<usize> {
+        if pkt.tail.is_empty() {
+            return raw.send_to(pkt.buf, addr);
+        }
+        #[cfg(not(any(target_os = "redox", target_os = "wasi", target_os = "horizon")))]
+        {
+            use std::io::IoSlice;
+            raw.send_to_vectored(&[IoSlice::new(pkt.buf), IoSlice::new(pkt.tail)], addr)
+        }
+        #[cfg(any(target_os = "redox", target_os = "wasi", target_os = "horizon"))]
+        raw.send_to(&[pkt.buf, pkt.tail].concat(), addr)
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use std::sync::Arc;
+        use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
+
+        #[tokio::test]
+        async fn continuous_receives_let_another_task_run() {
+            const PACKETS: usize = 160;
+            let rx = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+            SockRef::from(&rx).set_recv_buffer_size(1 << 20).unwrap();
+            let tx = std::net::UdpSocket::bind("127.0.0.1:0").unwrap();
+            let addr = rx.local_addr().unwrap();
+            for _ in 0..PACKETS {
+                tx.send_to(b"a", addr).unwrap();
+            }
+            rx.readable().await.unwrap();
+
+            let received_before_yield = tokio::spawn(async move {
+                let other_ran = Arc::new(AtomicBool::new(false));
+                let flag = other_ran.clone();
+                let other = tokio::spawn(async move { flag.store(true, Relaxed) });
+                let mut pkts = [Packet::new()];
+                let mut received_before_yield = 0;
+                for _ in 0..PACKETS {
+                    assert_eq!(recv_some(&rx, &mut pkts).await.unwrap(), 1);
+                    received_before_yield += usize::from(!other_ran.load(Relaxed));
+                }
+                other.await.unwrap();
+                received_before_yield
+            });
+            let before_yield = tokio::time::timeout(Duration::from_secs(1), received_before_yield)
+                .await
+                .unwrap()
+                .unwrap();
+            assert!((1..PACKETS).contains(&before_yield));
+        }
+
+        #[tokio::test]
+        async fn first_send_does_not_need_a_tokio_write_notification() {
+            let rx = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+            let tx = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+            assert!(futures::poll!(std::pin::pin!(tx.writable())).is_pending());
+
+            let to = rx.local_addr().unwrap().into();
+            let mut pkt = Packet::new();
+            pkt.buf[0] = 42;
+            pkt.received(1, &[]);
+            let mut budget = SendBudget::new(Duration::from_millis(5));
+            let batch = send_now(&tx, std::iter::once(pkt.ref_with_addr(&to)), false, &mut budget);
+            assert_eq!(batch.sent(), 1);
+            assert!(budget.deadline.is_none());
+            let mut received = [0];
+            let n = tokio::time::timeout(Duration::from_secs(1), rx.recv(&mut received))
+                .await
+                .unwrap()
+                .unwrap();
+            assert_eq!((n, received), (1, [42]));
         }
     }
 }
@@ -398,10 +488,8 @@ mod linux {
     use std::io::IoSlice;
     use std::mem::MaybeUninit;
     use std::os::unix::io::{AsRawFd, RawFd};
-    use tokio::io::Interest;
     use realm_io::AsyncRawIO;
     use realm_io::mmsg::{MmsgHdr, MmsgHdrMut};
-    use crate::udp::socket::no_fragment;
 
     thread_local! {
         /// Spill area of a batch: `SPILL_SIZE` bytes behind each of its slots, for the
@@ -415,7 +503,9 @@ mod linux {
     }
 
     pub async fn recv_some(sock: &UdpSocket, pkts: &mut [Packet]) -> Result<usize> {
-        debug_assert!(pkts.len() <= MAX_PACKETS);
+        if pkts.is_empty() {
+            return Ok(0);
+        }
         let fd = sock.as_raw_fd();
         std::future::poll_fn(|cx| sock.poll_read_raw(cx, || recv_batch(fd, pkts))).await
     }
@@ -430,7 +520,7 @@ mod linux {
                 spill.reserve_exact(MAX_PKTS * SPILL_SIZE);
             }
             let spill = spill.as_mut_ptr();
-            let pkt_amt = pkts.len();
+            let pkt_amt = pkts.len().min(MAX_PKTS);
 
             let mut iovs = [const { MaybeUninit::uninit() }; MAX_PKTS];
             let mut msgs = [const { MaybeUninit::uninit() }; MAX_PKTS];
@@ -491,43 +581,31 @@ mod linux {
         pkts: impl ExactSizeIterator<Item = PacketRef<'a, 'b>>,
         no_fragment: bool,
         check_ready: bool,
-        one_attempt: bool,
         batch: &mut SendBatch,
     ) {
         let pkts = pkts.skip(batch.processed());
-        let pkt_amt = pkts.len();
-        debug_assert!(pkt_amt <= MAX_PACKETS);
-        if pkt_amt == 0 {
-            return;
-        }
-
+        let remaining = batch.total - batch.processed();
         let mut iovs = [const { MaybeUninit::uninit() }; MAX_PACKETS];
         let mut msgs = [const { MaybeUninit::uninit() }; MAX_PACKETS];
-        for ((pkt, iov), msg) in pkts.zip(&mut iovs).zip(&mut msgs) {
+        let mut initialized = 0;
+        for ((iov, msg), pkt) in iovs.iter_mut().zip(&mut msgs).zip(pkts) {
             let iovcnt = if pkt.tail.is_empty() { 1 } else { 2 };
             let iov = iov.write([IoSlice::new(pkt.buf), IoSlice::new(pkt.tail)]);
             msg.write(MmsgHdr::new().with_addr(&pkt.addr.inner).with_iovec(&iov[..iovcnt]));
+            initialized += 1;
+        }
+        assert_eq!(initialized, remaining, "invalid send batch length");
+        if initialized == 0 {
+            return;
         }
 
         // SAFETY: Every header in this prefix has been written, and the
         // addresses, iovecs, and packet data they point to remain live below.
-        let msgs = unsafe { std::slice::from_raw_parts_mut(msgs.as_mut_ptr().cast::<MmsgHdr>(), pkt_amt) };
+        let msgs = unsafe { std::slice::from_raw_parts_mut(msgs.as_mut_ptr().cast::<MmsgHdr>(), initialized) };
         let fd = sock.as_raw_fd();
-        batch.drive(batch.total, no_fragment, one_attempt, |cursor, fragmented| {
-            let end = if fragmented { cursor + 1 } else { pkt_amt };
-            let mut send = || send_batch(fd, &mut msgs[cursor..end]);
-            let send = || {
-                if fragmented {
-                    no_fragment::lifted(sock, send)
-                } else {
-                    send()
-                }
-            };
-            if check_ready {
-                sock.try_io(Interest::WRITABLE, send)
-            } else {
-                send()
-            }
+        batch.drive(batch.total, no_fragment, |cursor, fragmented| {
+            let end = if fragmented { cursor + 1 } else { initialized };
+            try_send(sock, check_ready, fragmented, || send_batch(fd, &mut msgs[cursor..end]))
         });
     }
 
@@ -545,99 +623,212 @@ mod linux {
     mod tests {
         use super::*;
         use std::sync::Arc;
+        use crate::udp::socket::no_fragment;
 
-        #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-        async fn concurrent_sends_with_a_small_socket_buffer_return() {
-            const TASKS: usize = 12;
-            let rx = UdpSocket::bind("127.0.0.1:0").await.unwrap();
-            let to: SockAddrStore = rx.local_addr().unwrap().into();
-            let tx = Arc::new(UdpSocket::bind("127.0.0.1:0").await.unwrap());
-            let size: libc::c_int = 1;
-            // SAFETY: SO_SNDBUF takes an integer and the socket stays alive.
-            let result = unsafe {
-                libc::setsockopt(
-                    tx.as_raw_fd(),
-                    libc::SOL_SOCKET,
-                    libc::SO_SNDBUF,
-                    (&size as *const libc::c_int).cast(),
-                    std::mem::size_of_val(&size) as _,
-                )
-            };
-            assert_eq!(result, 0);
+        fn register_datagram(sock: std::os::unix::net::UnixDatagram) -> UdpSocket {
+            use std::os::fd::OwnedFd;
 
-            use futures::FutureExt;
-            let (start, ready) = futures::channel::oneshot::channel();
-            let ready = ready.shared();
-            let senders = (0..TASKS)
-                .map(|_| {
-                    let (tx, to, ready) = (tx.clone(), to.clone(), ready.clone());
-                    tokio::spawn(async move {
-                        let mut batch: Vec<_> = (0..MAX_PACKETS).map(|_| Packet::new()).collect();
-                        for pkt in &mut batch {
-                            pkt.received(1200, &[]);
-                        }
-                        ready.await.unwrap();
-                        let mut sent = 0;
-                        for _ in 0..32 {
-                            let mut budget = SendBudget::new(Duration::from_millis(200));
-                            let stats =
-                                send_all(&tx, batch.iter().map(|pkt| pkt.ref_with_addr(&to)), false, &mut budget).await;
-                            assert_eq!(stats.sent + stats.dropped, batch.len());
-                            sent += stats.sent;
-                        }
-                        sent
-                    })
-                })
-                .collect::<Vec<_>>();
-            start.send(()).unwrap();
-            let results = tokio::time::timeout(Duration::from_secs(3), futures::future::join_all(senders))
-                .await
-                .unwrap();
-            assert!(results.into_iter().all(|result| result.unwrap() > 0));
+            sock.set_nonblocking(true).unwrap();
+            UdpSocket::from_std(OwnedFd::from(sock).into()).unwrap()
         }
 
         #[tokio::test]
-        async fn would_block_drops_at_the_deadline_and_next_groups_do_not_wait() {
-            let sock = UdpSocket::bind("127.0.0.1:0").await.unwrap();
-            sock.writable().await.unwrap();
-            let started = Instant::now();
-            let duration = Duration::from_millis(5);
-            let mut budget = SendBudget::new(duration);
-            let begin = |budget: &mut SendBudget, expired: bool| {
-                start_send(3, budget, |one_attempt, batch| {
-                    assert_eq!(one_attempt, expired);
-                    batch.drive(3, false, one_attempt, |_, _| Err(ErrorKind::WouldBlock.into()));
+        async fn each_waiter_resumes_when_the_shared_socket_becomes_writable() {
+            use std::os::unix::net::UnixDatagram;
+            use realm_syscall::socket2::SockRef;
+            use futures::{StreamExt, channel::mpsc};
+
+            const TASKS: u8 = 12;
+            // Unix datagrams provide real, predictable backpressure from the
+            // receiver's queue while using Tokio's UDP readiness registration.
+            let (tx, rx) = UnixDatagram::pair().unwrap();
+            let tx = Arc::new(register_datagram(tx));
+            let rx = register_datagram(rx);
+            tx.writable().await.unwrap();
+            let raw = SockRef::from(&*tx);
+            let mut queued = 0;
+            loop {
+                match raw.send(&[255]) {
+                    Ok(1) => queued += 1,
+                    Err(e) if e.kind() == ErrorKind::WouldBlock => break,
+                    result => panic!("unexpected fill result: {result:?}"),
+                }
+                assert!(queued < 4096);
+            }
+            assert!(queued >= usize::from(TASKS));
+
+            let (waiting, mut registered) = mpsc::unbounded();
+            let senders: Vec<_> = (0..TASKS)
+                .map(|id| {
+                    let (tx, waiting) = (tx.clone(), waiting.clone());
+                    tokio::spawn(async move {
+                        let raw = SockRef::from(&*tx);
+                        let mut budget = SendBudget::new(Duration::from_secs(2));
+                        let send = || raw.send(&[id]).map(|_| 1);
+                        let batch = start_send(1, &mut budget, |batch| {
+                            batch.drive(1, false, |_, _| {
+                                let result = send();
+                                assert_eq!(result.as_ref().unwrap_err().kind(), ErrorKind::WouldBlock);
+                                result
+                            });
+                        });
+                        let finish = finish_send(&tx, &mut budget, batch, |batch| {
+                            batch.drive(1, false, |_, _| try_send(&tx, true, false, send));
+                            true
+                        });
+                        let mut finish = std::pin::pin!(finish);
+                        assert!(futures::poll!(finish.as_mut()).is_pending());
+                        waiting.unbounded_send(id).unwrap();
+                        drop(waiting);
+                        finish.await
+                    })
                 })
-            };
-            let batch = begin(&mut budget, false);
-            let deadline = budget.deadline.unwrap();
-            let mut attempts = 0;
-            let stats = tokio::time::timeout(
-                Duration::from_secs(1),
-                finish_send(&sock, &mut budget, batch, |batch| {
-                    // Loopback does not reliably fill the send queue. Simulate a
-                    // send returning EAGAIN and exercise Tokio's real readiness.
-                    attempts += 1;
-                    batch.drive(3, false, false, |_, _| {
-                        sock.try_io(Interest::WRITABLE, || Err(ErrorKind::WouldBlock.into()))
-                    });
-                    true
-                }),
-            )
+                .collect();
+            drop(waiting);
+
+            tokio::time::timeout(Duration::from_secs(3), async {
+                let mut waiters: Vec<_> = (&mut registered).collect().await;
+                waiters.sort_unstable();
+                assert_eq!(waiters, (0..TASKS).collect::<Vec<_>>());
+
+                let mut byte = [0];
+                for _ in 0..queued {
+                    assert_eq!(rx.recv(&mut byte).await.unwrap(), 1);
+                    assert_eq!(byte, [255]);
+                }
+                for sender in senders {
+                    let stats = sender.await.unwrap();
+                    assert_eq!((stats.sent, stats.dropped), (1, 0), "{stats:?}");
+                }
+                let mut received = Vec::new();
+                for _ in 0..TASKS {
+                    assert_eq!(rx.recv(&mut byte).await.unwrap(), 1);
+                    received.push(byte[0]);
+                }
+                received.sort_unstable();
+                assert_eq!(received, waiters);
+            })
             .await
             .unwrap();
-            assert_eq!(attempts, 1);
+        }
+
+        #[tokio::test(start_paused = true)]
+        async fn would_block_drops_at_the_deadline_and_next_groups_do_not_wait() {
+            use std::cell::Cell;
+
+            let sock = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+            sock.writable().await.unwrap();
+            let duration = Duration::from_millis(5);
+            let mut budget = SendBudget::new(duration);
+            let begin = |budget: &mut SendBudget| {
+                start_send(3, budget, |batch| {
+                    batch.drive(3, false, |_, _| Err(ErrorKind::WouldBlock.into()));
+                })
+            };
+            let batch = begin(&mut budget);
+            let deadline = budget.deadline.unwrap();
+            let attempts = Cell::new(0);
+            let stats = {
+                let finish = finish_send(&sock, &mut budget, batch, |batch| {
+                    batch.drive(3, false, |_, _| {
+                        try_send(&sock, true, false, || {
+                            attempts.set(attempts.get() + 1);
+                            Err(ErrorKind::WouldBlock.into())
+                        })
+                    });
+                    true
+                });
+                let mut finish = std::pin::pin!(finish);
+                assert!(futures::poll!(finish.as_mut()).is_pending());
+                assert_eq!(attempts.get(), 1);
+                finish.await
+            };
+            assert_eq!(attempts.get(), 1);
             assert_eq!((stats.sent, stats.dropped), (0, 3));
             assert_eq!(stats.error.unwrap().kind(), ErrorKind::TimedOut);
             assert!(Instant::now() >= deadline);
 
             for _ in 0..MAX_PACKETS - 1 {
-                let batch = begin(&mut budget, true);
+                let batch = begin(&mut budget);
                 let stats = finish_send(&sock, &mut budget, batch, |_| panic!("another group waited")).await;
                 assert_eq!((stats.sent, stats.dropped), (0, 3));
             }
             assert_eq!(budget.deadline, Some(deadline));
-            assert!(started.elapsed() < Duration::from_millis(200));
+        }
+
+        #[tokio::test(start_paused = true)]
+        async fn repeated_writable_notifications_without_progress_stop_the_send() {
+            let sock = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+            sock.writable().await.unwrap();
+            let mut budget = SendBudget::new(Duration::from_millis(200));
+            let batch = start_send(3, &mut budget, |batch| {
+                batch.drive(3, false, |_, _| Err(ErrorKind::WouldBlock.into()));
+            });
+            let deadline = budget.deadline.unwrap();
+            let mut attempts = 0;
+            let stats = finish_send(&sock, &mut budget, batch, |_| {
+                // Model a write-closed notification, which Tokio does not clear.
+                attempts += 1;
+                true
+            })
+            .await;
+            assert_eq!(attempts, 1 + MAX_READY_WITHOUT_PROGRESS);
+            assert!(Instant::now() < deadline);
+            assert_eq!((stats.sent, stats.dropped), (0, 3));
+            assert_eq!(stats.error.unwrap().kind(), ErrorKind::TimedOut);
+        }
+
+        #[tokio::test]
+        async fn receive_caps_the_batch_at_header_capacity() {
+            use realm_syscall::socket2::SockRef;
+
+            let rx = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+            SockRef::from(&rx).set_recv_buffer_size(1 << 20).unwrap();
+            let tx = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+            let to = rx.local_addr().unwrap().into();
+            let mut pkts: Vec<_> = (0..=MAX_PACKETS).map(|_| Packet::new()).collect();
+            let mut budget = SendBudget::new(Duration::from_millis(200));
+            assert_eq!(recv_some(&rx, &mut []).await.unwrap(), 0);
+            assert_eq!(send_now(&tx, std::iter::empty(), false, &mut budget).sent(), 0);
+            let group = pkts[..MAX_PACKETS].iter().map(|pkt| pkt.ref_with_addr(&to));
+            assert_eq!(send_now(&tx, group, false, &mut budget).sent(), MAX_PACKETS);
+            assert_eq!(tx.send_to(b"last", rx.local_addr().unwrap()).await.unwrap(), 4);
+            assert_eq!(recv_some(&rx, &mut pkts).await.unwrap(), MAX_PACKETS);
+            assert_eq!(recv_some(&rx, &mut pkts).await.unwrap(), 1);
+            assert_eq!(&pkts[0].buf[..pkts[0].len()], b"last");
+        }
+
+        #[tokio::test]
+        #[should_panic(expected = "invalid send batch length")]
+        async fn send_rejects_oversized_batches() {
+            let tx = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+            let to = tx.local_addr().unwrap().into();
+            let pkt = Packet::new();
+            let group = std::iter::repeat_n(pkt.ref_with_addr(&to), MAX_PACKETS + 1);
+            send_now(&tx, group, false, &mut SendBudget::new(Duration::ZERO));
+        }
+
+        #[tokio::test]
+        #[should_panic(expected = "invalid send batch length")]
+        async fn send_checks_the_number_of_headers_actually_written() {
+            struct WrongLength;
+
+            impl Iterator for WrongLength {
+                type Item = PacketRef<'static, 'static>;
+
+                fn next(&mut self) -> Option<Self::Item> {
+                    None
+                }
+
+                fn size_hint(&self) -> (usize, Option<usize>) {
+                    (1, Some(1))
+                }
+            }
+
+            impl ExactSizeIterator for WrongLength {}
+
+            let tx = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+            send_now(&tx, WrongLength, false, &mut SendBudget::new(Duration::ZERO));
         }
 
         /// Many tasks at once send datagrams that need fragments through one
@@ -733,24 +924,27 @@ mod tests {
             pkt.buf[0] = i as u8;
             pkt.received(1, &[]);
         }
-        let group = pkts
-            .iter()
-            .enumerate()
-            .map(|(i, pkt)| pkt.ref_with_addr(if i == 1 { &invalid } else { &to }));
-        let mut budget = SendBudget::new(Duration::from_millis(200));
-        let stats = send_all(&tx, group, false, &mut budget).await;
-        assert_eq!((stats.sent, stats.dropped), (2, 1));
-        assert_eq!(stats.error.unwrap().kind(), ErrorKind::InvalidInput);
-        for expected in [0, 2] {
-            let mut buf = [0; 1];
-            assert_eq!(
-                tokio::time::timeout(Duration::from_secs(1), rx.recv(&mut buf))
-                    .await
-                    .unwrap()
-                    .unwrap(),
-                1
-            );
-            assert_eq!(buf, [expected]);
+        for expired in [false, true] {
+            let group = pkts
+                .iter()
+                .enumerate()
+                .map(|(i, pkt)| pkt.ref_with_addr(if i == 1 { &invalid } else { &to }));
+            let mut budget = SendBudget::new(Duration::from_millis(200));
+            budget.deadline = expired.then(Instant::now);
+            let stats = send_all(&tx, group, false, &mut budget).await;
+            assert_eq!((stats.sent, stats.dropped), (2, 1));
+            assert_eq!(stats.error.unwrap().kind(), ErrorKind::InvalidInput);
+            for expected in [0, 2] {
+                let mut buf = [0; 1];
+                assert_eq!(
+                    tokio::time::timeout(Duration::from_secs(1), rx.recv(&mut buf))
+                        .await
+                        .unwrap()
+                        .unwrap(),
+                    1
+                );
+                assert_eq!(buf, [expected]);
+            }
         }
     }
 }

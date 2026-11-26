@@ -9,7 +9,7 @@ use tokio::net::UdpSocket;
 use tokio::time::{Instant, sleep};
 
 use super::{RateLimit, SockMap, batched, socket};
-use super::sockmap::Assoc;
+use super::sockmap::{Assoc, activity_tick};
 
 use crate::trick::Ref;
 use crate::dns::resolve_addr;
@@ -21,6 +21,13 @@ use registry::Registry;
 
 const UPSTREAM_WAIT: Duration = Duration::from_millis(5);
 const CLIENT_WAIT: Duration = Duration::from_millis(200);
+const RECV_BACKOFF_MIN: Duration = Duration::from_millis(10);
+const RECV_BACKOFF_MAX: Duration = Duration::from_secs(1);
+
+async fn back_off_receive(delay: &mut Duration) {
+    sleep(*delay).await;
+    *delay = (*delay * 2).min(RECV_BACKOFF_MAX);
+}
 
 mod registry {
     use super::*;
@@ -285,7 +292,7 @@ pub async fn associate_and_relay(
     lis: Ref<UdpSocket>,
     rname: Ref<RemoteAddr>,
     conn_opts: Ref<ConnectOpts>,
-    sockmap: Ref<SockMap>,
+    sockmap: Arc<SockMap>,
     failover: Ref<Option<Failover>>,
 ) -> ! {
     static RECV_LOG: RateLimit = RateLimit::new();
@@ -297,11 +304,17 @@ pub async fn associate_and_relay(
     let no_fragment = conn_opts.udp_no_fragment;
 
     loop {
-        if let Err(e) = registry.batched_recv_on(&lis).await {
+        let mut backoff = RECV_BACKOFF_MIN;
+        while let Err(e) = registry.batched_recv_on(&lis).await {
             if let Some(suppressed) = RECV_LOG.allow() {
-                log::error!("[udp]entry recvfrom failed: {} ({} suppressed)", e, suppressed);
+                log::error!(
+                    "[udp]entry recvfrom failed: {}, retry in {:?} ({} suppressed)",
+                    e,
+                    backoff,
+                    suppressed
+                );
             }
-            continue;
+            back_off_receive(&mut backoff).await;
         }
         log::debug!("[udp]entry batched recvfrom[{}]", registry.count());
 
@@ -324,6 +337,7 @@ pub async fn associate_and_relay(
         };
 
         registry.group_by_addr();
+        let tick = renew.then(activity_tick);
         let mut budget = SendBudget::new(UPSTREAM_WAIT);
         for pkts in registry.group_iter() {
             let laddr = pkts.first().addr.to_socket_addr();
@@ -364,8 +378,10 @@ pub async fn associate_and_relay(
                     no_fragment,
                     &mut budget,
                 );
-                if renew && batch.sent() > 0 {
-                    assoc.touch();
+                if let Some(tick) = tick {
+                    if batch.sent() > 0 {
+                        assoc.touch(tick);
+                    }
                 }
                 (Arc::clone(assoc), raddr, batch)
             };
@@ -397,10 +413,18 @@ pub async fn associate_and_relay(
                             continue;
                         }
                     };
-                    let assoc = Arc::new(Assoc::new(sock, peer));
+                    let assoc = Arc::new(Assoc::new(sock, peer, tick.unwrap_or_default()));
                     sockmap.insert(laddr, Arc::clone(&assoc));
                     let active = start(&assoc);
-                    tokio::spawn(send_back(lis, laddr, assoc, renew, conn_opts, sockmap, failover));
+                    tokio::spawn(send_back(
+                        lis,
+                        laddr,
+                        assoc,
+                        renew,
+                        conn_opts,
+                        sockmap.clone(),
+                        failover,
+                    ));
                     match route {
                         Some(_) => log::info!("[udp]new association {} => peer#{} {}", laddr, peer, raddr),
                         None => log::info!("[udp]new association {} => {} as {}", laddr, *rname, raddr),
@@ -424,7 +448,7 @@ pub async fn associate_and_relay(
                             batch,
                         );
                         if renew && batch.sent() > sent {
-                            assoc.touch();
+                            assoc.touch(activity_tick());
                         }
                         true
                     })
@@ -448,17 +472,39 @@ pub async fn associate_and_relay(
     }
 }
 
+struct RemoveOnDrop<'a> {
+    // The listener can be dropped before Tokio drops this task.
+    sockmap: Arc<SockMap>,
+    addr: SocketAddr,
+    assoc: &'a Arc<Assoc>,
+    removed: bool,
+}
+
+impl Drop for RemoveOnDrop<'_> {
+    fn drop(&mut self) {
+        if !self.removed {
+            self.sockmap.remove(&self.addr, self.assoc);
+        }
+    }
+}
+
 async fn send_back(
     lsock: Ref<UdpSocket>,
     laddr: SocketAddr,
     assoc: Arc<Assoc>,
     renew: bool,
     conn_opts: Ref<ConnectOpts>,
-    sockmap: Ref<SockMap>,
+    sockmap: Arc<SockMap>,
     failover: Ref<Option<Failover>>,
 ) {
     static RECV_LOG: RateLimit = RateLimit::new();
     static SEND_LOG: RateLimit = RateLimit::new();
+    let mut cleanup = RemoveOnDrop {
+        sockmap,
+        addr: laddr,
+        assoc: &assoc,
+        removed: false,
+    };
     let mut registry = Registry::growing(batched::MAX_PACKETS);
     let timeout = Duration::from_secs(conn_opts.associate_timeout as u64);
     let laddr_s: SockAddrStore = laddr.into();
@@ -468,54 +514,63 @@ async fn send_back(
     loop {
         let receive = registry.batched_recv_on(&assoc.sock);
         let received = if let Some(timer) = &mut idle {
-            match select(timer.as_mut(), pin!(receive)).await {
-                Either::Left(_) => {
-                    let Some(remaining) = sockmap.expire(&laddr, &assoc, timeout) else {
-                        break;
-                    };
-                    timer.as_mut().reset(Instant::now() + remaining);
-                    continue;
-                }
-                Either::Right((received, _)) => received,
+            match select(pin!(receive), timer.as_mut()).await {
+                Either::Left((received, _)) => Some(received),
+                Either::Right(_) => None,
             }
         } else {
-            receive.await
+            Some(receive.await)
         };
-        if let Err(e) = received {
-            if let Some(suppressed) = RECV_LOG.allow() {
-                log::error!("[udp]rear recvfrom failed: {} ({} suppressed)", e, suppressed);
+        if let Some(ref received) = received {
+            if let Err(e) = received {
+                if let Some(suppressed) = RECV_LOG.allow() {
+                    log::error!("[udp]rear recvfrom failed: {} ({} suppressed)", e, suppressed);
+                }
+                break;
             }
-            sockmap.remove(&laddr, &assoc);
-            break;
-        }
-        log::debug!("[udp]rear batched recvfrom[{}]", registry.count());
+            log::debug!("[udp]rear batched recvfrom[{}]", registry.count());
 
-        // A peer that this association left must not deliver or renew it.
-        if let (Some(fo), Some(cur)) = (failover.as_ref(), assoc.moved_peer()) {
-            registry.retain(|pkt| !fo.is_stale(&pkt.addr.to_socket_addr(), cur));
-            if registry.count() == 0 {
+            // A peer that this association left must not deliver or renew it.
+            let forward = if let (Some(fo), Some(cur)) = (failover.as_ref(), assoc.moved_peer()) {
+                registry.retain(|pkt| !fo.is_stale(&pkt.addr.to_socket_addr(), cur));
+                registry.count() != 0
+            } else {
+                true
+            };
+            if forward {
+                if renew {
+                    assoc.touch(activity_tick());
+                }
+                let pkts = registry.iter().map(|pkt| pkt.ref_with_addr(&laddr_s));
+                let mut budget = SendBudget::new(CLIENT_WAIT);
+                let stats = batched::send_all(&lsock, pkts, conn_opts.udp_no_fragment, &mut budget).await;
+                if let Some(e) = stats.error {
+                    if let Some(suppressed) = SEND_LOG.allow() {
+                        log::error!(
+                            "[udp]failed to sendto client {}: {} ({} sent, {} dropped, {} suppressed)",
+                            laddr,
+                            e,
+                            stats.sent,
+                            stats.dropped,
+                            suppressed
+                        );
+                    }
+                }
                 continue;
             }
         }
-        if renew {
-            assoc.touch();
-        }
 
-        let pkts = registry.iter().map(|pkt| pkt.ref_with_addr(&laddr_s));
-        let mut budget = SendBudget::new(CLIENT_WAIT);
-        let stats = batched::send_all(&lsock, pkts, conn_opts.udp_no_fragment, &mut budget).await;
-        if let Some(e) = stats.error {
-            if let Some(suppressed) = SEND_LOG.allow() {
-                log::error!(
-                    "[udp]failed to sendto client {}: {} ({} sent, {} dropped, {} suppressed)",
-                    laddr,
-                    e,
-                    stats.sent,
-                    stats.dropped,
-                    suppressed
-                );
-            }
+        let Some(timer) = &mut idle else { continue };
+        // A stream of stale replies would keep winning the receive-first
+        // selection without renewing the association.
+        if received.is_some() && futures::poll!(timer.as_mut()).is_pending() {
+            continue;
         }
+        let Some(remaining) = cleanup.sockmap.expire(&laddr, &assoc, timeout) else {
+            cleanup.removed = true;
+            break;
+        };
+        timer.as_mut().reset(Instant::now() + remaining);
     }
     log::debug!("[udp]remove association for {}", laddr);
 }
@@ -523,6 +578,7 @@ async fn send_back(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::failover::{FailoverOpts, Proto};
 
     #[test]
     fn resolution_failure_or_empty_result_preserves_last_address() {
@@ -537,5 +593,115 @@ mod tests {
         assert_eq!(remember_resolution(&rname, &mut last, failure()), Some(first));
         assert_eq!(remember_resolution(&rname, &mut last, Ok(None)), Some(first));
         assert_eq!(remember_resolution(&rname, &mut last, Ok(Some(next))), Some(next));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn receive_errors_wait_with_capped_exponential_backoff() {
+        let mut delay = RECV_BACKOFF_MIN;
+        for millis in [10, 20, 40, 80, 160, 320, 640, 1000, 1000] {
+            let expected = Duration::from_millis(millis);
+            assert_eq!(delay, expected);
+            let started = Instant::now();
+            back_off_receive(&mut delay).await;
+            assert!((expected..=expected + Duration::from_millis(1)).contains(&started.elapsed()));
+        }
+    }
+
+    async fn receive_at_idle_deadline(stale: bool) {
+        let listener = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let client = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let old_peer = std::net::UdpSocket::bind("127.0.0.1:0").unwrap();
+        let current_peer = std::net::UdpSocket::bind("127.0.0.1:0").unwrap();
+        let laddr = client.local_addr().unwrap();
+        let opts = ConnectOpts {
+            associate_timeout: 1,
+            ..Default::default()
+        };
+        let failover = Some(Failover::start(
+            Proto::Udp,
+            laddr.to_string(),
+            vec![old_peer.local_addr().unwrap(), current_peer.local_addr().unwrap()],
+            &FailoverOpts::default(),
+            &opts,
+        ));
+        let upstream = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let to = upstream.local_addr().unwrap();
+        let assoc = Arc::new(Assoc::new(upstream, 0, activity_tick().wrapping_sub(20)));
+        assoc.move_to(1);
+        let sockmap = Arc::new(SockMap::new());
+        sockmap.insert(laddr, assoc.clone());
+        let mut rear = pin!(send_back(
+            Ref::new(&listener),
+            laddr,
+            assoc.clone(),
+            true,
+            Ref::new(&opts),
+            sockmap.clone(),
+            Ref::new(&failover),
+        ));
+
+        assert!(futures::poll!(rear.as_mut()).is_pending());
+        tokio::time::advance(Duration::from_millis(1001)).await;
+        let mut byte = [0];
+        if stale {
+            const BURST: usize = 16;
+            for _ in 0..BURST {
+                old_peer.send_to(b"s", to).unwrap();
+            }
+            assoc.sock.readable().await.unwrap();
+            assert!(futures::poll!(rear.as_mut()).is_ready());
+            assert!(sockmap.with_assoc(&laddr, |_| ()).is_none());
+            let queued = std::iter::from_fn(|| assoc.sock.try_recv(&mut byte).ok()).count();
+            assert!((1..BURST).contains(&queued));
+            assert_eq!(client.try_recv(&mut byte).unwrap_err().kind(), ErrorKind::WouldBlock);
+        } else {
+            current_peer.send_to(b"r", to).unwrap();
+            assoc.sock.readable().await.unwrap();
+            assert!(futures::poll!(rear.as_mut()).is_pending());
+            assert_eq!(
+                sockmap.with_assoc(&laddr, |current| Arc::ptr_eq(current, &assoc)),
+                Some(true)
+            );
+            let n = tokio::time::timeout(Duration::from_secs(1), client.recv(&mut byte))
+                .await
+                .unwrap()
+                .unwrap();
+            assert_eq!((n, byte), (1, *b"r"));
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_current_peer_reply_wins_over_the_idle_timer() {
+        receive_at_idle_deadline(false).await;
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn an_association_expires_with_old_peer_replies_still_queued() {
+        receive_at_idle_deadline(true).await;
+    }
+
+    #[tokio::test]
+    async fn a_panicking_reply_task_removes_only_its_own_association() {
+        let sockmap = Arc::new(SockMap::new());
+        let sock = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let addr = sock.local_addr().unwrap();
+        let assoc = Arc::new(Assoc::new(sock, 0, 0));
+        let replacement = Arc::new(Assoc::new(UdpSocket::bind("127.0.0.1:0").await.unwrap(), 0, 0));
+
+        for current in [&assoc, &replacement] {
+            sockmap.insert(addr, current.clone());
+            let outcome = std::panic::catch_unwind(|| {
+                let _cleanup = RemoveOnDrop {
+                    sockmap: sockmap.clone(),
+                    addr,
+                    assoc: &assoc,
+                    removed: false,
+                };
+                panic!("reply task panicked");
+            });
+            assert!(outcome.is_err());
+            let replacement_remains = sockmap.with_assoc(&addr, |current| Arc::ptr_eq(current, &replacement));
+            assert_eq!(replacement_remains, Arc::ptr_eq(current, &replacement).then_some(true));
+        }
     }
 }

@@ -193,9 +193,9 @@ DNS OPTIONS:
       --dns-servers <servers>    override dns servers
 
 PROXY OPTIONS:
-      --send-proxy <send_proxy>        send proxy protocol header
+      --send-proxy <send_proxy>        send proxy protocol header [possible values: true, false]
       --send-proxy-version <version>   send proxy protocol version
-      --accept-proxy <accept_proxy>    accept proxy protocol header
+      --accept-proxy <accept_proxy>    accept proxy protocol header [possible values: true, false]
       --accept-proxy-timeout <second>  accept proxy protocol timeout
 
 TIMEOUT OPTIONS:
@@ -248,7 +248,7 @@ realm convert old.json
 
 ## Configuration
 
-Realm binds all enabled TCP and UDP listeners before starting any relay or forking into the background with `--daemon`. If any bind fails, it reports the protocol, address and error for each failed listener on stderr, then exits with a nonzero status. UDP listeners cannot share a listening address. If a listener task exits after startup, realm reports its protocol and address and exits with a nonzero status so a service manager can restart it.
+Realm binds all enabled TCP and UDP listeners before starting any relay or forking into the background with `--daemon`. If any bind fails, it reports the protocol, address and error for each failed listener on stderr, then exits with a nonzero status. UDP listeners cannot share a listening address. On Linux, a wildcard address next to a specific one on the same port counts as shared, and so does `[::]:port` next to `0.0.0.0:port` unless `ipv6_only` is set. If a listener task exits after startup, realm reports its protocol and address and exits with a nonzero status so a service manager can restart it.
 
 Unknown keys in the top level, `log`, `dns`, `network`, and individual endpoints produce warnings on stderr and are ignored. This applies to TOML and JSON files, configuration directories and `REALM_CONF`. Unknown `failover` keys are errors. A rule with both TCP and UDP disabled produces a warning. Startup requires at least one enabled listener. Invalid numeric command-line arguments are errors.
 
@@ -603,6 +603,8 @@ default: ipv4_and_ipv6
 
 UDP uses the first resolved address, or the first address in the same family as `through` when it is set.
 On a host without IPv4 egress, set `dns.mode` to `ipv6_only` or `ipv6_then_ipv4` when forwarding UDP to a dual-stack hostname.
+
+When a lookup fails or returns no usable address, UDP keeps sending to the address of the last successful lookup. When the address family of the result changes, the relay opens a new upstream socket for each client, so the upstream sees a new source port. To keep one family for a dual-stack hostname, set `dns.mode` to `ipv4_only` or `ipv6_only`, or set `through`.
 
 The resolver keeps system options such as `ndots`, `timeout`, and `attempts`, including when individual Realm DNS settings are overridden.
 

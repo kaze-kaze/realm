@@ -30,7 +30,7 @@ You can also build your own image from the released binaries:
 ```dockerfile
 FROM alpine:latest
 
-ARG VERSION="v3.1.1"
+ARG VERSION="v3.2.1"
 
 WORKDIR /realm
 

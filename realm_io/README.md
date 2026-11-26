@@ -42,3 +42,9 @@ close two connections on both sides without waiting for a reply packet.
 
 This is helpful when handling connections from a poorly implemented client or server,
 which may never shutdown its write side nor close the underlying socket.
+
+The `bidi_copy_with_timeout`, `bidi_zero_copy_with_timeout` and `bidi_copy_buf_with_timeout`
+variants take this choice as an argument and ignore the feature. `None` waits for both
+directions to finish. `Some(Duration::ZERO)` closes both sides as soon as either direction
+finishes. Any other duration lets the remaining direction run until it has made no write
+progress for that long.

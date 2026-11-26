@@ -1588,7 +1588,7 @@ dependencies = [
  "pin-project",
  "proxy-protocol",
  "realm_hook 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "realm_io 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "realm_io",
  "realm_lb",
  "realm_syscall 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio",
@@ -1614,18 +1614,7 @@ dependencies = [
 
 [[package]]
 name = "realm_io"
-version = "0.5.4"
-dependencies = [
- "libc",
- "socket2",
- "tokio",
-]
-
-[[package]]
-name = "realm_io"
-version = "0.5.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fbd9684e1e2657da19efeb656603aca95bcd4ca3207b6fe4410982baa33dc1ef"
+version = "0.5.5"
 dependencies = [
  "libc",
  "socket2",

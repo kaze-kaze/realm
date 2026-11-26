@@ -4,6 +4,7 @@ pub(crate) mod socket;
 mod sockmap;
 mod middle;
 mod batched;
+mod rate_limit;
 
 use std::io::Result;
 use std::net::UdpSocket;
@@ -14,6 +15,7 @@ use crate::failover::{Failover, Proto, literal_peers};
 
 use sockmap::SockMap;
 use middle::associate_and_relay;
+use rate_limit::RateLimit;
 
 /// Bind a UDP relay to its listening address without starting the runtime.
 pub fn bind(endpoint: &Endpoint) -> Result<UdpSocket> {
@@ -61,9 +63,5 @@ pub async fn run(lis: UdpSocket, endpoint: Endpoint) -> Result<()> {
     let conn_opts = Ref::new(&conn_opts);
     let sockmap = Ref::new(&sockmap);
     let failover = Ref::new(&failover);
-    loop {
-        if let Err(e) = associate_and_relay(lis, raddr, conn_opts, sockmap, failover).await {
-            log::error!("[udp]error: {}", e);
-        }
-    }
+    associate_and_relay(lis, raddr, conn_opts, sockmap, failover).await
 }

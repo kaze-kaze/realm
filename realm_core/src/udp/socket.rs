@@ -1,5 +1,5 @@
 use std::io::Result;
-use std::net::SocketAddr;
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr};
 
 use tokio::net::UdpSocket;
 use realm_syscall::new_udp_socket;
@@ -48,14 +48,18 @@ pub fn associate(raddr: &SocketAddr, conn_opts: &ConnectOpts) -> Result<UdpSocke
         let _ = socket.set_reuse_address(true);
     }
 
-    if let Some(addr) = *bind_address {
-        socket.bind(&addr.into())?;
-    }
-
     #[cfg(target_os = "linux")]
     if let Some(iface) = bind_interface {
         realm_syscall::bind_to_device(&socket, iface)?;
     }
+
+    // Allocate the source port before the first send so port exhaustion cannot
+    // look like a full send buffer on an unbound socket.
+    let addr = bind_address.unwrap_or_else(|| match raddr {
+        SocketAddr::V4(_) => SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0)),
+        SocketAddr::V6(_) => SocketAddr::from((Ipv6Addr::UNSPECIFIED, 0)),
+    });
+    socket.bind(&addr.into())?;
 
     #[cfg(target_os = "linux")]
     if conn_opts.udp_no_fragment {
@@ -83,8 +87,8 @@ pub fn associate(raddr: &SocketAddr, conn_opts: &ConnectOpts) -> Result<UdpSocke
 pub(crate) mod no_fragment {
     use std::mem::size_of;
     use std::os::unix::io::AsRawFd;
-    #[cfg(feature = "batched-udp")]
     use std::sync::Mutex;
+    use super::super::RateLimit;
     use libc::{c_int, c_void, socklen_t};
 
     fn sockopt(fd: c_int, level: c_int, name: c_int, val: c_int) -> bool {
@@ -111,11 +115,16 @@ pub(crate) mod no_fragment {
         };
         let a = sockopt(fd, libc::IPPROTO_IP, libc::IP_MTU_DISCOVER, v4);
         let b = sockopt(fd, libc::IPPROTO_IPV6, libc::IPV6_MTU_DISCOVER, v6);
+        static LOG: RateLimit = RateLimit::new();
         if !a && !b {
-            log::warn!(
-                "[udp]failed to set path mtu discovery: {}",
-                std::io::Error::last_os_error()
-            );
+            let error = std::io::Error::last_os_error();
+            if let Some(suppressed) = LOG.allow() {
+                log::warn!(
+                    "[udp]failed to set path mtu discovery: {} ({} suppressed)",
+                    error,
+                    suppressed
+                );
+            }
         }
     }
 
@@ -126,7 +135,6 @@ pub(crate) mod no_fragment {
     /// each find it as the other one just left it: one sends while the option is
     /// already back on and its datagram is refused again. So this is done by one
     /// task at a time, and `send` must not block or yield.
-    #[cfg(feature = "batched-udp")]
     pub fn lifted<S: AsRawFd, T>(sock: &S, send: impl FnOnce() -> T) -> T {
         static LIFTING: Mutex<()> = Mutex::new(());
         let _one_at_a_time = LIFTING.lock().unwrap_or_else(|e| e.into_inner());
@@ -152,10 +160,18 @@ pub(crate) mod no_fragment {
     }
 }
 
-#[cfg(all(test, target_os = "linux"))]
+#[cfg(test)]
 mod tests {
     use super::*;
 
+    #[tokio::test]
+    async fn association_has_a_local_port_before_sending() {
+        let raddr = "127.0.0.1:39319".parse().unwrap();
+        let sock = associate(&raddr, &ConnectOpts::default()).unwrap();
+        assert_ne!(sock.local_addr().unwrap().port(), 0);
+    }
+
+    #[cfg(target_os = "linux")]
     #[tokio::test]
     async fn no_fragment_is_opt_in() {
         let raddr: SocketAddr = "127.0.0.1:9".parse().unwrap();

@@ -84,7 +84,7 @@ where
     }
 }
 
-impl<'a, SR, SW> AsyncIOBuf for CopyBuffer<&'a mut Pipe, SR, SW>
+impl<SR, SW> AsyncIOBuf for CopyBuffer<&mut Pipe, SR, SW>
 where
     SR: AsyncRead + AsyncWrite + AsyncRawIO + Unpin,
     SW: AsyncRead + AsyncWrite + AsyncRawIO + Unpin,

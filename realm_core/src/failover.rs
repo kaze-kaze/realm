@@ -713,8 +713,12 @@ async fn udp_attempt(
     match timeout_at(until, send).await {
         Ok(Ok(_)) => {}
         Ok(Err(e)) => {
-            log::debug!("[failover][udp]probe {}: local send error: {}", target, e);
-            return Some(Probe::Unknown);
+            log::debug!("[failover][udp]probe {}: send error: {}", target, e);
+            if is_local(&e) {
+                return Some(Probe::Unknown);
+            }
+            sleep_until(until).await;
+            return None;
         }
         Err(_) => return None,
     }
@@ -854,15 +858,33 @@ mod tests {
 
     #[tokio::test]
     async fn udp_probe_treats_a_local_send_error_as_unknown() {
-        let peer = UdpSocket::bind("127.0.0.1:39316").await.unwrap();
-        let opts = FailoverOpts {
-            udp_send: vec![0; 65536],
-            ..Default::default()
-        };
+        let socket = UdpSocket::bind("127.0.0.1:39316").await.unwrap();
+        let target = socket.local_addr().unwrap();
+        let until = Instant::now() + Duration::from_secs(1);
+        let send = std::future::ready(Err(ErrorKind::AddrNotAvailable.into()));
         assert_eq!(
-            probe_udp(peer.local_addr().unwrap(), &opts, &ConnectOpts::default()).await,
-            U
+            udp_attempt(&socket, target, send, &mut [0], |_| false, until).await,
+            Some(U)
         );
+    }
+
+    #[tokio::test]
+    async fn udp_probe_retries_peer_and_path_send_errors_at_the_deadline() {
+        let socket = UdpSocket::bind("127.0.0.1:39318").await.unwrap();
+        let target = socket.local_addr().unwrap();
+        for kind in [
+            ErrorKind::ConnectionRefused,
+            ErrorKind::NetworkUnreachable,
+            ErrorKind::HostUnreachable,
+        ] {
+            let until = Instant::now() + Duration::from_millis(20);
+            let send = std::future::ready(Err(kind.into()));
+            assert_eq!(
+                udp_attempt(&socket, target, send, &mut [0], |_| false, until).await,
+                None
+            );
+            assert!(Instant::now() >= until);
+        }
     }
 
     #[tokio::test]

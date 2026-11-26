@@ -528,7 +528,7 @@ Supported formats:
 - ipv4/ipv6 (tcp/udp)
 - ipv4/ipv6:port (udp)
 
-An invalid `through` address is a startup error.
+An invalid `through` address is a startup error. A `through` address must also share the address family of every literal `remote` and `extra_remotes` address.
 
 #### endpoint.interface: string
 
@@ -655,7 +655,7 @@ default: false
 
 Start listening on a udp endpoint and forward packets to the remote peer.
 
-It will dynamically allocate local endpoints and establish udp associations. Once timeout, the endpoints will be deallocated and the association will be terminated. See also: [network.udp_timeout](#networkudp_timeout-unsigned-int).
+It opens an upstream socket for each UDP association. After the association is idle in both directions for [`network.udp_timeout`](#networkudp_timeout-unsigned-int), the relay closes that socket.
 
 Due to the receiver side not limiting access to the association, the relay works like a full-cone NAT.
 
@@ -700,9 +700,7 @@ default: 5
 
 #### network.udp_timeout: unsigned int
 
-Terminate udp association after `timeout`.
-
-The timeout value must be properly configured in case of memory leak. Do not use a large `timeout`!
+Time in seconds before a UDP association expires due to inactivity. Sending a datagram to the upstream or receiving a valid datagram from the upstream restarts the idle period. Set it to `0` to disable idle expiration.
 
 default: 30
 

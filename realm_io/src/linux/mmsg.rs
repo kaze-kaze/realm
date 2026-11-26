@@ -172,6 +172,11 @@ mod store {
             }
         }
 
+        /// Return the byte count written by the system call.
+        pub const fn nbytes(&self) -> u32 {
+            self.store.msg_len
+        }
+
         /// Get constant accessor.
         #[rustfmt::skip]
         pub fn get_ref<'this>(&'this self) -> MmsgRef<'a, 'b, 'iov, 'ctrl, 'this> {
@@ -237,6 +242,18 @@ mod store {
         /// Set storage to receive data.
         pub fn with_iovec(mut self, iov: &'iov mut [IoSliceMut<'b>]) -> Self {
             self.store.msg_hdr.msg_iov = ptr::from_mut(iov) as *mut _;
+            self.store.msg_hdr.msg_iovlen = iov.len() as _;
+            self
+        }
+
+        /// Set the receive buffers, which may point to uninitialized storage.
+        ///
+        /// # Safety
+        /// Each iovec must point to valid, exclusively writable storage that
+        /// outlives this header. Use the header only for receiving, without
+        /// calling its slice accessors.
+        pub unsafe fn with_raw_iovec(mut self, iov: &'iov mut [libc::iovec]) -> Self {
+            self.store.msg_hdr.msg_iov = iov.as_mut_ptr();
             self.store.msg_hdr.msg_iovlen = iov.len() as _;
             self
         }

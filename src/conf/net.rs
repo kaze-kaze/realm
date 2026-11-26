@@ -222,10 +222,10 @@ impl Config for NetConf {
         let tcp_timeout = matches.get_one::<usize>("tcp_timeout").copied();
         let udp_timeout = matches.get_one::<usize>("udp_timeout").copied();
 
-        let send_proxy = matches.get_one::<String>("send_proxy").and_then(|x| x.parse().ok());
+        let send_proxy = matches.get_one::<bool>("send_proxy").copied();
         let send_proxy_version = matches.get_one::<usize>("send_proxy_version").copied();
 
-        let accept_proxy = matches.get_one::<String>("accept_proxy").and_then(|x| x.parse().ok());
+        let accept_proxy = matches.get_one::<bool>("accept_proxy").copied();
         let accept_proxy_timeout = matches.get_one::<usize>("accept_proxy_timeout").copied();
 
         Self {

@@ -1,5 +1,6 @@
 #![allow(clippy::let_and_return)]
 use clap::{Command, Arg, ArgAction};
+use crate::conf::{DnsMode, DnsProtocol, LogLevel};
 
 pub(super) const PIPE_PAGE_SIZE: usize = 0x1000;
 
@@ -155,6 +156,7 @@ pub fn add_global_options(app: Command) -> Command {
             .long("log-level")
             .help("override log level")
             .value_name("level")
+            .value_parser(clap::builder::ValueParser::new(str::parse::<LogLevel>))
             .display_order(0),
         Arg::new("log_output")
             .long("log-output")
@@ -169,6 +171,7 @@ pub fn add_global_options(app: Command) -> Command {
             .long("dns-mode")
             .help("override dns mode")
             .value_name("mode")
+            .value_parser(clap::builder::ValueParser::new(str::parse::<DnsMode>))
             .display_order(0),
         Arg::new("dns_min_ttl")
             .long("dns-min-ttl")
@@ -192,6 +195,7 @@ pub fn add_global_options(app: Command) -> Command {
             .long("dns-protocol")
             .help("override dns protocol")
             .value_name("protocol")
+            .value_parser(clap::builder::ValueParser::new(str::parse::<DnsProtocol>))
             .display_order(4),
         Arg::new("dns_servers")
             .long("dns-servers")
@@ -205,6 +209,7 @@ pub fn add_global_options(app: Command) -> Command {
         Arg::new("send_proxy")
             .long("send-proxy")
             .help("send proxy protocol header")
+            .value_parser(clap::value_parser!(bool))
             .display_order(0),
         Arg::new("send_proxy_version")
             .long("send-proxy-version")
@@ -215,6 +220,7 @@ pub fn add_global_options(app: Command) -> Command {
         Arg::new("accept_proxy")
             .long("accept-proxy")
             .help("accept proxy protocol header")
+            .value_parser(clap::value_parser!(bool))
             .display_order(2),
         Arg::new("accept_proxy_timeout")
             .long("accept-proxy-timeout")

@@ -224,7 +224,21 @@ impl Config for EndpointConf {
         let laddr = self.build_local();
         let raddr = self.build_remote();
 
-        let extra_raddrs = self.extra_remotes.iter().map(|r| Self::build_remote_x(r)).collect();
+        let extra_raddrs: Vec<_> = self.extra_remotes.iter().map(|r| Self::build_remote_x(r)).collect();
+        let bind_address = self.build_send_through();
+        if let Some(source) = bind_address {
+            for remote in std::iter::once(&raddr).chain(&extra_raddrs) {
+                if let RemoteAddr::SocketAddr(addr) = remote {
+                    assert!(
+                        source.is_ipv4() == addr.is_ipv4(),
+                        "endpoint {}: through address {} and remote {} must share one address family",
+                        self.listen,
+                        source,
+                        addr
+                    );
+                }
+            }
+        }
 
         if let Some(version) = self.network.send_proxy_version {
             assert!(
@@ -301,7 +315,7 @@ impl Config for EndpointConf {
         }
 
         // build left fields of bind_opts and conn_opts
-        conn_opts.bind_address = self.build_send_through();
+        conn_opts.bind_address = bind_address;
         conn_opts.bind_interface = self.interface;
         bind_opts.bind_interface = self.listen_interface;
 
@@ -381,9 +395,31 @@ mod tests {
             ("::1", "[::1]:0"),
             ("[::1]:39309", "[::1]:39309"),
         ] {
-            let opts = build_with(&format!("through = '{}'", input)).endpoint.conn_opts;
+            let opts = build(&format!(
+                "listen = '127.0.0.1:39305'\nremote = '{}'\nthrough = '{}'",
+                expected, input
+            ))
+            .endpoint
+            .conn_opts;
             assert_eq!(opts.bind_address, Some(expected.parse().unwrap()));
         }
+    }
+
+    #[test]
+    #[should_panic(expected = "through address [::1]:0 and remote 127.0.0.1:39309 must share one address family")]
+    fn rejects_through_address_from_another_family() {
+        build_with("through = '::1'");
+    }
+
+    #[test]
+    #[should_panic(expected = "through address 127.0.0.1:0 and remote [::1]:39308 must share one address family")]
+    fn rejects_extra_remote_from_another_through_address_family() {
+        build_with("through = '127.0.0.1'\nextra_remotes = ['[::1]:39308']");
+    }
+
+    #[test]
+    fn leaves_domain_family_to_resolution() {
+        build_with("through = '127.0.0.1'\nextra_remotes = ['localhost:39308']");
     }
 
     #[cfg(feature = "balance")]

@@ -12,7 +12,7 @@ license = "MIT"
 
 [dependencies]
 # realm
-realm_io = { version = "0.5" }
+realm_io = { version = "0.5", path = "../realm_io" }
 realm_syscall = "0.1"
 realm_hook = { version = "0.1", optional = true }
 realm_lb = { version = "0.2", path = "../realm_lb", optional = true }

@@ -34,17 +34,25 @@ impl Display for DnsMode {
     }
 }
 
-impl From<String> for DnsMode {
-    fn from(s: String) -> Self {
+impl std::str::FromStr for DnsMode {
+    type Err = &'static str;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         use DnsMode::*;
-        match s.to_ascii_lowercase().as_str() {
-            "ipv4_only" => Ipv4Only,
-            "ipv6_only" => Ipv6Only,
-            "ipv4_and_ipv6" => Ipv4AndIpv6,
-            "ipv4_then_ipv6" => Ipv4ThenIpv6,
-            "ipv6_then_ipv4" => Ipv6ThenIpv4,
-            _ => Self::default(),
+        match value.to_ascii_lowercase().as_str() {
+            "ipv4_only" => Ok(Ipv4Only),
+            "ipv6_only" => Ok(Ipv6Only),
+            "ipv4_and_ipv6" => Ok(Ipv4AndIpv6),
+            "ipv4_then_ipv6" => Ok(Ipv4ThenIpv6),
+            "ipv6_then_ipv4" => Ok(Ipv6ThenIpv4),
+            _ => Err("expected one of: ipv4_only, ipv6_only, ipv4_and_ipv6, ipv4_then_ipv6, ipv6_then_ipv4"),
         }
+    }
+}
+
+impl From<String> for DnsMode {
+    fn from(value: String) -> Self {
+        value.parse().unwrap_or_default()
     }
 }
 
@@ -82,14 +90,23 @@ impl Display for DnsProtocol {
     }
 }
 
-impl From<String> for DnsProtocol {
-    fn from(s: String) -> Self {
+impl std::str::FromStr for DnsProtocol {
+    type Err = &'static str;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         use DnsProtocol::*;
-        match s.to_ascii_lowercase().as_str() {
-            "tcp" => Tcp,
-            "udp" => Udp,
-            _ => TcpAndUdp,
+        match value.to_ascii_lowercase().as_str() {
+            "tcp" => Ok(Tcp),
+            "udp" => Ok(Udp),
+            "tcp+udp" | "tcp_and_udp" => Ok(TcpAndUdp),
+            _ => Err("expected one of: tcp, udp, tcp+udp | tcp_and_udp"),
         }
+    }
+}
+
+impl From<String> for DnsProtocol {
+    fn from(value: String) -> Self {
+        value.parse().unwrap_or_default()
     }
 }
 
@@ -304,16 +321,13 @@ impl Config for DnsConf {
     }
 
     fn from_cmd_args(matches: &clap::ArgMatches) -> Self {
-        let mode = matches.get_one::<String>("dns_mode").cloned().map(DnsMode::from);
+        let mode = matches.get_one::<DnsMode>("dns_mode").copied();
 
         let min_ttl = matches.get_one::<u32>("dns_min_ttl").copied();
         let max_ttl = matches.get_one::<u32>("dns_max_ttl").copied();
         let cache_size = matches.get_one::<u64>("dns_cache_size").copied();
 
-        let protocol = matches
-            .get_one::<String>("dns_protocol")
-            .cloned()
-            .map(DnsProtocol::from);
+        let protocol = matches.get_one::<DnsProtocol>("dns_protocol").copied();
 
         let nameservers = matches
             .get_one::<String>("dns_servers")

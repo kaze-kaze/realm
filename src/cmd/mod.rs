@@ -168,6 +168,50 @@ mod tests {
             .is_err());
     }
 
+    #[test]
+    fn rejects_invalid_enum_and_boolean_options() {
+        let app = flag::add_all(Command::new("realm").disable_help_flag(true).disable_version_flag(true));
+        for option in [
+            "--send-proxy",
+            "--accept-proxy",
+            "--dns-mode",
+            "--dns-protocol",
+            "--log-level",
+        ] {
+            let error = app
+                .clone()
+                .try_get_matches_from(["realm", option, "invalid"])
+                .expect_err(option);
+            assert!(error.to_string().contains(option));
+        }
+    }
+
+    #[test]
+    fn parses_explicit_enum_and_boolean_options() {
+        let opts = parse_global_opts(
+            &flag::add_all(Command::new("realm").disable_help_flag(true).disable_version_flag(true))
+                .try_get_matches_from([
+                    "realm",
+                    "--send-proxy",
+                    "true",
+                    "--accept-proxy",
+                    "false",
+                    "--dns-mode",
+                    "IPV6_ONLY",
+                    "--dns-protocol",
+                    "tcp+udp",
+                    "--log-level",
+                    "Debug",
+                ])
+                .unwrap(),
+        );
+        assert_eq!(opts.network.send_proxy, Some(true));
+        assert_eq!(opts.network.accept_proxy, Some(false));
+        assert!(matches!(opts.dns.mode, Some(crate::conf::DnsMode::Ipv6Only)));
+        assert_eq!(opts.dns.protocol, Some(crate::conf::DnsProtocol::TcpAndUdp));
+        assert!(matches!(opts.log.level, Some(crate::conf::LogLevel::Debug)));
+    }
+
     /// `--tcp-keepalive` once set the probe count as well, and `--tcp-keepalive-probe` did nothing.
     #[test]
     fn keepalive_options_are_separate() {

@@ -1,0 +1,19 @@
+FAIL two rules, one tcp port taken: exits non-zero  | rc=None stderr="thread 'tokio-rt-worker' (1289576) panicked at realm_core/src/tcp/mod.rs:39:66:\n[tcp]failed to bind 127.0.0.1:39441: Add"
+PASS   names the failing listener
+PASS   the healthy rule is not left listening
+FAIL only rule cannot bind: exits non-zero  | rc=0
+PASS valid config keeps running and prints inited  | rc=None err=''
+FAIL second instance on the same udp port: exits non-zero  | rc=None stderr=''
+PASS   first instance still running
+FAIL unknown key (json): warns and runs  | rc=None stderr=''
+FAIL unknown keys (toml, network and endpoint): warns and runs  | rc=None stderr=''
+FAIL unknown key (REALM_CONF): warns and runs  | rc=None
+PASS deprecated keys zero_copy / fast_open: still starts  | rc=None stderr=''
+FAIL invalid through: exits non-zero  | rc=None stderr=''
+FAIL more weights than peers: exits non-zero  | rc=None stderr=''
+PASS matching weights with trailing comma: runs  | rc=None stderr=''
+FAIL no rule listens on anything: exits non-zero  | rc=0 stderr=''
+FAIL send_proxy_version = 3: exits non-zero  | rc=None stderr=''
+FAIL --tcp-timeout 5s: exits non-zero  | rc=None stderr=''
+FAIL REALM_CONF path raises the soft nofile limit  | soft=1024 hard=524288
+SOME FAILED

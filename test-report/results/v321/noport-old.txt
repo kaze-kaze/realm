@@ -1,0 +1,8 @@
+1. client A, ports available          : echo ok
+2. client B, no port left for it       : NO ANSWER
+3. client A, already associated        : NO ANSWER
+4. ports are back: client A            : NO ANSWER
+5. ports are back: new client C        : NO ANSWER
+6. 15 s later: client A again          : NO ANSWER
+7. 15 s later: new client D            : NO ANSWER
+relay still running: True

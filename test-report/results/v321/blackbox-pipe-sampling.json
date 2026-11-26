@@ -1,0 +1,52 @@
+{
+ "old": {
+  "connections": 200,
+  "echoed": 200,
+  "upstream_served": 200,
+  "alive_at_end": true,
+  "fcntl_by_command": {
+   "F_DUPFD_CLOEXEC": 1
+  },
+  "F_GETPIPE_SZ": 0,
+  "F_GETPIPE_SZ_lines": [],
+  "stderr": ""
+ },
+ "new": {
+  "connections": 200,
+  "echoed": 200,
+  "upstream_served": 200,
+  "alive_at_end": true,
+  "fcntl_by_command": {
+   "F_DUPFD_CLOEXEC": 1,
+   "F_GETPIPE_SZ": 4
+  },
+  "F_GETPIPE_SZ": 4,
+  "F_GETPIPE_SZ_lines": [
+   "1291418 fcntl(10, F_GETPIPE_SZ)         = 65536",
+   "1291420 fcntl(9, F_GETPIPE_SZ)          = 65536",
+   "1291420 fcntl(9, F_GETPIPE_SZ)          = 65536",
+   "1291420 fcntl(8, F_GETPIPE_SZ)          = 65536"
+  ],
+  "stderr": ""
+ },
+ "dbg": {
+  "connections": 200,
+  "echoed": 200,
+  "upstream_served": 200,
+  "alive_at_end": true,
+  "fcntl_by_command": {
+   "F_DUPFD_CLOEXEC": 1,
+   "F_GETFL": 1,
+   "F_GETPIPE_SZ": 4,
+   "F_GETFD": 402
+  },
+  "F_GETPIPE_SZ": 4,
+  "F_GETPIPE_SZ_lines": [
+   "1291471 fcntl(10, F_GETPIPE_SZ)         = 65536",
+   "1291471 fcntl(8, F_GETPIPE_SZ)          = 65536",
+   "1291472 fcntl(9, F_GETPIPE_SZ)          = 65536",
+   "1291473 fcntl(9, F_GETPIPE_SZ)          = 65536"
+  ],
+  "stderr": ""
+ }
+}

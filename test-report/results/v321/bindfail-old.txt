@@ -1,0 +1,10 @@
+client A before         : ok 0.8 ms
+poison on for 6.1 s: client B asked 60 times, answered 0; 60 fresh clients, answered 0; realm fds 11 (with A: 9)
+marker removed, new client C at once : NO ANSWER
+marker removed, client B again       : NO ANSWER
+client A, 20 ms pings: before poison [sent 50, lost 0, rtt ms median 0.61 max 6.53] | during [sent 13, lost 13, rtt ms median -1.00 max -1.00] | after [sent 7, lost 7, rtt ms median -1.00 max -1.00]
+shim: bind_refused=0 send_refused=1
+log "failed to associate" lines: 0
+log levels: {'[DEBUG]': 159, '[INFO]': 2} | realm alive: True
+12 s later: realm fds 10 (idle baseline 8, plus 1 for the shim counter file opened inside realm)
+new client D            : NO ANSWER

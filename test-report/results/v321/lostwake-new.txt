@@ -1,0 +1,6 @@
+x5-n12-sb1-info: 12 clients, listener SO_SNDBUF=1, upstream sent 313056 datagrams in 3s, clients received 298046
+   listener sendmmsg: calls=60417 eagain=91 | system UdpSndbufErrors +528
+   right after the burst : clients with NO answer to 3 pings: []   realm fds 21 (idle 9, with 12 associations 21)
+   11s later (udp_timeout=8, nothing sent meanwhile): realm fds 9 -> 0 association sockets never closed
+   same clients, same source ports, ping again: NO answer: []
+   and 11s after that: NO answer: []   realm fds before this ping round 9

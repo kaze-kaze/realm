@@ -14,6 +14,7 @@ mod proxy;
 mod transport;
 
 use std::io::{ErrorKind, Result};
+use std::net::TcpListener;
 use std::time::Duration;
 
 use crate::trick::Ref;
@@ -26,17 +27,28 @@ use middle::connect_and_relay;
 const ACCEPT_BACKOFF_MIN: Duration = Duration::from_millis(10);
 const ACCEPT_BACKOFF_MAX: Duration = Duration::from_secs(1);
 
-/// Launch a tcp relay.
+/// Bind a TCP relay to its listening address without starting the runtime.
+pub fn bind(endpoint: &Endpoint) -> Result<TcpListener> {
+    socket::bind(&endpoint.laddr, endpoint.bind_opts.clone())
+}
+
+/// Bind and run a TCP relay.
 pub async fn run_tcp(endpoint: Endpoint) -> Result<()> {
+    let lis = bind(&endpoint)?;
+    run(lis, endpoint).await
+}
+
+/// Run a TCP relay on a nonblocking listener created by [`bind`].
+pub async fn run(lis: TcpListener, endpoint: Endpoint) -> Result<()> {
+    let lis = tokio::net::TcpListener::from_std(lis)?;
     let Endpoint {
         laddr,
         raddr,
-        bind_opts,
         conn_opts,
         extra_raddrs,
+        ..
     } = endpoint;
 
-    let lis = socket::bind(&laddr, bind_opts).unwrap_or_else(|e| panic!("[tcp]failed to bind {}: {}", laddr, e));
     let keepalive = socket::keepalive::build(&conn_opts);
 
     let failover = conn_opts.failover.as_ref().map(|opts| {

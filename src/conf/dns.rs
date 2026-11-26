@@ -112,8 +112,6 @@ pub struct DnsConf {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mode: Option<DnsMode>,
 
-    // MAX_TTL: u32 = 86400_u32
-    // https://docs.rs/trust-dns-resolver/latest/src/trust_dns_resolver/dns_lru.rs.html#26
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub min_ttl: Option<u32>,
@@ -165,7 +163,7 @@ impl Display for DnsConf {
 
         let min_ttl = default!(min_ttl, 0_u32);
 
-        let max_ttl = default!(max_ttl, 86400_u32);
+        let max_ttl = default!(max_ttl, config::MAX_TTL);
 
         let cache_size = default!(cache_size, 32_u64);
 
@@ -202,6 +200,10 @@ impl Config for DnsConf {
             max_ttl,
             cache_size,
         } = self;
+
+        let min = min_ttl.unwrap_or_default();
+        let max = max_ttl.unwrap_or(config::MAX_TTL);
+        assert!(min <= max, "dns.min_ttl ({}) exceeds dns.max_ttl ({})", min, max);
 
         // parse into ResolverOpts
         // default value:
@@ -304,15 +306,9 @@ impl Config for DnsConf {
     fn from_cmd_args(matches: &clap::ArgMatches) -> Self {
         let mode = matches.get_one::<String>("dns_mode").cloned().map(DnsMode::from);
 
-        let min_ttl = matches
-            .get_one::<String>("dns_min_ttl")
-            .and_then(|x| x.parse::<u32>().ok());
-        let max_ttl = matches
-            .get_one::<String>("dns_max_ttl")
-            .and_then(|x| x.parse::<u32>().ok());
-        let cache_size = matches
-            .get_one::<String>("dns_cache_size")
-            .and_then(|x| x.parse::<u64>().ok());
+        let min_ttl = matches.get_one::<u32>("dns_min_ttl").copied();
+        let max_ttl = matches.get_one::<u32>("dns_max_ttl").copied();
+        let cache_size = matches.get_one::<u64>("dns_cache_size").copied();
 
         let protocol = matches
             .get_one::<String>("dns_protocol")
@@ -335,5 +331,22 @@ impl Config for DnsConf {
 
     fn is_empty(&self) -> bool {
         crate::empty![self => mode, min_ttl, max_ttl, cache_size]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[should_panic(expected = "dns.min_ttl (11) exceeds dns.max_ttl (10)")]
+    fn rejects_minimum_greater_than_configured_maximum() {
+        toml::from_str::<DnsConf>("min_ttl = 11\nmax_ttl = 10").unwrap().build();
+    }
+
+    #[test]
+    #[should_panic(expected = "dns.min_ttl (86401) exceeds dns.max_ttl (86400)")]
+    fn rejects_minimum_greater_than_default_maximum() {
+        toml::from_str::<DnsConf>("min_ttl = 86401").unwrap().build();
     }
 }

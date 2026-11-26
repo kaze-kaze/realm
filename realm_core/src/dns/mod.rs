@@ -22,6 +22,7 @@ use crate::endpoint::RemoteAddr;
 pub mod config {
     use super::resolver;
     pub use resolver::config::*;
+    pub use resolver::MAX_TTL;
 }
 
 /// Dns config.

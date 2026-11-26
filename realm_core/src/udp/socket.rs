@@ -6,7 +6,7 @@ use realm_syscall::new_udp_socket;
 
 use crate::endpoint::{BindOpts, ConnectOpts};
 
-pub fn bind(laddr: &SocketAddr, bind_opts: BindOpts) -> Result<UdpSocket> {
+pub fn bind(laddr: &SocketAddr, bind_opts: BindOpts) -> Result<std::net::UdpSocket> {
     let BindOpts {
         ipv6_only,
         bind_interface,
@@ -24,12 +24,9 @@ pub fn bind(laddr: &SocketAddr, bind_opts: BindOpts) -> Result<UdpSocket> {
         realm_syscall::bind_to_device(&socket, &iface)?;
     }
 
-    // ignore error
-    let _ = socket.set_reuse_address(true);
-
     socket.bind(&(*laddr).into())?;
 
-    UdpSocket::from_std(socket.into())
+    Ok(socket.into())
 }
 
 pub fn associate(raddr: &SocketAddr, conn_opts: &ConnectOpts) -> Result<UdpSocket> {

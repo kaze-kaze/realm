@@ -31,7 +31,7 @@ async fn tcp() {
         let mut buf = vec![0; 32];
 
         for _ in 0..20 {
-            stream.write(b"Ping Ping Ping").await.unwrap();
+            stream.write_all(b"Ping Ping Ping").await.unwrap();
             let n = stream.read(&mut buf).await.unwrap();
             log::debug!("a got: {:?}", std::str::from_utf8(&buf[..n]).unwrap());
             assert_eq!(b"Pong Pong Pong", &buf[..n]);
@@ -48,7 +48,7 @@ async fn tcp() {
             let n = stream.read(&mut buf).await.unwrap();
             log::debug!("b got: {:?}", std::str::from_utf8(&buf[..n]).unwrap());
             assert_eq!(b"Ping Ping Ping", &buf[..n]);
-            stream.write(b"Pong Pong Pong").await.unwrap();
+            stream.write_all(b"Pong Pong Pong").await.unwrap();
         }
     };
 

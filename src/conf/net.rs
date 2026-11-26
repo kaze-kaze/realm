@@ -4,8 +4,8 @@ use realm_core::endpoint::{BindOpts, ConnectOpts};
 use super::Config;
 use crate::consts::{TCP_TIMEOUT, UDP_TIMEOUT};
 use crate::consts::{TCP_KEEPALIVE, TCP_KEEPALIVE_PROBE};
-use crate::consts::PROXY_PROTOCOL_VERSION;
-use crate::consts::PROXY_PROTOCOL_TIMEOUT;
+#[cfg(feature = "proxy")]
+use crate::consts::{PROXY_PROTOCOL_VERSION, PROXY_PROTOCOL_TIMEOUT};
 
 #[derive(Serialize, Debug, Deserialize, Clone, Copy, Default)]
 pub struct NetConf {
@@ -207,9 +207,6 @@ impl Config for NetConf {
                     None
                 }
             };
-            ($key: expr, $t: ident) => {
-                matches.get_one::<String>($key).and_then(|x| x.parse::<$t>().ok())
-            };
         }
 
         let no_tcp = unpack!("no_tcp");
@@ -220,16 +217,16 @@ impl Config for NetConf {
         let send_mptcp = use_mptcp;
         let accept_mptcp = use_mptcp;
 
-        let tcp_keepalive = unpack!("tcp_keepalive", usize);
-        let tcp_keepalive_probe = unpack!("tcp_keepalive_probe", usize);
-        let tcp_timeout = unpack!("tcp_timeout", usize);
-        let udp_timeout = unpack!("udp_timeout", usize);
+        let tcp_keepalive = matches.get_one::<usize>("tcp_keepalive").copied();
+        let tcp_keepalive_probe = matches.get_one::<usize>("tcp_keepalive_probe").copied();
+        let tcp_timeout = matches.get_one::<usize>("tcp_timeout").copied();
+        let udp_timeout = matches.get_one::<usize>("udp_timeout").copied();
 
-        let send_proxy = unpack!("send_proxy", bool);
-        let send_proxy_version = unpack!("send_proxy_version", usize);
+        let send_proxy = matches.get_one::<String>("send_proxy").and_then(|x| x.parse().ok());
+        let send_proxy_version = matches.get_one::<usize>("send_proxy_version").copied();
 
-        let accept_proxy = unpack!("accept_proxy", bool);
-        let accept_proxy_timeout = unpack!("accept_proxy_timeout", usize);
+        let accept_proxy = matches.get_one::<String>("accept_proxy").and_then(|x| x.parse().ok());
+        let accept_proxy_timeout = matches.get_one::<usize>("accept_proxy_timeout").copied();
 
         Self {
             no_tcp,

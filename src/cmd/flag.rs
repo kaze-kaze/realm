@@ -1,6 +1,8 @@
 #![allow(clippy::let_and_return)]
 use clap::{Command, Arg, ArgAction};
 
+pub(super) const PIPE_PAGE_SIZE: usize = 0x1000;
+
 pub fn add_all(app: Command) -> Command {
     let app = add_flags(app);
     let app = add_options(app);
@@ -128,12 +130,16 @@ pub fn add_global_options(app: Command) -> Command {
             .long("nofile")
             .help("set nofile limit")
             .value_name("limit")
+            .value_parser(clap::value_parser!(u64))
             .display_order(0),
         Arg::new("pipe_page")
             .short('p')
             .long("pipe-page")
             .help("set pipe capacity")
             .value_name("number")
+            .value_parser(
+                clap::builder::RangedU64ValueParser::<usize>::new().range(..=(usize::MAX / PIPE_PAGE_SIZE) as u64),
+            )
             .display_order(1),
         Arg::new("pre_conn_hook")
             .short('j')
@@ -168,16 +174,19 @@ pub fn add_global_options(app: Command) -> Command {
             .long("dns-min-ttl")
             .help("override dns min ttl")
             .value_name("second")
+            .value_parser(clap::value_parser!(u32))
             .display_order(1),
         Arg::new("dns_max_ttl")
             .long("dns-max-ttl")
             .help("override dns max ttl")
             .value_name("second")
+            .value_parser(clap::value_parser!(u32))
             .display_order(2),
         Arg::new("dns_cache_size")
             .long("dns-cache-size")
             .help("override dns cache size")
             .value_name("number")
+            .value_parser(clap::value_parser!(u64))
             .display_order(3),
         Arg::new("dns_protocol")
             .long("dns-protocol")
@@ -201,6 +210,7 @@ pub fn add_global_options(app: Command) -> Command {
             .long("send-proxy-version")
             .help("send proxy protocol version")
             .value_name("version")
+            .value_parser(clap::builder::RangedU64ValueParser::<usize>::new().range(1..=2))
             .display_order(1),
         Arg::new("accept_proxy")
             .long("accept-proxy")
@@ -210,6 +220,7 @@ pub fn add_global_options(app: Command) -> Command {
             .long("accept-proxy-timeout")
             .help("accept proxy protocol timeout")
             .value_name("second")
+            .value_parser(clap::value_parser!(usize))
             .display_order(3),
     ]);
 
@@ -219,21 +230,25 @@ pub fn add_global_options(app: Command) -> Command {
             .long("tcp-timeout")
             .help("override tcp timeout(5s)")
             .value_name("second")
+            .value_parser(clap::value_parser!(usize))
             .display_order(0),
         Arg::new("udp_timeout")
             .long("udp-timeout")
             .help("override udp timeout(30s)")
             .value_name("second")
+            .value_parser(clap::value_parser!(usize))
             .display_order(1),
         Arg::new("tcp_keepalive")
             .long("tcp-keepalive")
             .help("override default tcp keepalive interval(15s)")
             .value_name("second")
+            .value_parser(clap::value_parser!(usize))
             .display_order(2),
         Arg::new("tcp_keepalive_probe")
             .long("tcp-keepalive-probe")
             .help("override default tcp keepalive count(3)")
             .value_name("count")
+            .value_parser(clap::value_parser!(usize))
             .display_order(3),
     ]);
 

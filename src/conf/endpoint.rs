@@ -4,7 +4,7 @@ use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
 use realm_core::endpoint::{Endpoint, RemoteAddr};
 
 #[cfg(feature = "balance")]
-use realm_core::balance::Balancer;
+use realm_core::balance::{Balancer, Strategy};
 
 #[cfg(feature = "transport")]
 use realm_core::kaminari::mix::{MixAccept, MixConnect};
@@ -79,29 +79,83 @@ impl EndpointConf {
     }
 
     fn build_send_through(&self) -> Option<SocketAddr> {
-        let Self { through, .. } = self;
-        #[allow(clippy::question_mark)]
-        let through = match through {
-            Some(x) => x,
-            None => return None,
-        };
-        match through.to_socket_addrs() {
-            Ok(mut x) => Some(x.next().unwrap()),
-            Err(_) => {
-                let mut ipstr = String::from(through);
-                ipstr.retain(|c| c != '[' && c != ']');
-                ipstr.parse::<IpAddr>().map_or(None, |ip| Some(SocketAddr::new(ip, 0)))
-            }
+        let through = self.through.as_deref()?;
+        let ip = through
+            .strip_prefix('[')
+            .and_then(|s| s.strip_suffix(']'))
+            .unwrap_or(through);
+        if let Ok(ip) = ip.parse::<IpAddr>() {
+            return Some(SocketAddr::new(ip, 0));
         }
+        let addr = through
+            .to_socket_addrs()
+            .ok()
+            .and_then(|mut addrs| addrs.next())
+            .unwrap_or_else(|| panic!("endpoint {}: invalid through address {:?}", self.listen, through));
+        Some(addr)
     }
 
     #[cfg(feature = "balance")]
     fn build_balancer(&self) -> Balancer {
-        if let Some(s) = &self.balance {
-            Balancer::parse_from_str(s)
+        let Some(balance) = &self.balance else {
+            return Balancer::default();
+        };
+        let (strategy, weights) = balance.split_once(':').unwrap_or_else(|| {
+            panic!(
+                "endpoint {}: balance requires a strategy and weights separated by ':'",
+                self.listen
+            )
+        });
+        let strategy = Strategy::from(strategy.trim());
+        let weights = weights.trim();
+        let weights = weights.strip_suffix(',').unwrap_or(weights).trim_end();
+        let weights: Vec<u8> = if weights.is_empty() {
+            Vec::new()
         } else {
-            Balancer::default()
+            weights
+                .split(',')
+                .map(|weight| {
+                    let weight = weight.trim();
+                    weight.parse().unwrap_or_else(|_| {
+                        panic!(
+                            "endpoint {}: invalid balance weight {:?}, expected 0..=255",
+                            self.listen, weight
+                        )
+                    })
+                })
+                .collect()
+        };
+
+        if strategy != Strategy::Off {
+            let peers = 1 + self.extra_remotes.len();
+            let count = weights.len();
+            if self.failover.is_some() && count != peers {
+                panic!(
+                    "endpoint {}: failover with balance needs one weight per peer, got {} weight(s) for {} peer(s)",
+                    self.listen, count, peers
+                );
+            }
+            assert!(
+                count <= peers,
+                "endpoint {}: balance has {} weights for {} peers",
+                self.listen,
+                count,
+                peers
+            );
+            assert!(
+                count <= u8::MAX.into(),
+                "endpoint {}: balance supports at most {} weights",
+                self.listen,
+                u8::MAX
+            );
+            if count < peers {
+                warn(format!(
+                    "endpoint {}: balance has only {} weight(s) for {} peers",
+                    self.listen, count, peers
+                ));
+            }
         }
+        Balancer::new(strategy, &weights)
     }
 
     #[cfg(feature = "transport")]
@@ -172,6 +226,15 @@ impl Config for EndpointConf {
 
         let extra_raddrs = self.extra_remotes.iter().map(|r| Self::build_remote_x(r)).collect();
 
+        if let Some(version) = self.network.send_proxy_version {
+            assert!(
+                matches!(version, 1 | 2),
+                "endpoint {}: send_proxy_version must be 1 or 2, got {}",
+                self.listen,
+                version
+            );
+        }
+
         // build partial conn_opts from netconf
         let NetInfo {
             mut bind_opts,
@@ -179,6 +242,10 @@ impl Config for EndpointConf {
             no_tcp,
             use_udp,
         } = self.network.build();
+
+        if no_tcp && !use_udp {
+            warn(format!("endpoint {}: no TCP or UDP listener is enabled", self.listen));
+        }
 
         // the kernel takes at least one probe; linux refuses 0 and every connection with it
         if conn_opts.tcp_keepalive > 0 && conn_opts.tcp_keepalive_probe == 0 {
@@ -210,21 +277,6 @@ impl Config for EndpointConf {
             let remotes: Vec<&str> = std::iter::once(self.remote.as_str())
                 .chain(self.extra_remotes.iter().map(String::as_str))
                 .collect();
-            // with balance, sessions are spread over the peers that are alive: the
-            // balancer must name exactly those peers
-            #[cfg(feature = "balance")]
-            {
-                use realm_core::balance::Strategy;
-                let balancer = &conn_opts.balancer;
-                if balancer.strategy() != Strategy::Off && balancer.total() as usize != remotes.len() {
-                    panic!(
-                        "endpoint {}: failover with balance needs one weight per peer, got {} weight(s) for {} peer(s)",
-                        self.listen,
-                        balancer.total(),
-                        remotes.len()
-                    );
-                }
-            }
             conn_opts.failover = Some(failover.build(&self.listen, &remotes, use_udp));
 
             // the dial deadline is shared by all dials of a connection
@@ -305,6 +357,67 @@ mod tests {
 
     fn build(conf: &str) -> EndpointInfo {
         toml::from_str::<EndpointConf>(conf).unwrap().build()
+    }
+
+    fn build_with(options: &str) -> EndpointInfo {
+        build(&format!(
+            "listen = '127.0.0.1:39305'\nremote = '127.0.0.1:39309'\n{}",
+            options
+        ))
+    }
+
+    #[test]
+    #[should_panic(expected = "endpoint 127.0.0.1:39305: invalid through address")]
+    fn rejects_invalid_through_address() {
+        build_with("through = '10.300.1.1'");
+    }
+
+    #[test]
+    fn accepts_through_addresses_with_or_without_a_port() {
+        for (input, expected) in [
+            ("127.0.0.1", "127.0.0.1:0"),
+            ("127.0.0.1:39309", "127.0.0.1:39309"),
+            ("[::1]", "[::1]:0"),
+            ("::1", "[::1]:0"),
+            ("[::1]:39309", "[::1]:39309"),
+        ] {
+            let opts = build_with(&format!("through = '{}'", input)).endpoint.conn_opts;
+            assert_eq!(opts.bind_address, Some(expected.parse().unwrap()));
+        }
+    }
+
+    #[cfg(feature = "balance")]
+    #[test]
+    #[should_panic(expected = "invalid balance weight")]
+    fn rejects_nonnumeric_balance_weight() {
+        build_with("extra_remotes = ['127.0.0.1:39308']\nbalance = 'roundrobin: 1, x'");
+    }
+
+    #[cfg(feature = "balance")]
+    #[test]
+    #[should_panic(expected = "balance has 3 weights for 2 peers")]
+    fn rejects_excess_balance_weights() {
+        build_with("extra_remotes = ['127.0.0.1:39308']\nbalance = 'roundrobin: 1, 1, 1'");
+    }
+
+    #[cfg(feature = "balance")]
+    #[test]
+    fn missing_balance_weights_leave_peer_selection_unchanged() {
+        let ep = build_with("extra_remotes = ['127.0.0.1:39308']\nbalance = 'roundrobin: 1,'");
+        assert_eq!(ep.endpoint.conn_opts.balancer.total(), 1);
+        assert_eq!(ep.endpoint.extra_raddrs.len(), 1);
+    }
+
+    #[test]
+    #[should_panic(expected = "send_proxy_version must be 1 or 2")]
+    fn rejects_invalid_proxy_version() {
+        build_with("network = { send_proxy_version = 3 }");
+    }
+
+    #[test]
+    fn allows_a_rule_with_no_listeners() {
+        let ep = build_with("network = { no_tcp = true }");
+        assert!(ep.no_tcp && !ep.use_udp);
     }
 
     /// A keepalive of zero probes is no keepalive the kernel accepts.

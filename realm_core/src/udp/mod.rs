@@ -6,6 +6,7 @@ mod middle;
 mod batched;
 
 use std::io::Result;
+use std::net::UdpSocket;
 
 use crate::trick::Ref;
 use crate::endpoint::Endpoint;
@@ -14,19 +15,30 @@ use crate::failover::{Failover, Proto, literal_peers};
 use sockmap::SockMap;
 use middle::associate_and_relay;
 
-/// Launch a udp relay.
+/// Bind a UDP relay to its listening address without starting the runtime.
+pub fn bind(endpoint: &Endpoint) -> Result<UdpSocket> {
+    socket::bind(&endpoint.laddr, endpoint.bind_opts.clone())
+}
+
+/// Bind and run a UDP relay.
 pub async fn run_udp(endpoint: Endpoint) -> Result<()> {
+    let lis = bind(&endpoint)?;
+    run(lis, endpoint).await
+}
+
+/// Run a UDP relay on a nonblocking socket created by [`bind`].
+pub async fn run(lis: UdpSocket, endpoint: Endpoint) -> Result<()> {
+    let lis = tokio::net::UdpSocket::from_std(lis)?;
     let Endpoint {
         laddr,
         raddr,
-        bind_opts,
         conn_opts,
         extra_raddrs,
+        ..
     } = endpoint;
 
     let sockmap = SockMap::new();
 
-    let lis = socket::bind(&laddr, bind_opts).unwrap_or_else(|e| panic!("[udp]failed to bind {}: {}", laddr, e));
     #[cfg(target_os = "linux")]
     if conn_opts.udp_no_fragment {
         socket::no_fragment::set(&lis, true);

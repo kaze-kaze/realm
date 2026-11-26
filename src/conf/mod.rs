@@ -1,9 +1,11 @@
 use std::fs;
 use std::io::{Result, Error};
+use std::collections::BTreeMap;
 
 use walkdir::WalkDir;
 use clap::ArgMatches;
 use serde::{Serialize, Deserialize};
+use serde::de::IgnoredAny;
 
 mod log;
 pub use self::log::{LogLevel, LogConf};
@@ -72,6 +74,73 @@ pub struct FullConf {
     pub endpoints: Vec<EndpointConf>,
 }
 
+type UnknownKeys = BTreeMap<String, IgnoredAny>;
+
+// Keep diagnostics on the input side so they cannot be inherited by other rules
+// or written back by configuration serialization.
+#[derive(Default, Deserialize)]
+struct Checked<T> {
+    #[serde(flatten)]
+    values: T,
+    #[serde(flatten)]
+    unknown: UnknownKeys,
+}
+
+#[derive(Deserialize)]
+struct CheckedEndpoint {
+    #[serde(default)]
+    network: Checked<NetConf>,
+    #[serde(flatten)]
+    endpoint: Checked<EndpointConf>,
+}
+
+#[derive(Deserialize)]
+struct CheckedConf {
+    #[serde(default)]
+    log: Checked<LogConf>,
+    #[serde(default)]
+    dns: Checked<DnsConf>,
+    #[serde(default)]
+    network: Checked<NetConf>,
+    endpoints: Vec<CheckedEndpoint>,
+    #[serde(flatten)]
+    unknown: UnknownKeys,
+}
+
+impl CheckedConf {
+    fn into_config(self, mut warn: impl FnMut(String)) -> FullConf {
+        let mut report = |keys: UnknownKeys, context: &str, prefix: &str| {
+            for key in keys.into_keys() {
+                warn(format!("{}unknown key {}{}, ignored", context, prefix, key));
+            }
+        };
+        report(self.unknown, "top level: ", "");
+        report(self.log.unknown, "", "log.");
+        report(self.dns.unknown, "", "dns.");
+        report(self.network.unknown, "", "network.");
+
+        let endpoints = self
+            .endpoints
+            .into_iter()
+            .map(|ep| {
+                let mut endpoint = ep.endpoint.values;
+                let context = format!("endpoint {}: ", endpoint.listen);
+                report(ep.endpoint.unknown, &context, "");
+                report(ep.network.unknown, &context, "network.");
+                endpoint.network = ep.network.values;
+                endpoint
+            })
+            .collect();
+
+        FullConf {
+            log: self.log.values,
+            dns: self.dns.values,
+            network: self.network.values,
+            endpoints,
+        }
+    }
+}
+
 impl FullConf {
     #[allow(unused)]
     pub fn new(log: LogConf, dns: DnsConf, network: NetConf, endpoints: Vec<EndpointConf>) -> Self {
@@ -114,13 +183,17 @@ impl FullConf {
     }
 
     pub fn from_conf_str(s: &str) -> Result<Self> {
-        let toml_err = match toml::from_str(s) {
-            Ok(x) => return Ok(x),
+        Self::parse(s, |msg| eprintln!("warning: {}", msg))
+    }
+
+    fn parse(s: &str, warn: impl FnMut(String)) -> Result<Self> {
+        let toml_err = match toml::from_str::<CheckedConf>(s) {
+            Ok(x) => return Ok(x.into_config(warn)),
             Err(e) => e,
         };
 
-        let json_err = match serde_json::from_str(s) {
-            Ok(x) => return Ok(x),
+        let json_err = match serde_json::from_str::<CheckedConf>(s) {
+            Ok(x) => return Ok(x.into_config(warn)),
             Err(e) => e,
         };
 
@@ -175,6 +248,70 @@ impl FullConf {
         });
 
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reports_unknown_keys_once_per_table() {
+        let json = r#"{
+            "extra": [1, {"object": true}],
+            "log": {"outpuut": "stderr"},
+            "dns": {"cache_size": 18446744073709551615, "max_ttls": 1},
+            "network": {"use_udp": true, "use_udpp": true},
+            "endpoints": [
+                {"listen": "127.0.0.1:39305", "remote": "127.0.0.1:39309", "remotte": 3,
+                 "network": {"use_udp": false, "use_udpp": true}},
+                {"listen": "127.0.0.1:39306", "remote": "127.0.0.1:39309"}
+            ]
+        }"#;
+        let toml = r#"
+            extra = 1979-05-27T07:32:00Z
+            log = { outpuut = "stderr" }
+            dns = { cache_size = 18446744073709551615, max_ttls = 1 }
+            network = { use_udp = true, use_udpp = true }
+            [[endpoints]]
+            listen = "127.0.0.1:39305"
+            remote = "127.0.0.1:39309"
+            remotte = 3
+            network = { use_udp = false, use_udpp = true }
+            [[endpoints]]
+            listen = "127.0.0.1:39306"
+            remote = "127.0.0.1:39309"
+        "#;
+        for input in [json, toml] {
+            let mut warnings = Vec::new();
+            let mut config = FullConf::parse(input, |msg| warnings.push(msg)).unwrap();
+            config.apply_global_opts();
+            assert_eq!(
+                warnings,
+                [
+                    "top level: unknown key extra, ignored",
+                    "unknown key log.outpuut, ignored",
+                    "unknown key dns.max_ttls, ignored",
+                    "unknown key network.use_udpp, ignored",
+                    "endpoint 127.0.0.1:39305: unknown key remotte, ignored",
+                    "endpoint 127.0.0.1:39305: unknown key network.use_udpp, ignored",
+                ]
+            );
+            assert_eq!(config.dns.cache_size, Some(u64::MAX));
+            assert_eq!(config.endpoints[0].network.use_udp, Some(false));
+            assert_eq!(config.endpoints[1].network.use_udp, Some(true));
+        }
+    }
+
+    #[test]
+    fn reads_legacy_config() {
+        let input = r#"{
+            "listening_addresses":["127.0.0.1"], "listening_ports":["39307"],
+            "remote_addresses":["127.0.0.1"], "remote_ports":["39309"]
+        }"#;
+        let config = FullConf::parse(input, |msg| panic!("unexpected warning: {}", msg)).unwrap();
+        assert_eq!(config.endpoints[0].listen, "127.0.0.1:39307");
+        assert_eq!(config.endpoints[0].remote, "127.0.0.1:39309");
     }
 }
 

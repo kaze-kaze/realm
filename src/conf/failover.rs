@@ -73,8 +73,10 @@ impl FailoverConf {
         };
         let secs = |name: &str, v: Option<f64>, default: Duration| match v {
             None => default,
-            Some(x) if x.is_finite() && x > 0.0 => Duration::from_secs_f64(x),
-            Some(x) => fail(format!("{} must be a positive number of seconds, got {}", name, x)),
+            Some(x) => Duration::try_from_secs_f64(x)
+                .ok()
+                .filter(|_| x > 0.0)
+                .unwrap_or_else(|| fail(format!("{} must be a positive number of seconds, got {}", name, x))),
         };
 
         let peers: Vec<SocketAddr> = remotes.iter().map(|r| literal(r)).collect();
@@ -84,6 +86,11 @@ impl FailoverConf {
                 MAX_PEERS - 1,
                 peers.len()
             ));
+        }
+        for (i, peer) in peers.iter().enumerate() {
+            if peers[..i].contains(peer) {
+                fail(format!("duplicate data address {}", peer));
+            }
         }
         if use_udp && peers.iter().any(|p| p.is_ipv4() != peers[0].is_ipv4()) {
             fail("udp peers must share one address family".into());
@@ -119,6 +126,13 @@ impl FailoverConf {
             rise: self.rise.unwrap_or(df.rise),
             hold: secs("hold", self.hold, df.hold),
         };
+
+        if opts.interval.is_zero() {
+            fail("interval rounds to zero".into());
+        }
+        if opts.timeout.is_zero() {
+            fail("timeout rounds to zero".into());
+        }
 
         if !(1..=8).contains(&opts.window) {
             fail(format!("window must be 1..=8, got {}", opts.window));
@@ -255,6 +269,26 @@ mod tests {
             ..Default::default()
         };
         conf.build("l", &["10.0.0.1:1", "10.0.0.2:1"], false);
+    }
+
+    #[test]
+    #[should_panic(expected = "interval rounds to zero")]
+    fn rejects_subnanosecond_interval() {
+        let conf: FailoverConf = toml::from_str("interval = 1e-12").unwrap();
+        conf.build("127.0.0.1:39305", &["127.0.0.1:39308", "127.0.0.1:39309"], false);
+    }
+
+    #[test]
+    #[should_panic(expected = "timeout rounds to zero")]
+    fn rejects_subnanosecond_timeout() {
+        let conf: FailoverConf = serde_json::from_str(r#"{"timeout":1e-12}"#).unwrap();
+        conf.build("127.0.0.1:39305", &["127.0.0.1:39308", "127.0.0.1:39309"], false);
+    }
+
+    #[test]
+    #[should_panic(expected = "duplicate data address [::1]:39308")]
+    fn rejects_duplicate_peer_addresses() {
+        FailoverConf::default().build("127.0.0.1:39305", &["[::1]:39308", "[0:0:0:0:0:0:0:1]:39308"], false);
     }
 
     #[test]

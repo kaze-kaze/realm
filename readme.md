@@ -246,6 +246,12 @@ realm convert old.json
 
 ## Configuration
 
+Realm binds all enabled TCP and UDP listeners before starting any relay or forking into the background with `--daemon`. If any bind fails, it reports the protocol, address and error for each failed listener on stderr, then exits with a nonzero status. UDP listeners cannot share a listening address. If a listener task exits after startup, realm reports its protocol and address and exits with a nonzero status so a service manager can restart it.
+
+Unknown keys in the top level, `log`, `dns`, `network`, and individual endpoints produce warnings on stderr and are ignored. This applies to TOML and JSON files, configuration directories and `REALM_CONF`. Unknown `failover` keys are errors. A rule with both TCP and UDP disabled produces a warning. Startup requires at least one enabled listener. Invalid numeric command-line arguments are errors.
+
+On supported Unix systems, realm raises the soft file descriptor limit to the hard limit at startup, including when configured through `REALM_CONF`. Set `--nofile` on the command line to request an explicit limit. Failures to set the limit produce a warning on stderr.
+
 TOML Example
 
 ```toml
@@ -381,6 +387,8 @@ $strategy: $weight1, $weight2, ...
 
 Where `remote` is used as default backend server, and `extra_remotes` are used as backups.
 
+Each weight must be an integer from 0 to 255. For an active balancing strategy, `remote` takes the first weight and `extra_remotes` take the remaining weights in order. Too many weights are a startup error. A shorter list produces a warning and preserves peer selection from the supplied weights. With `failover`, an active balancing strategy requires exactly one weight per peer.
+
 Available algorithms (provided by [realm_lb](./realm_lb/)):
 
 - iphash: a client address always gets the same peer, and the peers get client addresses in the proportions of their weights. An IPv4 client counts as the same client on a dual-stack listener (`::ffff:a.b.c.d`). Adding a peer at the end of the list, or changing the weight of one, only moves clients to or from that peer.
@@ -404,7 +412,7 @@ The weight of [a, b, c] is [4, 2, 1] in turn.
 
 #### endpoint.failover: table
 
-Active-standby failover for both TCP and UDP. `remote` is the primary, `extra_remotes` are backups in priority order (at most 7). Peers must be `ip:port` literals; for UDP they must share one address family. Together with `balance`, the peers share the load instead, see [below](#failover-with-balance).
+Active-standby failover for both TCP and UDP. `remote` is the primary, `extra_remotes` are backups in priority order (at most 7). Peers must be distinct `ip:port` literals. For UDP they must share one address family. Together with `balance`, the peers share the load instead, see [below](#failover-with-balance).
 
 A background task probes every peer per protocol. Traffic only moves on probe results, never on user traffic:
 
@@ -422,13 +430,15 @@ Probes (from this host, with the same `interface` and `through` ip; a port in `t
 
 - TCP: connect, send `tcp_send` (optional), require a reply starting with `tcp_expect`. Without `tcp_expect` a completed handshake counts as success. While nothing has answered, another connection is started at each third of `timeout`, at most 3 per round, so one lost SYN does not fail the round. A refusal or an unexpected reply fails the round at once.
 - UDP, `udp_probe = "echo"` (default): send `udp_send` plus a per-round nonce, require the exact datagram echoed back. Resend only while unanswered, at most 3 datagrams within `timeout`. The target must be an echo responder: against a service that does not echo, every peer is marked down and UDP simply stays on its current peer.
-- UDP, `udp_probe = "quic"`: send a QUIC packet of a version no server speaks and require the Version Negotiation packet that every QUIC server answers with. This probes a QUIC service (Hysteria 2, TUIC, HTTP/3) on its own port, without an echo responder next to it. It does not work for services that hide from unauthenticated packets, such as WireGuard or Hysteria with obfuscation: those need an echo responder.
+- UDP, `udp_probe = "quic"`: send a QUIC packet with a reserved version and require a valid Version Negotiation response. This probes a QUIC service (Hysteria 2, TUIC, HTTP/3) on its own port. A server may limit or disable Version Negotiation responses. Services that hide from unauthenticated packets, such as WireGuard or Hysteria with obfuscation, need a separate echo responder.
 
 To detect failures behind the next hop, point `probe` at a health port on the far end that is relayed along the same path (e.g. a tiny HTTP 204 responder and a UDP echo).
 
 Probes are plain TCP and UDP. They send no PROXY header ([send_proxy](#networksend_proxy-bool)) and do not go through [remote_transport](#endpointremote_transport-string). When the data port expects either, probe it by handshake only (no `tcp_send` and `tcp_expect`), or point `probe` at a health port. A probe with `tcp_expect` against such a port fails every round: all peers are marked down, and nothing ever moves.
 
 A key in the `failover` table that is not one of these is an error at startup, so that a misspelt option does not fall back to its default unnoticed.
+
+`interval` and `timeout` must both remain positive when rounded to nanoseconds.
 
 | field | default | meaning |
 | --- | --- | --- |
@@ -517,6 +527,8 @@ Supported formats:
 
 - ipv4/ipv6 (tcp/udp)
 - ipv4/ipv6:port (udp)
+
+An invalid `through` address is a startup error.
 
 #### endpoint.interface: string
 
@@ -612,6 +624,8 @@ Otherwise, use google's public dns(`8.8.8.8:53`, `8.8.4.4:53` and `2001:4860:486
 #### dns.min_ttl: unsigned int
 
 The minimum lifetime of a positive dns cache.
+
+The minimum must be less than or equal to the effective `dns.max_ttl`.
 
 default: 0
 
@@ -710,7 +724,7 @@ TCP Keepalive interval.
 
 On Linux, this is equivalent to setting both `net.ipv4.tcp_keepalive_time` and `net.ipv4.tcp_keepalive_intvl`.
 
-To use system's tcp keepalive interval, you need to explicitly set this option to 0.
+Set this option to 0 to disable TCP keepalive settings on relay sockets.
 
 default: 15
 
@@ -754,7 +768,7 @@ default: false
 
 Require `proxy` feature.
 
-This option has no effect unless [send_proxy](#networksend_proxy-bool) is enabled.
+Realm validates this option at startup and uses it when [send_proxy](#networksend_proxy-bool) is enabled.
 
 value:
 
@@ -773,7 +787,7 @@ If the remote sender does not send a `v1` or `v2` header before other contents, 
 
 default: false
 
-#### network.accept_timeout: unsigned int
+#### network.accept_proxy_timeout: unsigned int
 
 Require `proxy` feature.
 

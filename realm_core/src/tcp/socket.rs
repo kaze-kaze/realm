@@ -1,9 +1,9 @@
 use std::io::{Result, Error, ErrorKind};
-use std::net::SocketAddr;
+use std::net::{SocketAddr, TcpListener};
 use std::time::Duration;
 
 use realm_syscall::socket2::Socket;
-use tokio::net::{TcpSocket, TcpStream, TcpListener};
+use tokio::net::{TcpSocket, TcpStream};
 use tokio::time::{Instant, timeout_at};
 
 use crate::dns::resolve_addr;
@@ -53,7 +53,7 @@ pub fn bind(laddr: &SocketAddr, bind_opts: BindOpts) -> Result<TcpListener> {
     socket.bind(&(*laddr).into())?;
     socket.listen(1024)?;
 
-    TcpListener::from_std(socket.into())
+    Ok(socket.into())
 }
 
 /// Create an outbound socket for `addr` with the configured egress options.

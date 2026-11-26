@@ -58,19 +58,20 @@ pub struct NetConf {
 
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub half_close_timeout: Option<usize>,
-
-    #[serde(default)]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tcp_user_timeout: Option<usize>,
-
-    #[serde(default)]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub udp_timeout: Option<usize>,
 
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub udp_no_fragment: Option<bool>,
+
+    // Positional configs depend on the order of the preceding fields.
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub half_close_timeout: Option<usize>,
+
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tcp_user_timeout: Option<usize>,
 }
 
 #[derive(Debug)]

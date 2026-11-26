@@ -127,7 +127,24 @@ async fn read_header(src: &mut TcpStream) -> Result<ProxyHeader> {
             && matches!(bytes.get(signature.len()), None | Some(0x20 | 0x21))
     })
     .await?;
+    // Match proxy-protocol's address and transport checks for both commands.
+    let min_payload = match fixed[13] >> 4 {
+        0 => 0,
+        1 => 12,
+        2 => 36,
+        3 => 216,
+        _ => return Err(Error::new(ErrorKind::InvalidData, "unknown PROXY v2 address family")),
+    };
+    if !matches!(fixed[13] & 0x0f, 0..=2) {
+        return Err(Error::new(
+            ErrorKind::InvalidData,
+            "unknown PROXY v2 transport protocol",
+        ));
+    }
     let payload_len = u16::from_be_bytes([fixed[14], fixed[15]]) as usize;
+    if payload_len < min_payload {
+        return Err(Error::new(ErrorKind::InvalidData, "PROXY v2 payload is too short"));
+    }
     if payload_len > V2_MAX_PAYLOAD {
         return Err(Error::new(ErrorKind::InvalidData, "PROXY v2 payload is too long"));
     }
@@ -336,6 +353,43 @@ mod tests {
                 timeout(Duration::from_secs(2), async { tokio::join!(send, receive) })
                     .await
                     .unwrap();
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn rejects_invalid_v2_fixed_headers_before_waiting_for_payload() {
+        for (command, family_protocol, length) in [
+            (0x21, 0x41, 12),
+            (0x21, 0x13, 12),
+            (0x21, 0x11, 11),
+            (0x21, 0x22, 35),
+            (0x20, 0x30, 215),
+        ] {
+            let (mut tx, mut rx) = pair().await;
+            let mut fixed = V2[..16].to_vec();
+            fixed[12..16].copy_from_slice(&[command, family_protocol, 0, length]);
+            tx.write_all(&fixed).await.unwrap();
+            let err = timeout(Duration::from_secs(1), accept_header(&mut rx, 5))
+                .await
+                .expect("an invalid fixed header must not wait for the payload")
+                .unwrap_err();
+            assert_eq!(err.kind(), ErrorKind::InvalidData, "header {fixed:?}");
+        }
+    }
+
+    #[tokio::test]
+    async fn accepts_v2_local_and_proxy_for_each_supported_family_and_transport() {
+        for command in [0x20, 0x21] {
+            for (family, length) in [(0, 1), (1, 12), (2, 36), (3, 216)] {
+                for protocol in 0..=2 {
+                    let (mut tx, mut rx) = pair().await;
+                    let mut header = V2[..16].to_vec();
+                    header[12..16].copy_from_slice(&[command, (family << 4) | protocol, 0, length]);
+                    header.resize(16 + usize::from(length), 0);
+                    tx.write_all(&header).await.unwrap();
+                    accept_header(&mut rx, 1).await.unwrap();
+                }
             }
         }
     }

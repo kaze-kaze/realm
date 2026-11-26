@@ -1,12 +1,14 @@
 use std::io::Result;
 #[cfg(target_os = "linux")]
 use std::sync::Once;
+#[cfg(target_os = "linux")]
+use std::sync::atomic::{AtomicU32, Ordering::Relaxed};
 use std::time::Duration;
 use tokio::net::TcpStream;
 
 pub async fn run_relay(local: TcpStream, remote: TcpStream, timeout: Option<Duration>) -> Result<()> {
     #[cfg(target_os = "linux")]
-    return relay_with_pipes(local, remote, timeout, new_pipe).await;
+    return relay_with_pipes(local, remote, timeout, new_checked_pipe, realm_io::Pipe::new).await;
 
     #[cfg(not(target_os = "linux"))]
     relay_in_memory(local, remote, timeout).await
@@ -23,12 +25,13 @@ async fn relay_with_pipes(
     mut local: TcpStream,
     mut remote: TcpStream,
     timeout: Option<Duration>,
-    mut make_pipe: impl FnMut() -> Result<realm_io::Pipe>,
+    make_forward: impl FnOnce() -> Result<realm_io::Pipe>,
+    make_reverse: impl FnOnce() -> Result<realm_io::Pipe>,
 ) -> Result<()> {
     use crate::rate_limit::RateLimit;
     use realm_io::try_bidi_zero_copy_with_pipes;
 
-    let pipes = make_pipe().and_then(|forward| make_pipe().map(|reverse| (forward, reverse)));
+    let pipes = make_forward().and_then(|forward| make_reverse().map(|reverse| (forward, reverse)));
     match pipes {
         Ok((forward, reverse)) => {
             if try_bidi_zero_copy_with_pipes(&mut local, &mut remote, forward, reverse, timeout)
@@ -53,16 +56,18 @@ async fn relay_with_pipes(
 }
 
 #[cfg(target_os = "linux")]
-fn new_pipe() -> Result<realm_io::Pipe> {
+fn new_checked_pipe() -> Result<realm_io::Pipe> {
     static SMALL_PIPE: Once = Once::new();
+    static RELAYS: AtomicU32 = AtomicU32::new(0);
     let pipe = realm_io::Pipe::new()?;
-    warn_if_small_pipe(&SMALL_PIPE, realm_io::pipe_size(), || pipe.capacity());
+    warn_if_small_pipe(&SMALL_PIPE, &RELAYS, realm_io::pipe_size(), || pipe.capacity());
     Ok(pipe)
 }
 
 #[cfg(target_os = "linux")]
-fn warn_if_small_pipe(warned: &Once, requested: usize, capacity: impl FnOnce() -> Result<usize>) {
-    if warned.is_completed() {
+fn warn_if_small_pipe(warned: &Once, relays: &AtomicU32, requested: usize, capacity: impl FnOnce() -> Result<usize>) {
+    const SAMPLE_INTERVAL: u32 = 64;
+    if warned.is_completed() || !relays.fetch_add(1, Relaxed).is_multiple_of(SAMPLE_INTERVAL) {
         return;
     }
     if let Ok(actual) = capacity() {
@@ -82,20 +87,35 @@ mod tests {
     use tokio::net::TcpListener;
 
     #[test]
-    fn pipe_capacity_is_checked_until_the_first_shrink_warning() {
+    fn pipe_capacity_is_sampled_until_the_first_shrink_warning() {
         let warned = Once::new();
+        let relays = AtomicU32::new(0);
         let requested = 65536;
-        warn_if_small_pipe(&warned, requested, || Ok(requested));
-        warn_if_small_pipe(&warned, requested, || {
-            Err(std::io::Error::from_raw_os_error(libc::EBADF))
-        });
-        assert!(!warned.is_completed());
-
-        warn_if_small_pipe(&warned, requested, || Ok(8192));
-        assert!(warned.is_completed());
-        for _ in 0..2 {
-            warn_if_small_pipe(&warned, requested, || panic!("queried capacity after the warning"));
+        let check = |actual| {
+            let mut queried = false;
+            warn_if_small_pipe(&warned, &relays, requested, || {
+                queried = true;
+                actual
+            });
+            queried
+        };
+        assert!(check(Ok(requested)));
+        for _ in 1..64 {
+            assert!(!check(Ok(requested)));
         }
+        assert!(check(Err(std::io::Error::from_raw_os_error(libc::EBADF))));
+        assert!(!warned.is_completed());
+        for _ in 1..64 {
+            assert!(!check(Ok(8192)));
+        }
+        assert!(check(Ok(8192)));
+        assert!(warned.is_completed());
+
+        relays.store(0, Relaxed);
+        warn_if_small_pipe(&warned, &relays, requested, || {
+            panic!("queried capacity after the warning")
+        });
+        assert_eq!(relays.load(Relaxed), 0);
     }
 
     #[tokio::test]
@@ -106,13 +126,10 @@ mod tests {
         let (local, _) = listener.accept().await.unwrap();
         let remote = TcpStream::connect(addr).await.unwrap();
         let (mut server, _) = listener.accept().await.unwrap();
-        let mut pipes = 0;
-        let relay = relay_with_pipes(local, remote, None, || {
-            pipes += 1;
-            match pipes {
-                1 => realm_io::Pipe::new(),
-                _ => Err(std::io::Error::from_raw_os_error(libc::EMFILE)),
-            }
+        let mut reverse_failed = false;
+        let relay = relay_with_pipes(local, remote, None, realm_io::Pipe::new, || {
+            reverse_failed = true;
+            Err(std::io::Error::from_raw_os_error(libc::EMFILE))
         });
         let exchange = async {
             client.write_all(b"request").await.unwrap();
@@ -130,7 +147,7 @@ mod tests {
             .await
             .unwrap();
         result.unwrap();
-        assert_eq!(pipes, 2);
+        assert!(reverse_failed);
     }
 }
 

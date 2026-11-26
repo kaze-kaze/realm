@@ -601,6 +601,9 @@ values:
 
 default: ipv4_and_ipv6
 
+UDP uses the first resolved address, or the first address in the same family as `through` when it is set.
+On a host without IPv4 egress, set `dns.mode` to `ipv6_only` or `ipv6_then_ipv4` when forwarding UDP to a dual-stack hostname.
+
 The resolver keeps system options such as `ndots`, `timeout`, and `attempts`, including when individual Realm DNS settings are overridden.
 
 #### dns.protocol: string

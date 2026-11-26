@@ -14,7 +14,7 @@ use super::sockmap::{Assoc, activity_tick};
 use crate::trick::Ref;
 use crate::dns::resolve_addr;
 use crate::endpoint::{RemoteAddr, ConnectOpts};
-use crate::failover::Failover;
+use crate::failover::{Failover, Snapshot};
 
 use batched::{Packet, SendBudget, SockAddrStore};
 use registry::Registry;
@@ -302,6 +302,22 @@ pub async fn associate_and_relay(
     sockmap: Arc<SockMap>,
     failover: Ref<Option<Failover>>,
 ) -> ! {
+    associate_and_relay_with(lis, rname, conn_opts, sockmap, failover, async |rname, through| {
+        resolve_addr(rname)
+            .await
+            .map(|addrs| select_upstream(addrs.iter(), through))
+    })
+    .await
+}
+
+async fn associate_and_relay_with(
+    lis: Ref<UdpSocket>,
+    rname: Ref<RemoteAddr>,
+    conn_opts: Ref<ConnectOpts>,
+    sockmap: Arc<SockMap>,
+    failover: Ref<Option<Failover>>,
+    mut resolve_upstream: impl AsyncFnMut(&RemoteAddr, Option<SocketAddr>) -> std::io::Result<Option<SocketAddr>>,
+) -> ! {
     static RECV_LOG: RateLimit = RateLimit::new();
     static ASSOC_LOG: RateLimit = RateLimit::new();
     static SEND_LOG: RateLimit = RateLimit::new();
@@ -309,6 +325,12 @@ pub async fn associate_and_relay(
     let mut last_resolved = None;
     let renew = conn_opts.associate_timeout != 0;
     let no_fragment = conn_opts.udp_no_fragment;
+
+    enum Route<'a> {
+        Failover(&'a Failover, Snapshot),
+        Fixed(SocketAddr),
+        Resolved(SocketAddr, bool),
+    }
 
     loop {
         let mut backoff = RECV_BACKOFF_MIN;
@@ -325,23 +347,23 @@ pub async fn associate_and_relay(
         }
         log::debug!("[udp]entry batched recvfrom[{}]", registry.count());
 
-        let (route, fixed) = match failover.as_ref() {
-            Some(fo) => (Some((fo, fo.snapshot())), None),
-            None => {
-                let raddr = match rname.as_ref() {
-                    RemoteAddr::SocketAddr(addr) => *addr,
-                    RemoteAddr::DomainName(..) => {
-                        let result = resolve_addr(&rname)
-                            .await
-                            .map(|addrs| select_upstream(addrs.iter(), conn_opts.bind_address));
-                        let Some(addr) = remember_resolution(&rname, &mut last_resolved, result) else {
-                            continue;
-                        };
-                        addr
-                    }
+        let route = match (failover.as_ref(), rname.as_ref()) {
+            (Some(fo), _) => Route::Failover(fo, fo.snapshot()),
+            (None, RemoteAddr::SocketAddr(addr)) => {
+                log::debug!("[udp]{} resolved as {}", *rname, addr);
+                Route::Fixed(*addr)
+            }
+            (None, RemoteAddr::DomainName(..)) => {
+                let result = resolve_upstream(&rname, conn_opts.bind_address).await;
+                let Some(addr) = remember_resolution(&rname, &mut last_resolved, result) else {
+                    continue;
                 };
-                log::debug!("[udp]{} resolved as {}", *rname, raddr);
-                (None, Some(raddr))
+                log::debug!("[udp]{} resolved as {}", *rname, addr);
+                if conn_opts.bind_address.is_some() {
+                    Route::Fixed(addr)
+                } else {
+                    Route::Resolved(addr, addr.is_ipv4())
+                }
             }
         };
 
@@ -354,8 +376,8 @@ pub async fn associate_and_relay(
             // Keep the lookup and any successful send together so an idle
             // association cannot be removed before its activity is recorded.
             let mut start = |assoc: &Arc<Assoc>| {
-                let raddr = match (route, fixed) {
-                    (Some((fo, snap)), _) => {
+                let raddr = match route {
+                    Route::Failover(fo, snap) => {
                         let cur = assoc.peer();
                         let next = if snap.is_up(cur) {
                             cur
@@ -377,8 +399,10 @@ pub async fn associate_and_relay(
                         }
                         fo.peer(next)
                     }
-                    (None, Some(raddr)) => raddr,
-                    (None, None) => unreachable!(),
+                    // Without a fixed source family, DNS can outlive the
+                    // socket's ability to reach the selected upstream.
+                    Route::Resolved(_, ipv4) if assoc.ipv4 != ipv4 => return None,
+                    Route::Resolved(raddr, _) | Route::Fixed(raddr) => raddr,
                 };
                 let to = raddr.into();
                 let batch = batched::send_now(
@@ -392,21 +416,20 @@ pub async fn associate_and_relay(
                         assoc.touch(tick);
                     }
                 }
-                (Arc::clone(assoc), raddr, batch)
+                Some((Arc::clone(assoc), raddr, batch))
             };
 
-            let (assoc, raddr, batch) = match sockmap.with_assoc(&laddr, &mut start) {
+            let (assoc, raddr, batch) = match sockmap.with_assoc(&laddr, &mut start).flatten() {
                 Some(active) => active,
                 None => {
-                    let (peer, raddr) = match (route, fixed) {
-                        (Some((fo, snap)), _) => {
+                    let (peer, raddr) = match route {
+                        Route::Failover(fo, snap) => {
                             let peer = fo
                                 .balanced_peer(&conn_opts, &laddr.ip(), snap)
                                 .unwrap_or_else(|| snap.active());
                             (peer, fo.peer(peer))
                         }
-                        (None, Some(raddr)) => (0, raddr),
-                        (None, None) => unreachable!(),
+                        Route::Resolved(raddr, _) | Route::Fixed(raddr) => (0, raddr),
                     };
                     let sock = match socket::associate(&raddr, &conn_opts) {
                         Ok(sock) => sock,
@@ -422,9 +445,9 @@ pub async fn associate_and_relay(
                             continue;
                         }
                     };
-                    let assoc = Arc::new(Assoc::new(sock, peer, tick.unwrap_or_default()));
+                    let assoc = Arc::new(Assoc::new(sock, raddr.is_ipv4(), peer, tick.unwrap_or_default()));
                     sockmap.insert(laddr, Arc::clone(&assoc));
-                    let active = start(&assoc);
+                    let active = start(&assoc).expect("a new socket matches the upstream address family");
                     tokio::spawn(send_back(
                         lis,
                         laddr,
@@ -435,8 +458,8 @@ pub async fn associate_and_relay(
                         failover,
                     ));
                     match route {
-                        Some(_) => log::info!("[udp]new association {} => peer#{} {}", laddr, peer, raddr),
-                        None => log::info!("[udp]new association {} => {} as {}", laddr, *rname, raddr),
+                        Route::Failover(..) => log::info!("[udp]new association {} => peer#{} {}", laddr, peer, raddr),
+                        _ => log::info!("[udp]new association {} => {} as {}", laddr, *rname, raddr),
                     }
                     active
                 }
@@ -632,6 +655,86 @@ mod tests {
         assert_eq!(remember_resolution(&rname, &mut last, Ok(Some(next))), Some(next));
     }
 
+    #[tokio::test]
+    async fn a_dns_family_change_replaces_the_association_without_losing_the_replacement() {
+        use std::cell::Cell;
+        use tokio::time::timeout;
+
+        let Ok(ipv6) = UdpSocket::bind("[::1]:0").await else {
+            return;
+        };
+        let ipv4 = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let listener = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let client = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let listen_addr = listener.local_addr().unwrap();
+        let client_addr = client.local_addr().unwrap();
+        let remote = RemoteAddr::DomainName("localhost".into(), 0);
+        let opts = ConnectOpts {
+            associate_timeout: 1,
+            ..Default::default()
+        };
+        let failover = None;
+        let sockmap = Arc::new(SockMap::new());
+        let resolved = Cell::new(ipv4.local_addr().unwrap());
+        let relay = associate_and_relay_with(
+            Ref::new(&listener),
+            Ref::new(&remote),
+            Ref::new(&opts),
+            sockmap.clone(),
+            Ref::new(&failover),
+            async |_, _| Ok(Some(resolved.get())),
+        );
+
+        let round_trip = async |upstream: &UdpSocket, byte| {
+            timeout(Duration::from_secs(1), async {
+                let mut buf = [0];
+                client.send_to(&[byte], listen_addr).await.unwrap();
+                let (n, source) = upstream.recv_from(&mut buf).await.unwrap();
+                assert_eq!((n, buf), (1, [byte]));
+                upstream.send_to(&buf, source).await.unwrap();
+                assert_eq!(client.recv_from(&mut buf).await.unwrap(), (1, listen_addr));
+                assert_eq!(buf, [byte]);
+                source
+            })
+            .await
+            .expect("the packet must reach the selected upstream and return to the client")
+        };
+
+        let exercise = async {
+            assert!(round_trip(&ipv4, b'4').await.is_ipv4());
+            let old = sockmap.with_assoc(&client_addr, Arc::downgrade).unwrap();
+
+            resolved.set(ipv6.local_addr().unwrap());
+            let source = round_trip(&ipv6, b'6').await;
+            assert!(source.is_ipv6());
+            let replacement = sockmap.with_assoc(&client_addr, Arc::downgrade).unwrap();
+            assert!(!old.ptr_eq(&replacement));
+
+            while old.upgrade().is_some() {
+                sleep(Duration::from_millis(50)).await;
+                assert_eq!(round_trip(&ipv6, b'6').await, source);
+            }
+            assert_eq!(round_trip(&ipv6, b'6').await, source);
+            assert!(sockmap
+                .with_assoc(&client_addr, Arc::downgrade)
+                .unwrap()
+                .ptr_eq(&replacement));
+
+            // Let both reply tasks release their references before the test ends.
+            while replacement.upgrade().is_some() {
+                sleep(Duration::from_millis(50)).await;
+            }
+        };
+        timeout(Duration::from_secs(5), async {
+            tokio::select! {
+                _ = relay => unreachable!(),
+                () = exercise => (),
+            }
+        })
+        .await
+        .unwrap();
+    }
+
     #[tokio::test(start_paused = true)]
     async fn receive_errors_wait_with_capped_exponential_backoff() {
         let mut delay = RECV_BACKOFF_MIN;
@@ -663,7 +766,7 @@ mod tests {
         ));
         let upstream = UdpSocket::bind("127.0.0.1:0").await.unwrap();
         let to = upstream.local_addr().unwrap();
-        let assoc = Arc::new(Assoc::new(upstream, 0, activity_tick().wrapping_sub(20)));
+        let assoc = Arc::new(Assoc::new(upstream, true, 0, activity_tick().wrapping_sub(20)));
         assoc.move_to(1);
         let sockmap = Arc::new(SockMap::new());
         sockmap.insert(laddr, assoc.clone());
@@ -722,8 +825,8 @@ mod tests {
         let sockmap = Arc::new(SockMap::new());
         let sock = UdpSocket::bind("127.0.0.1:0").await.unwrap();
         let addr = sock.local_addr().unwrap();
-        let assoc = Arc::new(Assoc::new(sock, 0, 0));
-        let replacement = Arc::new(Assoc::new(UdpSocket::bind("127.0.0.1:0").await.unwrap(), 0, 0));
+        let assoc = Arc::new(Assoc::new(sock, true, 0, 0));
+        let replacement = Arc::new(Assoc::new(UdpSocket::bind("127.0.0.1:0").await.unwrap(), true, 0, 0));
 
         for current in [&assoc, &replacement] {
             sockmap.insert(addr, current.clone());

@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use walkdir::WalkDir;
 use clap::ArgMatches;
 use serde::{Serialize, Deserialize};
-use serde::de::{self, IgnoredAny, MapAccess, Visitor};
+use serde::de::{self, IgnoredAny, MapAccess, SeqAccess, Visitor, value::SeqAccessDeserializer};
 
 mod log;
 pub use self::log::{LogLevel, LogConf};
@@ -99,7 +99,25 @@ struct CheckedConf {
 // Read directly from the input map. Flattening a struct buffers unknown values
 // before IgnoredAny can skip them, including arbitrarily nested metadata.
 macro_rules! checked_table {
-    ($table:ty, required [$($required:ident),*], default [$($default:ident),*], |$unknown:ident| $build:expr) => {
+    (@value $field:ident, $value:expr, required) => {
+        $value.ok_or_else(|| de::Error::missing_field(stringify!($field)))?
+    };
+    (@value $field:ident, $value:expr, default) => {
+        $value.unwrap_or_default()
+    };
+    (@sequence $seq:ident, [$($field:ident: $kind:ident),*], |$unknown:ident| $build:expr) => {{
+        let mut $seq = $seq;
+        $(let $field = checked_table!(@value $field, $seq.next_element()?, $kind);)*
+        let $unknown = UnknownKeys::new();
+        Ok($build)
+    }};
+    (@sequence $seq:ident, $fields:tt, |$unknown:ident| $build:expr, $values:ident) => {
+        Ok(Checked {
+            values: $values::deserialize(SeqAccessDeserializer::new($seq))?,
+            unknown: UnknownKeys::new(),
+        })
+    };
+    ($table:ty, $name:ident, [$($field:ident: $kind:ident),*], |$unknown:ident| $build:expr $(, sequence $values:ident)?) => {
         impl<'de> Deserialize<'de> for $table {
             fn deserialize<D: serde::Deserializer<'de>>(input: D) -> std::result::Result<Self, D::Error> {
                 struct Table;
@@ -111,45 +129,46 @@ macro_rules! checked_table {
                         f.write_str("a configuration table")
                     }
 
+                    fn visit_seq<S: SeqAccess<'de>>(self, seq: S) -> std::result::Result<Self::Value, S::Error> {
+                        checked_table!(@sequence seq, [$($field: $kind),*], |$unknown| $build $(, $values)?)
+                    }
+
                     fn visit_map<M: MapAccess<'de>>(self, mut map: M) -> std::result::Result<Self::Value, M::Error> {
-                        $(let mut $required = None;)*
-                        $(let mut $default = None;)*
+                        $(let mut $field = None;)*
                         let mut $unknown = UnknownKeys::new();
-                        macro_rules! read_field {
-                            ($field:ident) => {{
-                                if $field.is_some() {
-                                    return Err(de::Error::duplicate_field(stringify!($field)));
-                                }
-                                $field = Some(map.next_value()?);
-                            }};
-                        }
                         while let Some(key) = map.next_key::<String>()? {
                             match key.as_str() {
-                                $(stringify!($required) => read_field!($required),)*
-                                $(stringify!($default) => read_field!($default),)*
+                                $(stringify!($field) => {
+                                    if $field.is_some() {
+                                        return Err(de::Error::duplicate_field(stringify!($field)));
+                                    }
+                                    $field = Some(map.next_value()?);
+                                },)*
                                 _ => {
                                     map.next_value::<IgnoredAny>()?;
                                     $unknown.insert(key);
                                 }
                             }
                         }
-                        $(let $required = $required.ok_or_else(|| de::Error::missing_field(stringify!($required)))?;)*
-                        $(let $default = $default.unwrap_or_default();)*
+                        $(let $field = checked_table!(@value $field, $field, $kind);)*
                         Ok($build)
                     }
                 }
 
-                input.deserialize_map(Table)
+                input.deserialize_struct(stringify!($name), &[$(stringify!($field)),*], Table)
             }
         }
     };
 }
 
-checked_table!(CheckedConf, required [endpoints], default [log, dns, network], |unknown| {
+// Keep the declaration order from v3.2.0 for positional tables. Nested maps
+// still use the checked visitors so their unknown keys can be reported.
+checked_table!(CheckedConf, FullConf, [log: default, dns: default, network: default, endpoints: required], |unknown| {
     CheckedConf { log, dns, network, endpoints, unknown }
 });
-checked_table!(CheckedEndpoint, required [listen, remote], default [
-    network, extra_remotes, balance, failover, through, interface, listen_interface, listen_transport, remote_transport
+checked_table!(CheckedEndpoint, EndpointConf, [
+    listen: required, remote: required, extra_remotes: default, balance: default, failover: default, through: default,
+    interface: default, listen_interface: default, listen_transport: default, remote_transport: default, network: default
 ], |unknown| {
     CheckedEndpoint {
         network,
@@ -162,25 +181,27 @@ checked_table!(CheckedEndpoint, required [listen, remote], default [
         },
     }
 });
-checked_table!(Checked<LogConf>, required [], default [level, output], |unknown| {
+checked_table!(Checked<LogConf>, LogConf, [level: default, output: default], |unknown| {
     Checked { values: LogConf { level, output }, unknown }
-});
-checked_table!(Checked<DnsConf>, required [], default [mode, min_ttl, max_ttl, cache_size, protocol, nameservers], |unknown| {
+}, sequence LogConf);
+checked_table!(Checked<DnsConf>, DnsConf, [mode: default, min_ttl: default, max_ttl: default, cache_size: default, protocol: default, nameservers: default], |unknown| {
     Checked { values: DnsConf { mode, min_ttl, max_ttl, cache_size, protocol, nameservers }, unknown }
-});
-checked_table!(Checked<NetConf>, required [], default [
-    no_tcp, use_udp, ipv6_only, send_mptcp, accept_mptcp, send_proxy, accept_proxy, send_proxy_version, accept_proxy_timeout,
-    tcp_keepalive, tcp_keepalive_probe, tcp_timeout, half_close_timeout, tcp_user_timeout, udp_timeout, udp_no_fragment
+}, sequence DnsConf);
+checked_table!(Checked<NetConf>, NetConf, [
+    no_tcp: default, use_udp: default, ipv6_only: default, send_mptcp: default, accept_mptcp: default, send_proxy: default,
+    accept_proxy: default, send_proxy_version: default, accept_proxy_timeout: default, tcp_keepalive: default,
+    tcp_keepalive_probe: default, tcp_timeout: default, udp_timeout: default, udp_no_fragment: default,
+    half_close_timeout: default, tcp_user_timeout: default
 ], |unknown| {
     Checked {
         values: NetConf {
             no_tcp, use_udp, ipv6_only, send_mptcp, accept_mptcp, send_proxy, accept_proxy, send_proxy_version,
-            accept_proxy_timeout, tcp_keepalive, tcp_keepalive_probe, tcp_timeout, half_close_timeout, tcp_user_timeout,
-            udp_timeout, udp_no_fragment,
+            accept_proxy_timeout, tcp_keepalive, tcp_keepalive_probe, tcp_timeout, udp_timeout, udp_no_fragment,
+            half_close_timeout, tcp_user_timeout,
         },
         unknown,
     }
-});
+}, sequence NetConf);
 
 impl CheckedConf {
     fn into_config(self, mut warn: impl FnMut(String)) -> FullConf {
@@ -329,6 +350,56 @@ impl FullConf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reads_positional_endpoints_in_json_and_toml() {
+        for input in [
+            r#"{"endpoints": [["127.0.0.1:0", "127.0.0.2:0"]]}"#,
+            r#"endpoints = [["127.0.0.1:0", "127.0.0.2:0"]]"#,
+        ] {
+            let config = FullConf::parse(input, |msg| panic!("unexpected warning: {msg}")).unwrap();
+            let endpoint = &config.endpoints[0];
+            assert_eq!(endpoint.listen, "127.0.0.1:0");
+            assert_eq!(endpoint.remote, "127.0.0.2:0");
+            assert!(endpoint.extra_remotes.is_empty());
+            assert!(endpoint.network.is_empty());
+        }
+
+        for input in [
+            r#"{"endpoints": [["127.0.0.1:0"]]}"#,
+            r#"[[], [], []]"#,
+            r#"[[], [], [], [], null]"#,
+        ] {
+            assert!(FullConf::from_conf_str(input).is_err(), "input {input}");
+        }
+    }
+
+    #[test]
+    fn positional_network_preserves_the_udp_timeout_slot() {
+        let input = r#"[
+            ["warn", "stderr"],
+            ["ipv6_then_ipv4", 1],
+            [false, true, null, null, null, null, null, null, null, null, null, 5, 17, true, 2],
+            [["127.0.0.1:0", "127.0.0.2:0", [], null, null, null, null, null, null, null,
+              {"udp_timeout": 23, "use_udpp": true}]]
+        ]"#;
+        let mut warnings = Vec::new();
+        let mut config = FullConf::parse(input, |msg| warnings.push(msg)).unwrap();
+        assert_eq!(config.log.output.as_deref(), Some("stderr"));
+        assert_eq!(config.dns.min_ttl, Some(1));
+        assert_eq!(config.network.tcp_timeout, Some(5));
+        assert_eq!(config.network.udp_timeout, Some(17));
+        assert_eq!(config.network.udp_no_fragment, Some(true));
+        assert_eq!(config.network.half_close_timeout, Some(2));
+        assert_eq!(config.network.tcp_user_timeout, None);
+        config.apply_global_opts();
+        assert_eq!(config.endpoints[0].network.use_udp, Some(true));
+        assert_eq!(config.endpoints[0].network.udp_timeout, Some(23));
+        assert_eq!(
+            warnings,
+            ["endpoint 127.0.0.1:0: unknown key network.use_udpp, ignored"]
+        );
+    }
 
     #[test]
     fn reports_unknown_keys_once_per_table() {

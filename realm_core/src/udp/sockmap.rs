@@ -20,6 +20,7 @@ pub(super) fn activity_tick() -> u32 {
 /// Upstream association of one client.
 pub struct Assoc {
     pub sock: UdpSocket,
+    pub ipv4: bool,
     /// Failover peer index, `MOVED` once the association left its first peer.
     /// Written only by the client-side task, so one relaxed atomic is enough.
     route: AtomicU8,
@@ -29,9 +30,10 @@ pub struct Assoc {
 impl Assoc {
     const MOVED: u8 = 0x80;
 
-    pub fn new(sock: UdpSocket, peer: usize, tick: u32) -> Self {
+    pub fn new(sock: UdpSocket, ipv4: bool, peer: usize, tick: u32) -> Self {
         Self {
             sock,
+            ipv4,
             route: AtomicU8::new(peer as u8),
             activity: AtomicU32::new(tick),
         }
@@ -124,7 +126,7 @@ mod tests {
     #[tokio::test]
     async fn activity_does_not_go_backwards_when_ticks_arrive_out_of_order() {
         let sock = UdpSocket::bind("127.0.0.1:0").await.unwrap();
-        let assoc = Assoc::new(sock, 0, u32::MAX - 1);
+        let assoc = Assoc::new(sock, true, 0, u32::MAX - 1);
         for (sample, latest) in [(u32::MAX, u32::MAX), (0, 0), (u32::MAX, 0), (0, 0), (1, 1), (0, 1)] {
             assoc.touch(sample);
             assert_eq!(assoc.activity.load(Relaxed), latest);
@@ -137,7 +139,7 @@ mod tests {
 
         let sock = UdpSocket::bind("127.0.0.1:0").await.unwrap();
         let addr = sock.local_addr().unwrap();
-        let assoc = Arc::new(Assoc::new(sock, 0, activity_tick()));
+        let assoc = Arc::new(Assoc::new(sock, true, 0, activity_tick()));
         let sockmap = SockMap::new();
         sockmap.insert(addr, assoc.clone());
 

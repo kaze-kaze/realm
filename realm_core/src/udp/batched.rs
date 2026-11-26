@@ -306,14 +306,14 @@ fn try_send(
 }
 
 /// The first retry consumes stale write readiness on WouldBlock before waiting
-/// for another event. `writable` registers all waiters on a shared socket.
+/// for another event. `ready` registers all waiters on a shared socket.
 pub async fn finish_send(
     sock: &UdpSocket,
     budget: &mut SendBudget,
     mut batch: SendBatch,
     mut retry: impl FnMut(&mut SendBatch) -> bool,
 ) -> SendStats {
-    let mut last_wait = None;
+    let mut last_write_closed = None;
     let mut stalled = 0;
     while !batch.is_done() {
         let deadline = budget.deadline();
@@ -325,15 +325,22 @@ pub async fn finish_send(
             break;
         } else {
             let processed = batch.processed();
-            stalled = if last_wait == Some(processed) { stalled + 1 } else { 0 };
-            // Closed readiness cannot be cleared. Stop if it keeps waking a
-            // writer that cannot make any progress.
+            stalled = if last_write_closed == Some(processed) {
+                stalled + 1
+            } else {
+                0
+            };
+            // WouldBlock clears ordinary readiness, so another iteration needs
+            // a new event and is bounded by the deadline. Write-closed readiness
+            // persists even without another event, so cap retries that stall there.
             if stalled == MAX_READY_WITHOUT_PROGRESS {
                 ErrorKind::TimedOut.into()
             } else {
-                last_wait = Some(processed);
-                match timeout_at(deadline, sock.writable()).await {
-                    Ok(Ok(())) => continue,
+                match timeout_at(deadline, sock.ready(Interest::WRITABLE)).await {
+                    Ok(Ok(ready)) => {
+                        last_write_closed = ready.is_write_closed().then_some(processed);
+                        continue;
+                    }
                     Ok(Err(e)) => e,
                     Err(_) => ErrorKind::TimedOut.into(),
                 }
@@ -725,6 +732,78 @@ mod linux {
             .unwrap();
         }
 
+        #[tokio::test]
+        async fn contending_writers_keep_their_send_budget() {
+            use std::os::unix::net::UnixDatagram;
+            use realm_syscall::socket2::SockRef;
+
+            const SENDERS: u8 = 4;
+            const PACKETS: usize = 6;
+            const SIZE: usize = 4096;
+            let (tx, rx) = UnixDatagram::pair().unwrap();
+            let tx = register_datagram(tx);
+            let rx = register_datagram(rx);
+            let raw = SockRef::from(&tx);
+            // A datagram of this size fills the minimum Linux send buffer.
+            raw.set_send_buffer_size(1024).unwrap();
+            tx.writable().await.unwrap();
+            assert_eq!(raw.send(&[u8::MAX; SIZE]).unwrap(), SIZE);
+
+            let mut senders: Vec<_> = (0..SENDERS)
+                .map(|id| {
+                    let (raw, tx) = (&raw, &tx);
+                    async move {
+                        let send = || raw.send(&[id; SIZE]).map(|_| 1);
+                        let mut budget = SendBudget::new(Duration::from_millis(200));
+                        let batch = start_send(PACKETS, &mut budget, |batch| {
+                            batch.drive(PACKETS, false, |_, _| {
+                                let result = send();
+                                assert_eq!(result.as_ref().unwrap_err().kind(), ErrorKind::WouldBlock);
+                                result
+                            });
+                        });
+                        finish_send(tx, &mut budget, batch, |batch| {
+                            batch.drive(PACKETS, false, |_, _| try_send(tx, true, false, send));
+                            true
+                        })
+                        .await
+                    }
+                })
+                .map(Box::pin)
+                .map(Some)
+                .collect();
+
+            tokio::time::timeout(Duration::from_secs(1), async {
+                for sender in senders.iter_mut().flatten() {
+                    assert!(futures::poll!(sender.as_mut()).is_pending());
+                }
+
+                let mut buf = [0; SIZE];
+                assert_eq!(rx.recv(&mut buf).await.unwrap(), SIZE);
+                assert_eq!(buf[0], u8::MAX);
+                let mut received = [0; SENDERS as usize];
+                for _ in 0..usize::from(SENDERS) * PACKETS {
+                    tx.writable().await.unwrap();
+                    // Poll every waiter before freeing another slot. Contenders
+                    // after the first writer must wait for another event.
+                    for (id, sender) in senders.iter_mut().enumerate() {
+                        if let Some(pending) = sender {
+                            if let std::task::Poll::Ready(stats) = futures::poll!(pending.as_mut()) {
+                                assert_eq!((stats.sent, stats.dropped), (PACKETS, 0), "sender {id}: {stats:?}");
+                                *sender = None;
+                            }
+                        }
+                    }
+                    assert_eq!(rx.recv(&mut buf).await.unwrap(), SIZE);
+                    received[usize::from(buf[0])] += 1;
+                }
+                assert_eq!(received, [PACKETS; SENDERS as usize]);
+                assert!(senders.iter().all(Option::is_none));
+            })
+            .await
+            .unwrap();
+        }
+
         #[tokio::test(start_paused = true)]
         async fn would_block_drops_at_the_deadline_and_next_groups_do_not_wait() {
             use std::cell::Cell;
@@ -770,18 +849,24 @@ mod linux {
         }
 
         #[tokio::test(start_paused = true)]
-        async fn repeated_writable_notifications_without_progress_stop_the_send() {
-            let sock = UdpSocket::bind("127.0.0.1:0").await.unwrap();
-            sock.writable().await.unwrap();
+        async fn repeated_write_closed_notifications_without_progress_stop_the_send() {
+            let (tx, _rx) = std::os::unix::net::UnixDatagram::pair().unwrap();
+            tx.shutdown(std::net::Shutdown::Both).unwrap();
+            let sock = register_datagram(tx);
+            assert!(sock.ready(Interest::WRITABLE).await.unwrap().is_write_closed());
             let mut budget = SendBudget::new(Duration::from_millis(200));
             let batch = start_send(3, &mut budget, |batch| {
                 batch.drive(3, false, |_, _| Err(ErrorKind::WouldBlock.into()));
             });
             let deadline = budget.deadline.unwrap();
             let mut attempts = 0;
-            let stats = finish_send(&sock, &mut budget, batch, |_| {
-                // Model a write-closed notification, which Tokio does not clear.
-                attempts += 1;
+            let stats = finish_send(&sock, &mut budget, batch, |batch| {
+                batch.drive(3, false, |_, _| {
+                    try_send(&sock, true, false, || {
+                        attempts += 1;
+                        Err(ErrorKind::WouldBlock.into())
+                    })
+                });
                 true
             })
             .await;

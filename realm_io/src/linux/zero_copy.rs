@@ -1,4 +1,5 @@
 use std::io::{Result, Error};
+use std::time::Duration;
 use std::pin::Pin;
 use std::task::{Poll, Context};
 use std::os::unix::io::RawFd;
@@ -6,7 +7,7 @@ use std::os::unix::io::RawFd;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use crate::{CopyBuffer, AsyncIOBuf, AsyncRawIO};
-use crate::bidi_copy_buf;
+use crate::bidi_copy_buf_with_timeout;
 
 /// Unix pipe.
 pub struct Pipe(RawFd, RawFd);
@@ -31,6 +32,12 @@ impl Pipe {
 
             Ok(Pipe(rd, wr))
         }
+    }
+
+    /// Return the capacity the kernel assigned to this pipe.
+    pub fn capacity(&self) -> Result<usize> {
+        let size = unsafe { libc::fcntl(self.1, libc::F_GETPIPE_SZ) };
+        usize::try_from(size).map_err(|_| Error::last_os_error())
     }
 }
 
@@ -84,7 +91,7 @@ where
     }
 }
 
-impl<'a, SR, SW> AsyncIOBuf for CopyBuffer<&'a mut Pipe, SR, SW>
+impl<SR, SW> AsyncIOBuf for CopyBuffer<&mut Pipe, SR, SW>
 where
     SR: AsyncRead + AsyncWrite + AsyncRawIO + Unpin,
     SW: AsyncRead + AsyncWrite + AsyncRawIO + Unpin,
@@ -111,9 +118,19 @@ where
     A: AsyncRead + AsyncWrite + AsyncRawIO + Unpin,
     B: AsyncRead + AsyncWrite + AsyncRawIO + Unpin,
 {
+    let timeout = cfg!(feature = "brutal-shutdown").then_some(Duration::ZERO);
+    bidi_zero_copy_with_timeout(a, b, timeout).await
+}
+
+/// Copy bidirectionally with pipes and the given half-close idle timeout.
+pub async fn bidi_zero_copy_with_timeout<A, B>(a: &mut A, b: &mut B, timeout: Option<Duration>) -> Result<(u64, u64)>
+where
+    A: AsyncRead + AsyncWrite + AsyncRawIO + Unpin,
+    B: AsyncRead + AsyncWrite + AsyncRawIO + Unpin,
+{
     let a_to_b_buf = CopyBuffer::new(Pipe::new()?);
     let b_to_a_buf = CopyBuffer::new(Pipe::new()?);
-    bidi_copy_buf(a, b, a_to_b_buf, b_to_a_buf).await
+    bidi_copy_buf_with_timeout(a, b, a_to_b_buf, b_to_a_buf, timeout).await
 }
 
 mod pipe_ctl {

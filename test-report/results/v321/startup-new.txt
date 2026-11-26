@@ -1,0 +1,19 @@
+PASS two rules, one tcp port taken: exits non-zero  | rc=1 stderr='[tcp] failed to bind 127.0.0.1:39441: Address already in use (os error 98)'
+PASS   names the failing listener
+PASS   the healthy rule is not left listening
+PASS only rule cannot bind: exits non-zero  | rc=1
+PASS valid config keeps running and prints inited  | rc=None err=''
+PASS second instance on the same udp port: exits non-zero  | rc=1 stderr='[udp] failed to bind 127.0.0.1:39443: Address already in use (os error 98)'
+PASS   first instance still running
+PASS unknown key (json): warns and runs  | rc=None stderr='warning: unknown key network.use_udpp, ignored'
+PASS unknown keys (toml, network and endpoint): warns and runs  | rc=None stderr='warning: unknown key network.use_udpp, ignored\nwarning: endpoint 127.0.0.1:39444: unknown key foo, ignored'
+PASS unknown key (REALM_CONF): warns and runs  | rc=None
+PASS deprecated keys zero_copy / fast_open: still starts  | rc=None stderr='warning: unknown key network.fast_open, ignored\nwarning: unknown key network.zero_copy, ignored'
+PASS invalid through: exits non-zero  | rc=101 stderr='thread \'main\' (1327808) panicked at src/conf/endpoint.rs:91:33:\nendpoint 127.0.0.1:39445: invalid through address "10.300.1.1"\nnote: run wit'
+PASS more weights than peers: exits non-zero  | rc=101 stderr="thread 'main' (1327809) panicked at src/conf/endpoint.rs:135:13:\nendpoint 127.0.0.1:39446: balance has 3 weights for 2 peers\nnote: run with "
+PASS matching weights with trailing comma: runs  | rc=None stderr=''
+PASS no rule listens on anything: exits non-zero  | rc=101 stderr="warning: endpoint 127.0.0.1:39447: no TCP or UDP listener is enabled\n\nthread 'main' (1327815) panicked at src/bin.rs:109:5:\nno endpoints lis"
+PASS send_proxy_version = 3: exits non-zero  | rc=101 stderr="thread 'main' (1327816) panicked at src/conf/endpoint.rs:235:13:\nendpoint 127.0.0.1:39448: send_proxy_version must be 1 or 2, got 3\nnote: ru"
+PASS --tcp-timeout 5s: exits non-zero  | rc=2 stderr="error: invalid value '5s' for '--tcp-timeout <second>': invalid digit found in string"
+PASS REALM_CONF path raises the soft nofile limit  | soft=524288 hard=524288
+ALL PASS

@@ -1,10 +1,10 @@
-use std::net::SocketAddr;
+use std::net::{Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
 use tokio::net::UdpSocket;
 use tokio::time::{sleep, timeout};
 
-use realm_core::udp::run_udp;
+use realm_core::udp::{self, run_udp};
 use realm_core::endpoint::{Endpoint, RemoteAddr};
 
 #[tokio::test]
@@ -156,4 +156,58 @@ async fn burst(sock: &UdpSocket, relay: SocketAddr, rounds: u8) {
         }
         assert!(seen.iter().all(|x| *x));
     }
+}
+
+#[tokio::test]
+async fn udp_upload_to_a_silent_upstream_keeps_the_source_port_until_idle() {
+    let upstream = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+    let endpoint = Endpoint {
+        laddr: "127.0.0.1:0".parse().unwrap(),
+        raddr: RemoteAddr::SocketAddr(upstream.local_addr().unwrap()),
+        conn_opts: realm_core::endpoint::ConnectOpts {
+            associate_timeout: 1,
+            ..Default::default()
+        },
+        bind_opts: Default::default(),
+        extra_raddrs: Vec::new(),
+    };
+    let listener = udp::bind(&endpoint).unwrap();
+    let relay = listener.local_addr().unwrap();
+    let task = tokio::spawn(udp::run(listener, endpoint));
+    let client = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+    let mut source = None;
+    let mut buf = [0; 1];
+    for i in 0..=16 {
+        if i > 0 {
+            sleep(Duration::from_millis(200)).await;
+        }
+        client.send_to(&[i], relay).await.unwrap();
+        let (n, from) = timeout(Duration::from_millis(750), upstream.recv_from(&mut buf))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!((n, buf[0]), (1, i));
+        assert_eq!(from, *source.get_or_insert(from));
+    }
+
+    // The upstream port is exclusive until the association is dropped. The association
+    // is bound to the wildcard address, so that is the address to try: windows lets a
+    // second socket take the same port on a specific address.
+    let source = SocketAddr::from((Ipv4Addr::UNSPECIFIED, source.unwrap().port()));
+    assert_eq!(
+        std::net::UdpSocket::bind(source).unwrap_err().kind(),
+        std::io::ErrorKind::AddrInUse
+    );
+    timeout(Duration::from_millis(1600), async {
+        loop {
+            match std::net::UdpSocket::bind(source) {
+                Ok(_) => break,
+                Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => sleep(Duration::from_millis(25)).await,
+                Err(e) => panic!("failed to check upstream port {source}: {e}"),
+            }
+        }
+    })
+    .await
+    .expect("idle association held its upstream port");
+    task.abort();
 }

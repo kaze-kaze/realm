@@ -34,17 +34,25 @@ impl Display for DnsMode {
     }
 }
 
-impl From<String> for DnsMode {
-    fn from(s: String) -> Self {
+impl std::str::FromStr for DnsMode {
+    type Err = &'static str;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         use DnsMode::*;
-        match s.to_ascii_lowercase().as_str() {
-            "ipv4_only" => Ipv4Only,
-            "ipv6_only" => Ipv6Only,
-            "ipv4_and_ipv6" => Ipv4AndIpv6,
-            "ipv4_then_ipv6" => Ipv4ThenIpv6,
-            "ipv6_then_ipv4" => Ipv6ThenIpv4,
-            _ => Self::default(),
+        match value.to_ascii_lowercase().as_str() {
+            "ipv4_only" => Ok(Ipv4Only),
+            "ipv6_only" => Ok(Ipv6Only),
+            "ipv4_and_ipv6" => Ok(Ipv4AndIpv6),
+            "ipv4_then_ipv6" => Ok(Ipv4ThenIpv6),
+            "ipv6_then_ipv4" => Ok(Ipv6ThenIpv4),
+            _ => Err("expected one of: ipv4_only, ipv6_only, ipv4_and_ipv6, ipv4_then_ipv6, ipv6_then_ipv4"),
         }
+    }
+}
+
+impl From<String> for DnsMode {
+    fn from(value: String) -> Self {
+        value.parse().unwrap_or_default()
     }
 }
 
@@ -82,14 +90,23 @@ impl Display for DnsProtocol {
     }
 }
 
-impl From<String> for DnsProtocol {
-    fn from(s: String) -> Self {
+impl std::str::FromStr for DnsProtocol {
+    type Err = &'static str;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         use DnsProtocol::*;
-        match s.to_ascii_lowercase().as_str() {
-            "tcp" => Tcp,
-            "udp" => Udp,
-            _ => TcpAndUdp,
+        match value.to_ascii_lowercase().as_str() {
+            "tcp" => Ok(Tcp),
+            "udp" => Ok(Udp),
+            "tcp+udp" | "tcp_and_udp" => Ok(TcpAndUdp),
+            _ => Err("expected one of: tcp, udp, tcp+udp | tcp_and_udp"),
         }
+    }
+}
+
+impl From<String> for DnsProtocol {
+    fn from(value: String) -> Self {
+        value.parse().unwrap_or_default()
     }
 }
 
@@ -112,8 +129,6 @@ pub struct DnsConf {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mode: Option<DnsMode>,
 
-    // MAX_TTL: u32 = 86400_u32
-    // https://docs.rs/trust-dns-resolver/latest/src/trust_dns_resolver/dns_lru.rs.html#26
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub min_ttl: Option<u32>,
@@ -165,9 +180,9 @@ impl Display for DnsConf {
 
         let min_ttl = default!(min_ttl, 0_u32);
 
-        let max_ttl = default!(max_ttl, 86400_u32);
+        let max_ttl = default!(max_ttl, config::MAX_TTL);
 
-        let cache_size = default!(cache_size, 32_u64);
+        let cache_size = default!(cache_size, ResolverOpts::default().cache_size);
 
         let protocol = default!(protocol);
 
@@ -203,36 +218,26 @@ impl Config for DnsConf {
             cache_size,
         } = self;
 
-        // parse into ResolverOpts
-        // default value:
-        // https://docs.rs/trust-dns-resolver/latest/src/trust_dns_resolver/config.rs.html#681-737
+        let min = min_ttl.unwrap_or_default();
+        let max = max_ttl.unwrap_or(config::MAX_TTL);
+        assert!(min <= max, "dns.min_ttl ({}) exceeds dns.max_ttl ({})", min, max);
 
         let opts = if empty![mode, min_ttl, max_ttl, cache_size] {
             None
         } else {
-            let ip_strategy: LookupIpStrategy = mode.map(|x| x.into()).unwrap_or_default();
-
-            let positive_min_ttl = min_ttl.map(|x| Duration::from_secs(x as u64));
-
-            let positive_max_ttl = max_ttl.map(|x| Duration::from_secs(x as u64));
-
-            let cache_size = cache_size.unwrap_or({
-                let ResolverOpts { cache_size, .. } = Default::default();
-                cache_size
-            });
-
-            let mut opts = ResolverOpts::default();
-
-            macro_rules! replace {
-                ($($x: ident, )+) => {
-                    $(
-                        opts.$x = $x;
-                    )+
-                }
+            let mut opts = realm_core::dns::DnsConf::default().opts;
+            if let Some(mode) = mode {
+                opts.ip_strategy = mode.into();
             }
-
-            replace!(ip_strategy, positive_min_ttl, positive_max_ttl, cache_size,);
-
+            if let Some(ttl) = min_ttl {
+                opts.positive_min_ttl = Some(Duration::from_secs(ttl.into()));
+            }
+            if let Some(ttl) = max_ttl {
+                opts.positive_max_ttl = Some(Duration::from_secs(ttl.into()));
+            }
+            if let Some(cache_size) = cache_size {
+                opts.cache_size = cache_size;
+            }
             Some(opts)
         };
 
@@ -302,22 +307,13 @@ impl Config for DnsConf {
     }
 
     fn from_cmd_args(matches: &clap::ArgMatches) -> Self {
-        let mode = matches.get_one::<String>("dns_mode").cloned().map(DnsMode::from);
+        let mode = matches.get_one::<DnsMode>("dns_mode").copied();
 
-        let min_ttl = matches
-            .get_one::<String>("dns_min_ttl")
-            .and_then(|x| x.parse::<u32>().ok());
-        let max_ttl = matches
-            .get_one::<String>("dns_max_ttl")
-            .and_then(|x| x.parse::<u32>().ok());
-        let cache_size = matches
-            .get_one::<String>("dns_cache_size")
-            .and_then(|x| x.parse::<u64>().ok());
+        let min_ttl = matches.get_one::<u32>("dns_min_ttl").copied();
+        let max_ttl = matches.get_one::<u32>("dns_max_ttl").copied();
+        let cache_size = matches.get_one::<u64>("dns_cache_size").copied();
 
-        let protocol = matches
-            .get_one::<String>("dns_protocol")
-            .cloned()
-            .map(DnsProtocol::from);
+        let protocol = matches.get_one::<DnsProtocol>("dns_protocol").copied();
 
         let nameservers = matches
             .get_one::<String>("dns_servers")
@@ -334,6 +330,73 @@ impl Config for DnsConf {
     }
 
     fn is_empty(&self) -> bool {
-        crate::empty![self => mode, min_ttl, max_ttl, cache_size]
+        crate::empty![self => mode, min_ttl, max_ttl, cache_size, protocol, nameservers]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_dns_uses_both_address_families_with_system_settings() {
+        let config = DnsConf::default();
+        assert!(config.is_empty());
+        assert!(config
+            .to_string()
+            .contains(&format!("cache-size={}", ResolverOpts::default().cache_size)));
+        let (servers, opts) = config.build();
+        assert!(servers.is_none() && opts.is_none());
+        let defaults = realm_core::dns::DnsConf::default().opts;
+        assert_eq!(defaults.ip_strategy, LookupIpStrategy::Ipv4AndIpv6);
+    }
+
+    #[test]
+    fn partial_dns_config_overrides_only_the_specified_resolver_options() {
+        let expected = realm_core::dns::DnsConf::default().opts;
+        let (_, opts) = DnsConf {
+            cache_size: Some(16),
+            ..Default::default()
+        }
+        .build();
+        let opts = opts.unwrap();
+        assert_eq!(opts.ip_strategy, LookupIpStrategy::Ipv4AndIpv6);
+        assert_eq!(
+            (opts.ndots, opts.timeout, opts.attempts),
+            (expected.ndots, expected.timeout, expected.attempts)
+        );
+        assert_eq!(opts.cache_size, 16);
+        let (_, opts) = DnsConf {
+            mode: Some(DnsMode::Ipv4Only),
+            ..Default::default()
+        }
+        .build();
+        assert_eq!(opts.unwrap().ip_strategy, LookupIpStrategy::Ipv4Only);
+    }
+
+    #[test]
+    fn protocol_only_and_nameservers_only_are_not_empty() {
+        assert!(!DnsConf {
+            protocol: Some(DnsProtocol::Tcp),
+            ..Default::default()
+        }
+        .is_empty());
+        assert!(!DnsConf {
+            nameservers: Some(Vec::new()),
+            ..Default::default()
+        }
+        .is_empty());
+    }
+
+    #[test]
+    #[should_panic(expected = "dns.min_ttl (11) exceeds dns.max_ttl (10)")]
+    fn rejects_minimum_greater_than_configured_maximum() {
+        toml::from_str::<DnsConf>("min_ttl = 11\nmax_ttl = 10").unwrap().build();
+    }
+
+    #[test]
+    #[should_panic(expected = "dns.min_ttl (86401) exceeds dns.max_ttl (86400)")]
+    fn rejects_minimum_greater_than_default_maximum() {
+        toml::from_str::<DnsConf>("min_ttl = 86401").unwrap().build();
     }
 }

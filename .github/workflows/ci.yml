@@ -15,6 +15,8 @@ jobs:
         'ubuntu-22.04'
       }}
     strategy:
+      # one platform failing must not hide the result of the others
+      fail-fast: false
       matrix:
         target:
           # cross
@@ -42,5 +44,9 @@ jobs:
       # `batched-udp` the balancer and the linux udp path would never run here
       - name: test core
         run: cargo test -p realm_core --no-fail-fast --features proxy,balance,batched-udp
+      - name: test core transport
+        run: cargo test -p realm_core --no-fail-fast --features transport,transport-boost,transport-tls-ring stalled_websocket_handshake_uses_tcp_timeout
+      - name: test io
+        run: cargo test -p realm_io
       - name: test binary
         run: cargo test --no-fail-fast

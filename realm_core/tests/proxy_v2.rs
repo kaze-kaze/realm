@@ -1,3 +1,5 @@
+#![cfg(feature = "proxy")]
+
 use std::net::SocketAddr;
 use std::time::Duration;
 
@@ -6,13 +8,9 @@ use tokio::time::sleep;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use realm_core::tcp::run_tcp;
-use realm_core::endpoint::{Endpoint, RemoteAddr, ConnectOpts};
-
-#[cfg(feature = "proxy")]
-use realm_core::endpoint::ProxyOpts;
+use realm_core::endpoint::{Endpoint, RemoteAddr, ConnectOpts, ProxyOpts};
 
 #[tokio::test]
-#[cfg(feature = "proxy")]
 async fn proxy_v2() {
     env_logger::init();
 
@@ -63,7 +61,7 @@ async fn proxy_v2() {
         let mut buf = vec![0; 32];
 
         for _ in 0..20 {
-            stream.write(b"Ping Ping Ping").await.unwrap();
+            stream.write_all(b"Ping Ping Ping").await.unwrap();
             let n = stream.read(&mut buf).await.unwrap();
             log::debug!("a got: {:?}", std::str::from_utf8(&buf[..n]).unwrap());
             assert_eq!(b"Pong Pong Pong", &buf[..n]);
@@ -80,7 +78,7 @@ async fn proxy_v2() {
             let n = stream.read(&mut buf).await.unwrap();
             log::debug!("b got: {:?}", std::str::from_utf8(&buf[..n]).unwrap());
             assert_eq!(b"Ping Ping Ping", &buf[..n]);
-            stream.write(b"Pong Pong Pong").await.unwrap();
+            stream.write_all(b"Pong Pong Pong").await.unwrap();
         }
     };
 

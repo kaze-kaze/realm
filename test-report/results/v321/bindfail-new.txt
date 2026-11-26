@@ -1,0 +1,15 @@
+client A before         : ok 0.8 ms
+poison on for 6.1 s: client B asked 60 times, answered 0; 60 fresh clients, answered 0; realm fds 10 (with A: 9)
+marker removed, new client C at once : ok 0.7 ms
+marker removed, client B again       : ok 0.1 ms
+client A, 20 ms pings: before poison [sent 50, lost 0, rtt ms median 0.65 max 3.50] | during [sent 298, lost 0, rtt ms median 0.66 max 27.96] | after [sent 74, lost 0, rtt ms median 1.23 max 11.55]
+shim: bind_refused=120 send_refused=0
+log "failed to associate" lines: 6
+    [2026-11-26][05:09:55][realm_core::udp::middle][ERROR][udp]failed to associate for 127.0.0.1:53495: Address already in use (os error 98) (0 suppressed)
+    [2026-11-26][05:09:56][realm_core::udp::middle][ERROR][udp]failed to associate for 127.0.0.1:53495: Address already in use (os error 98) (19 suppressed)
+    [2026-11-26][05:09:57][realm_core::udp::middle][ERROR][udp]failed to associate for 127.0.0.1:53495: Address already in use (os error 98) (19 suppressed)
+    [2026-11-26][05:09:59][realm_core::udp::middle][ERROR][udp]failed to associate for 127.0.0.1:53495: Address already in use (os error 98) (19 suppressed)
+    [2026-11-26][05:10:00][realm_core::udp::middle][ERROR][udp]failed to associate for 127.0.0.1:53495: Address already in use (os error 98) (19 suppressed)
+log levels: {'[DEBUG]': 1511, '[INFO]': 3, '[ERROR]': 6} | realm alive: True
+12 s later: realm fds 9 (idle baseline 8, plus 1 for the shim counter file opened inside realm)
+new client D            : ok 0.8 ms

@@ -11,7 +11,7 @@ A simple, high performance relay server written in rust.
 
 ## About this fork
 
-This is a fork of [zhboner/realm](https://github.com/zhboner/realm) (v2.9.6). Its own versions start at 3.0.0, and `realm -v` tells the two apart. A config written for upstream runs unchanged, and the new options are off until they are configured. One thing moves on the upgrade: an `iphash` endpoint maps its clients to peers anew, once.
+This is a fork of [zhboner/realm](https://github.com/zhboner/realm) (v2.9.6). Its own versions start at 3.0.0, and `realm -v` tells the two apart. A config written for upstream runs unchanged. The release packages let the remaining TCP direction run until it has been idle for 10 seconds after a half-close. Set `half_close_timeout = 0` to close immediately. On upgrade, an `iphash` endpoint maps its clients to peers anew, once.
 
 What it adds:
 
@@ -95,7 +95,7 @@ The `realm` binary will be available in `target/release`.
 - ~~tfo: enable tcp-fast-open~~ deprecated.
 - ~~trust-dns: enable trust-dns's async dns resolver~~ builtin.
 - ~~zero-copy: enable zero-copy on linux~~ builtin.
-- brutal-shutdown: see [realm_io/brutal-shutdown](realm_io/README.md#about-brutal-shutdown).
+- brutal-shutdown: default to a 10-second idle timeout after a TCP half-close. Set `half_close_timeout = 0` to close immediately. See [network.half_close_timeout](#networkhalf_close_timeout-unsigned-int).
 - hook: see [realm_hook](realm_hook/README.md).
 - proxy: enable proxy-protocol.
 - balance: enable load balance.
@@ -199,10 +199,12 @@ PROXY OPTIONS:
       --accept-proxy-timeout <second>  accept proxy protocol timeout
 
 TIMEOUT OPTIONS:
-      --tcp-timeout <second>         override tcp timeout(5s)
-      --udp-timeout <second>         override udp timeout(30s)
+      --tcp-timeout <second>         override TCP connect and transport handshake timeouts (5s, 0 disables)
+      --udp-timeout <second>         override UDP association idle timeout (30s, 0 disables)
       --tcp-keepalive <second>       override default tcp keepalive interval(15s)
       --tcp-keepalive-probe <count>  override default tcp keepalive count(3)
+      --half-close-timeout <second>  TCP idle timeout after a half-close (10s, 0 closes immediately)
+      --tcp-user-timeout <second>    TCP user timeout on Linux (0 leaves existing socket behavior)
 ```
 
 Start from command line arguments:
@@ -245,6 +247,12 @@ realm convert old.json
 ```
 
 ## Configuration
+
+Realm binds all enabled TCP and UDP listeners before starting any relay or forking into the background with `--daemon`. If any bind fails, it reports the protocol, address and error for each failed listener on stderr, then exits with a nonzero status. UDP listeners cannot share a listening address. If a listener task exits after startup, realm reports its protocol and address and exits with a nonzero status so a service manager can restart it.
+
+Unknown keys in the top level, `log`, `dns`, `network`, and individual endpoints produce warnings on stderr and are ignored. This applies to TOML and JSON files, configuration directories and `REALM_CONF`. Unknown `failover` keys are errors. A rule with both TCP and UDP disabled produces a warning. Startup requires at least one enabled listener. Invalid numeric command-line arguments are errors.
+
+On supported Unix systems, realm raises the soft file descriptor limit to the hard limit at startup, including when configured through `REALM_CONF`. Set `--nofile` on the command line to request an explicit limit. Failures to set the limit produce a warning on stderr.
 
 TOML Example
 
@@ -318,6 +326,8 @@ remote = "www.google.com:443"
 │   ├── use_udp
 │   ├── ipv6_only
 │   ├── tcp_timeout
+│   ├── half_close_timeout
+│   ├── tcp_user_timeout
 │   ├── udp_timeout
 │   ├── udp_no_fragment
 │   ├── tcp_keepalive
@@ -381,6 +391,8 @@ $strategy: $weight1, $weight2, ...
 
 Where `remote` is used as default backend server, and `extra_remotes` are used as backups.
 
+Each weight must be an integer from 0 to 255. For an active balancing strategy, `remote` takes the first weight and `extra_remotes` take the remaining weights in order. Too many weights are a startup error. A shorter list produces a warning and preserves peer selection from the supplied weights. With `failover`, an active balancing strategy requires exactly one weight per peer.
+
 Available algorithms (provided by [realm_lb](./realm_lb/)):
 
 - iphash: a client address always gets the same peer, and the peers get client addresses in the proportions of their weights. An IPv4 client counts as the same client on a dual-stack listener (`::ffff:a.b.c.d`). Adding a peer at the end of the list, or changing the weight of one, only moves clients to or from that peer.
@@ -404,7 +416,7 @@ The weight of [a, b, c] is [4, 2, 1] in turn.
 
 #### endpoint.failover: table
 
-Active-standby failover for both TCP and UDP. `remote` is the primary, `extra_remotes` are backups in priority order (at most 7). Peers must be `ip:port` literals; for UDP they must share one address family. Together with `balance`, the peers share the load instead, see [below](#failover-with-balance).
+Active-standby failover for both TCP and UDP. `remote` is the primary, `extra_remotes` are backups in priority order (at most 7). Peers must be distinct `ip:port` literals. For UDP they must share one address family. Together with `balance`, the peers share the load instead, see [below](#failover-with-balance).
 
 A background task probes every peer per protocol. Traffic only moves on probe results, never on user traffic:
 
@@ -415,20 +427,22 @@ A background task probes every peer per protocol. Traffic only moves on probe re
 
 Behavior:
 
-- TCP: new connections dial the active peer. If that dial fails, the same client connection retries on other ready peers before any data is relayed: up to three dials in all, so two peers failing at the same moment cost no connection while a third is ready. All dials share `tcp_timeout`, and one that can be retried elsewhere gets half of what is left of it. Established connections are never moved. On Linux, a connection whose peer stops acknowledging (or stops reading while data is pending) is closed after `tcp_keepalive` x (`tcp_keepalive_probe` + 1) seconds (60 by default), idle or not, so its client can reconnect to the active peer. Without this, a connection with data in flight to a dead peer hangs for about 15 minutes. `tcp_keepalive = 0` turns both off.
+- TCP: new connections dial the active peer. If that dial fails, the same client connection retries on other ready peers before any data is relayed: up to three dials in all, so two peers failing at the same moment cost no connection while a third is ready. All dials share `tcp_timeout`, and one that can be retried elsewhere gets half of what is left of it. Established connections are never moved. On Linux, a connection whose peer stops acknowledging (or stops reading while data is pending) is closed after `tcp_keepalive` x (`tcp_keepalive_probe` + 1) seconds (60 by default), idle or not, so its client can reconnect to the active peer. Without this, a connection with data in flight to a dead peer hangs for about 15 minutes. `tcp_keepalive = 0` turns off keepalive and its derived timeout. A positive `tcp_user_timeout` overrides the derived timeout and still applies when keepalive is disabled.
 - UDP: new associations use the active peer. An existing association keeps its peer until that peer is down, then its next datagram goes to the active peer through the same upstream socket (client and relay ports stay the same). After such a move, late replies from the old peer are dropped.
 
 Probes (from this host, with the same `interface` and `through` ip; a port in `through` is never used by probes):
 
 - TCP: connect, send `tcp_send` (optional), require a reply starting with `tcp_expect`. Without `tcp_expect` a completed handshake counts as success. While nothing has answered, another connection is started at each third of `timeout`, at most 3 per round, so one lost SYN does not fail the round. A refusal or an unexpected reply fails the round at once.
 - UDP, `udp_probe = "echo"` (default): send `udp_send` plus a per-round nonce, require the exact datagram echoed back. Resend only while unanswered, at most 3 datagrams within `timeout`. The target must be an echo responder: against a service that does not echo, every peer is marked down and UDP simply stays on its current peer.
-- UDP, `udp_probe = "quic"`: send a QUIC packet of a version no server speaks and require the Version Negotiation packet that every QUIC server answers with. This probes a QUIC service (Hysteria 2, TUIC, HTTP/3) on its own port, without an echo responder next to it. It does not work for services that hide from unauthenticated packets, such as WireGuard or Hysteria with obfuscation: those need an echo responder.
+- UDP, `udp_probe = "quic"`: send a QUIC packet with a reserved version and require a valid Version Negotiation response. This probes a QUIC service (Hysteria 2, TUIC, HTTP/3) on its own port. A server may limit or disable Version Negotiation responses. Services that hide from unauthenticated packets, such as WireGuard or Hysteria with obfuscation, need a separate echo responder.
 
 To detect failures behind the next hop, point `probe` at a health port on the far end that is relayed along the same path (e.g. a tiny HTTP 204 responder and a UDP echo).
 
 Probes are plain TCP and UDP. They send no PROXY header ([send_proxy](#networksend_proxy-bool)) and do not go through [remote_transport](#endpointremote_transport-string). When the data port expects either, probe it by handshake only (no `tcp_send` and `tcp_expect`), or point `probe` at a health port. A probe with `tcp_expect` against such a port fails every round: all peers are marked down, and nothing ever moves.
 
 A key in the `failover` table that is not one of these is an error at startup, so that a misspelt option does not fall back to its default unnoticed.
+
+`interval` and `timeout` must both remain positive when rounded to nanoseconds.
 
 | field | default | meaning |
 | --- | --- | --- |
@@ -437,11 +451,11 @@ A key in the `failover` table that is not one of these is an error at startup, s
 | tcp_expect | none | expected prefix of the TCP probe reply |
 | udp_send | empty | prefix of the UDP probe datagram (`echo` only) |
 | udp_probe | echo | `echo` or `quic` |
-| interval | 3 | seconds between probe rounds |
-| timeout | 1.5 | seconds per probe |
+| interval | 3 | seconds between probe rounds, at most 86400 |
+| timeout | 1.5 | seconds per probe, at most 86400 |
 | fall / window | 3 / 5 | failures within the last rounds to mark a peer down (window <= 8) |
 | rise | 5 | consecutive successes to mark a peer up again |
-| hold | 30 | seconds before failing back |
+| hold | 30 | seconds before failing back, at most 86400 |
 
 With the defaults, a silently failing primary is detected in about 7.5-10.5s. Keep `tcp_timeout` at 3-5s on failover endpoints.
 
@@ -518,6 +532,8 @@ Supported formats:
 - ipv4/ipv6 (tcp/udp)
 - ipv4/ipv6:port (udp)
 
+An invalid `through` address is a startup error. A `through` address must also share the address family of every literal `remote` and `extra_remotes` address.
+
 #### endpoint.interface: string
 
 Bind to a specific interface for outgoing traffics.
@@ -585,6 +601,11 @@ values:
 
 default: ipv4_and_ipv6
 
+UDP uses the first resolved address, or the first address in the same family as `through` when it is set.
+On a host without IPv4 egress, set `dns.mode` to `ipv6_only` or `ipv6_then_ipv4` when forwarding UDP to a dual-stack hostname.
+
+The resolver keeps system options such as `ndots`, `timeout`, and `attempts`, including when individual Realm DNS settings are overridden.
+
 #### dns.protocol: string
 
 Dns transport protocol.
@@ -613,6 +634,8 @@ Otherwise, use google's public dns(`8.8.8.8:53`, `8.8.4.4:53` and `2001:4860:486
 
 The minimum lifetime of a positive dns cache.
 
+The minimum must be less than or equal to the effective `dns.max_ttl`.
+
 default: 0
 
 #### dns.max_ttl: unsigned int
@@ -623,9 +646,9 @@ default: 86400 (1 day)
 
 #### dns.cache_size: unsigned int
 
-The maximum count of dns cache.
+The maximum number of DNS cache entries.
 
-default: 32
+default: 8192
 
 ### network
 
@@ -641,7 +664,7 @@ default: false
 
 Start listening on a udp endpoint and forward packets to the remote peer.
 
-It will dynamically allocate local endpoints and establish udp associations. Once timeout, the endpoints will be deallocated and the association will be terminated. See also: [network.udp_timeout](#networkudp_timeout-unsigned-int).
+It opens an upstream socket for each UDP association. After the association is idle in both directions for [`network.udp_timeout`](#networkudp_timeout-unsigned-int), the relay closes that socket.
 
 Due to the receiver side not limiting access to the association, the relay works like a full-cone NAT.
 
@@ -678,17 +701,27 @@ default: false
 
 #### network.tcp_timeout: unsigned int
 
-This is **connect** timeout. An attempt to connect to a remote peer fails after waiting for a period of time.
-
-To disable timeout, you need to explicitly set timeout value to 0.
+Time in seconds allowed for an outbound TCP connection attempt. The two transport handshakes share a separate timeout of the same duration. Set it to `0` to disable both timeouts.
 
 default: 5
 
+#### network.half_close_timeout: unsigned int
+
+After one direction reaches EOF, sends all its data, and shuts down the other socket's write side, the remaining direction can keep forwarding. The relay closes both sockets if that direction makes no write progress for this many seconds. Set it to `0` to close both sockets as soon as either direction finishes.
+
+Builds with `brutal-shutdown`, including the release binaries, default to 10 seconds. Builds without that feature wait for both directions to finish by default. An endpoint can override the global setting.
+
+#### network.tcp_user_timeout: unsigned int
+
+Linux only. Sets `TCP_USER_TIMEOUT` on accepted and outbound data sockets. This limits how long sent data may go unacknowledged or buffered data may remain unsent when the peer advertises a zero window. It applies with keepalive disabled and overrides the timeout derived from keepalive for outbound failover sockets. Failover probes do not use it.
+
+With keepalive enabled, Linux uses this timeout to decide when to close an idle connection once it has sent at least one probe. The keepalive probe count no longer controls this decision. Realm warns at startup when a positive `tcp_user_timeout` is at most `tcp_keepalive`, since one unanswered probe can then close an idle connection. Use at least `tcp_keepalive × (tcp_keepalive_probe + 1)` seconds to preserve the keepalive window.
+
+Defaults to `0`, which leaves the existing socket behavior in place, including the derived timeout on outbound failover sockets. An endpoint can override the global setting.
+
 #### network.udp_timeout: unsigned int
 
-Terminate udp association after `timeout`.
-
-The timeout value must be properly configured in case of memory leak. Do not use a large `timeout`!
+Time in seconds before a UDP association expires due to inactivity. Sending a datagram to the upstream or receiving a valid datagram from the upstream restarts the idle period. Set it to `0` to disable idle expiration.
 
 default: 30
 
@@ -710,7 +743,7 @@ TCP Keepalive interval.
 
 On Linux, this is equivalent to setting both `net.ipv4.tcp_keepalive_time` and `net.ipv4.tcp_keepalive_intvl`.
 
-To use system's tcp keepalive interval, you need to explicitly set this option to 0.
+Set this option to 0 to disable TCP keepalive settings on relay sockets.
 
 default: 15
 
@@ -754,7 +787,7 @@ default: false
 
 Require `proxy` feature.
 
-This option has no effect unless [send_proxy](#networksend_proxy-bool) is enabled.
+Realm validates this option at startup and uses it when [send_proxy](#networksend_proxy-bool) is enabled.
 
 value:
 
@@ -773,7 +806,7 @@ If the remote sender does not send a `v1` or `v2` header before other contents, 
 
 default: false
 
-#### network.accept_timeout: unsigned int
+#### network.accept_proxy_timeout: unsigned int
 
 Require `proxy` feature.
 

@@ -1,9 +1,8 @@
-use std::io::{Error, Result};
+use std::io::{Error, ErrorKind, Result};
 use std::cell::OnceCell;
 use std::net::{SocketAddr, IpAddr, Ipv4Addr, Ipv6Addr};
 
 use log::{info, debug};
-use bytes::{Buf, BytesMut};
 
 use proxy_protocol::ProxyHeader;
 use proxy_protocol::{version1 as v1, version2 as v2};
@@ -32,35 +31,11 @@ pub async fn handle_proxy(src: &mut TcpStream, dst: &mut TcpStream, opts: ProxyO
     // parse PROXY header from client and write log
     // may not get src and dst addr
     if accept_proxy {
-        let mut buf = BytesMut::with_capacity(256);
-        buf.resize(256, 0);
-
-        // FIXME: may not read the entire header
-
-        // The receiver may apply a short timeout and decide to
-        // abort the connection if the protocol header is not seen
-        // within a few seconds (at least 3 seconds to cover a TCP retransmit).
-        let peek_n = timeoutfut(src.peek(&mut buf), accept_proxy_timeout).await??;
-
-        buf.truncate(peek_n);
-        debug!("[tcp]peek initial {} bytes: {:#x}", peek_n, buf);
-
-        let mut slice = buf.as_ref();
-
-        // slice is advanced
-        let header = parse(&mut slice).map_err(Error::other)?;
-        let parsed_n = peek_n - slice.remaining();
-        debug!("[tcp]proxy-protocol parsed, {} bytes", parsed_n);
-
-        // handle parsed header, and print log
+        let header = accept_header(src, accept_proxy_timeout).await?;
         if let Some((src, dst)) = handle_header(header) {
             client_addr.set(src).unwrap();
             server_addr.set(dst).unwrap();
         }
-
-        // header has been parsed, remove these bytes from sock buffer.
-        buf.truncate(parsed_n);
-        src.read_exact(&mut buf).await?;
 
         // do not send header to server
         if !send_proxy {
@@ -108,6 +83,99 @@ macro_rules! unpack {
             _ => unreachable!(),
         }
     };
+}
+
+const V1_PREFIX: &[u8; 6] = b"PROXY ";
+const V2_SIGNATURE: &[u8; 12] = b"\r\n\r\n\0\r\nQUIT\n";
+const V1_MAX_LEN: usize = 107;
+const V2_MAX_PAYLOAD: usize = 4096;
+
+async fn accept_header(src: &mut TcpStream, timeout: usize) -> Result<ProxyHeader> {
+    timeoutfut(read_header(src), timeout).await?
+}
+
+async fn read_prefix(src: &mut TcpStream, buf: &mut [u8], valid: impl Fn(&[u8]) -> bool) -> Result<()> {
+    let mut len = 0;
+    while len < buf.len() {
+        let n = src.read(&mut buf[len..]).await?;
+        if n == 0 {
+            return Err(ErrorKind::UnexpectedEof.into());
+        }
+        len += n;
+        if !valid(&buf[..len]) {
+            return Err(Error::new(ErrorKind::InvalidData, "invalid PROXY header prefix"));
+        }
+    }
+    Ok(())
+}
+
+async fn read_header(src: &mut TcpStream) -> Result<ProxyHeader> {
+    let mut prefix = [0; 6];
+    read_prefix(src, &mut prefix, |bytes| {
+        V1_PREFIX.starts_with(bytes) || V2_SIGNATURE.starts_with(bytes)
+    })
+    .await?;
+    if &prefix == V1_PREFIX {
+        return read_v1_header(src, prefix).await;
+    }
+
+    let mut fixed = [0; 16];
+    fixed[..6].copy_from_slice(&prefix);
+    let signature = &V2_SIGNATURE[6..];
+    read_prefix(src, &mut fixed[6..], |bytes| {
+        signature.starts_with(&bytes[..bytes.len().min(signature.len())])
+            && matches!(bytes.get(signature.len()), None | Some(0x20 | 0x21))
+    })
+    .await?;
+    // Match proxy-protocol's address and transport checks for both commands.
+    let min_payload = match fixed[13] >> 4 {
+        0 => 0,
+        1 => 12,
+        2 => 36,
+        3 => 216,
+        _ => return Err(Error::new(ErrorKind::InvalidData, "unknown PROXY v2 address family")),
+    };
+    if !matches!(fixed[13] & 0x0f, 0..=2) {
+        return Err(Error::new(
+            ErrorKind::InvalidData,
+            "unknown PROXY v2 transport protocol",
+        ));
+    }
+    let payload_len = u16::from_be_bytes([fixed[14], fixed[15]]) as usize;
+    if payload_len < min_payload {
+        return Err(Error::new(ErrorKind::InvalidData, "PROXY v2 payload is too short"));
+    }
+    if payload_len > V2_MAX_PAYLOAD {
+        return Err(Error::new(ErrorKind::InvalidData, "PROXY v2 payload is too long"));
+    }
+    let mut buf = Vec::with_capacity(fixed.len() + payload_len);
+    buf.extend_from_slice(&fixed);
+    buf.resize(fixed.len() + payload_len, 0);
+    src.read_exact(&mut buf[fixed.len()..]).await?;
+    parse(&mut buf.as_slice()).map_err(Error::other)
+}
+
+async fn read_v1_header(src: &mut TcpStream, prefix: [u8; 6]) -> Result<ProxyHeader> {
+    let mut buf = [0; V1_MAX_LEN];
+    let mut len = prefix.len();
+    buf[..len].copy_from_slice(&prefix);
+    while len < buf.len() {
+        let seen = src.peek(&mut buf[len..]).await?;
+        if seen == 0 {
+            return Err(ErrorKind::UnexpectedEof.into());
+        }
+        // Include the last consumed byte in case the CR and LF arrive separately.
+        let end = buf[len - 1..len + seen].windows(2).position(|bytes| bytes == b"\r\n");
+        let take = end.map_or(seen, |i| i + 1);
+        // Consume every byte examined up to the delimiter so peek can wait for
+        // fresh input and application data stays on the socket.
+        src.read_exact(&mut buf[len..len + take]).await?;
+        len += take;
+        if end.is_some() {
+            return parse(&mut &buf[..len]).map_err(Error::other);
+        }
+    }
+    Err(Error::new(ErrorKind::InvalidData, "PROXY v1 header is too long"))
 }
 
 fn make_header(client_addr: SocketAddr, server_addr: SocketAddr, send_proxy_version: usize) -> ProxyHeader {
@@ -241,5 +309,147 @@ fn handle_header_v2(
             info!("[tcp]accept proxy-protocol-v2: af_family = AF_UNIX, ignore");
             None
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+    use tokio::net::TcpListener;
+    use tokio::time::{sleep, timeout};
+
+    const V1: &[u8] = b"PROXY TCP4 127.0.0.1 127.0.0.2 123 456\r\n";
+    const V2: &[u8] = b"\r\n\r\n\0\r\nQUIT\n\x21\x11\0\x10\x7f\0\0\x01\x7f\0\0\x02\0\x7b\x01\xc8\x04\0\x01\0";
+
+    async fn pair() -> (TcpStream, TcpStream) {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let tx = TcpStream::connect(listener.local_addr().unwrap()).await.unwrap();
+        let (rx, _) = listener.accept().await.unwrap();
+        (tx, rx)
+    }
+
+    #[tokio::test]
+    async fn split_proxy_headers_leave_application_bytes_unread() {
+        for header in [V1, V2] {
+            for split in 1..header.len() {
+                let (mut tx, mut rx) = pair().await;
+                let send = async {
+                    tx.write_all(&header[..split]).await.unwrap();
+                    sleep(Duration::from_millis(2)).await;
+                    let tail = [&header[split..], b"app data"].concat();
+                    tx.write_all(&tail).await.unwrap();
+                    tx.shutdown().await.unwrap();
+                };
+                let receive = async {
+                    let decoded = accept_header(&mut rx, 1).await.unwrap();
+                    let source = "127.0.0.1:123".parse().unwrap();
+                    let dest = "127.0.0.2:456".parse().unwrap();
+                    assert_eq!(handle_header(decoded), Some((source, dest)), "split {}", split);
+                    let mut data = Vec::new();
+                    rx.read_to_end(&mut data).await.unwrap();
+                    assert_eq!(data, b"app data");
+                };
+                timeout(Duration::from_secs(2), async { tokio::join!(send, receive) })
+                    .await
+                    .unwrap();
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn rejects_invalid_v2_fixed_headers_before_waiting_for_payload() {
+        for (command, family_protocol, length) in [
+            (0x21, 0x41, 12),
+            (0x21, 0x13, 12),
+            (0x21, 0x11, 11),
+            (0x21, 0x22, 35),
+            (0x20, 0x30, 215),
+        ] {
+            let (mut tx, mut rx) = pair().await;
+            let mut fixed = V2[..16].to_vec();
+            fixed[12..16].copy_from_slice(&[command, family_protocol, 0, length]);
+            tx.write_all(&fixed).await.unwrap();
+            let err = timeout(Duration::from_secs(1), accept_header(&mut rx, 5))
+                .await
+                .expect("an invalid fixed header must not wait for the payload")
+                .unwrap_err();
+            assert_eq!(err.kind(), ErrorKind::InvalidData, "header {fixed:?}");
+        }
+    }
+
+    #[tokio::test]
+    async fn accepts_v2_local_and_proxy_for_each_supported_family_and_transport() {
+        for command in [0x20, 0x21] {
+            for (family, length) in [(0, 1), (1, 12), (2, 36), (3, 216)] {
+                for protocol in 0..=2 {
+                    let (mut tx, mut rx) = pair().await;
+                    let mut header = V2[..16].to_vec();
+                    header[12..16].copy_from_slice(&[command, (family << 4) | protocol, 0, length]);
+                    header.resize(16 + usize::from(length), 0);
+                    tx.write_all(&header).await.unwrap();
+                    accept_header(&mut rx, 1).await.unwrap();
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn rejects_truncated_malformed_and_overlong_proxy_headers() {
+        let mut long_v1 = b"PROXY UNKNOWN ".to_vec();
+        long_v1.resize(V1_MAX_LEN - 1, b'x');
+        long_v1.extend_from_slice(b"\r\n");
+        let mut long_v2 = V2[..16].to_vec();
+        long_v2[14..16].copy_from_slice(&((V2_MAX_PAYLOAD + 1) as u16).to_be_bytes());
+        let mut invalid_v2 = V2.to_vec();
+        invalid_v2[12] = 0x22;
+        for input in (0..V1.len())
+            .map(|n| &V1[..n])
+            .chain((0..V2.len()).map(|n| &V2[..n]))
+            .chain([b"PROXY TCP4\r\n".as_slice(), &invalid_v2, &long_v1, &long_v2])
+        {
+            let (mut tx, mut rx) = pair().await;
+            tx.write_all(input).await.unwrap();
+            tx.shutdown().await.unwrap();
+            let err = accept_header(&mut rx, 1).await.unwrap_err();
+            assert_ne!(err.kind(), ErrorKind::TimedOut, "input {:?}", input);
+        }
+    }
+
+    #[tokio::test]
+    async fn rejects_an_impossible_signature_or_command_without_waiting_for_more_bytes() {
+        for prefix in [
+            b"x".as_slice(),
+            b"PRx",
+            b"\r\nx",
+            b"\r\n\r\n\0\rx",
+            b"\r\n\r\n\0\r\nQUIT\n\x22",
+        ] {
+            let (mut tx, mut rx) = pair().await;
+            tx.write_all(prefix).await.unwrap();
+            let err = timeout(Duration::from_secs(1), accept_header(&mut rx, 0))
+                .await
+                .unwrap()
+                .unwrap_err();
+            assert_eq!(err.kind(), ErrorKind::InvalidData, "prefix {:?}", prefix);
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn proxy_header_has_one_deadline_across_reads() {
+        let (mut tx, mut rx) = pair().await;
+        let send = async {
+            sleep(Duration::from_millis(400)).await;
+            tx.write_all(&V2[..6]).await.unwrap();
+            sleep(Duration::from_millis(400)).await;
+            tx.write_all(&V2[6..16]).await.unwrap();
+        };
+        let start = tokio::time::Instant::now();
+        let receive = async {
+            let err = accept_header(&mut rx, 1).await.unwrap_err();
+            assert_eq!(err.kind(), ErrorKind::TimedOut);
+            assert!((Duration::from_secs(1)..Duration::from_millis(1020)).contains(&start.elapsed()));
+        };
+        tokio::join!(send, receive);
     }
 }

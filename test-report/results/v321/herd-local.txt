@@ -1,0 +1,7 @@
+# exlocal.py herd: v3.2.0, the final build, the final build with half_close_timeout = 0 (died = connection deaths of 5000 held connections)
+old {'opened': 10006, 'died': 5006, 'alive_at_end': 5000} err {'eof': 5006} ok {'A': 49911, 'B': 67331}
+new {'opened': 10029, 'died': 5029, 'alive_at_end': 5000} err {'eof': 5029} ok {'A': 49582, 'B': 67633}
+new-hc0 {'opened': 10002, 'died': 5002, 'alive_at_end': 5000} err {'eof': 5002} ok {'A': 49846, 'B': 67289}
+old {'opened': 10003, 'died': 5003, 'alive_at_end': 5000} err {'eof': 5003} ok {'A': 49908, 'B': 66785}
+new {'opened': 10503, 'died': 5503, 'alive_at_end': 5000} err {'reset': 1, 'eof': 5502} ok {'A': 49766, 'B': 67187}
+new-hc0 {'opened': 10006, 'died': 5006, 'alive_at_end': 5000} err {'eof': 5006} ok {'A': 49765, 'B': 67516}

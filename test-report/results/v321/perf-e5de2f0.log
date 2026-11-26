@@ -1,0 +1,27 @@
+### start Thu Nov 26 03:08:00 CST 2026 load 0.29 0.60 0.50
+### udp (ab.py, relay pinned to cpu 0-1, generators on 2-3)
+=== medians (min..max), old vs new
+udp up, 1 client (Mbit/s | cpu us/pkt)
+    old 2711.27 (2496.25..2835.74) new 2610.26 (2552.82..3169.45) -3.7%
+    old 4.47 (4.15..5.47) new 4.22 (3.82..4.92) -5.7%
+udp up, 4 clients (Mbit/s | cpu us/pkt)
+    old 2194.51 (1807.89..2358.60) new 2240.69 (1955.29..2296.39) +2.1%
+    old 5.35 (4.44..6.07) new 5.29 (4.92..6.17) -1.1%
+udp down, 1 client (Mbit/s | cpu us/pkt)
+    old 2707.41 (2593.98..2990.76) new 2846.54 (2609.23..3118.34) +5.1%
+    old 4.53 (4.07..4.98) new 4.11 (3.65..5.04) -9.4%
+udp down, 4 clients (Mbit/s | cpu us/pkt)
+    old 3370.10 (2449.14..3671.34) new 3077.75 (2165.69..4068.34) -8.7%
+    old 4.30 (4.13..4.73) new 4.34 (4.18..4.75) +1.0%
+### tcp bulk (bulk.py)
+download old       38.29 Gbit/s (29.7..45.5, mean 38.28)   +0.0% | 0.1500 cpu s/GiB (0.120..0.195, mean 0.1489)   +0.0%
+download new       36.10 Gbit/s (26.0..44.8, mean 36.61)   -5.7% | 0.1512 cpu s/GiB (0.133..0.247, mean 0.1614)   +0.8%
+upload   old       35.54 Gbit/s (19.3..46.9, mean 33.94)   +0.0% | 0.1688 cpu s/GiB (0.130..0.228, mean 0.1658)   +0.0%
+upload   new       32.16 Gbit/s (25.3..51.6, mean 33.43)   -9.5% | 0.1550 cpu s/GiB (0.115..0.215, mean 0.1580)   -8.1%
+### tcp short connections (churn3.py)
+11 new-hc0 [11041.0, 116.56, 0]
+=== medians (min..max): conn/s | cpu us/conn | errors
+old              11784.2 (10528..13290)   +0.0% |  122.34 (114.7..140.7)   +0.0% | 0
+new              12499.0 (7473..13157)   +6.1% |  126.84 (121.7..138.6)   +3.7% | 0
+new-hc0          12656.2 (11041..13255)   +7.4% |  120.31 (111.2..130.2)   -1.7% | 0
+### end Thu Nov 26 03:18:32 CST 2026 load 5.62 4.68 2.83

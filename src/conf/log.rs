@@ -16,18 +16,26 @@ pub enum LogLevel {
     Trace,
 }
 
-impl From<String> for LogLevel {
-    fn from(x: String) -> Self {
+impl std::str::FromStr for LogLevel {
+    type Err = &'static str;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         use LogLevel::*;
-        match x.to_ascii_lowercase().as_str() {
-            "off" => Off,
-            "error" => Error,
-            "warn" => Warn,
-            "info" => Info,
-            "debug" => Debug,
-            "trace" => Trace,
-            _ => Self::default(),
+        match value.to_ascii_lowercase().as_str() {
+            "off" => Ok(Off),
+            "error" => Ok(Error),
+            "warn" => Ok(Warn),
+            "info" => Ok(Info),
+            "debug" => Ok(Debug),
+            "trace" => Ok(Trace),
+            _ => Err("expected one of: off, error, warn, info, debug, trace"),
         }
+    }
+}
+
+impl From<String> for LogLevel {
+    fn from(value: String) -> Self {
+        value.parse().unwrap_or_default()
     }
 }
 
@@ -118,7 +126,7 @@ impl Config for LogConf {
     }
 
     fn from_cmd_args(matches: &clap::ArgMatches) -> Self {
-        let level = matches.get_one::<String>("log_level").cloned().map(LogLevel::from);
+        let level = matches.get_one::<LogLevel>("log_level").copied();
 
         let output = matches.get_one("log_output").cloned();
 

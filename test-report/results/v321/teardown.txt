@@ -1,0 +1,5 @@
+# teardown.py: how long a killed backend with 5000 connections keeps accepting
+close: connects accepted after the kill: 58, last one at 78.6 ms, first refusal at 88.5 ms, peers saw 5000 FINs, last FIN at 132.8 ms
+keep : connects accepted after the kill: 263, last one at 111.3 ms, first refusal at 111.7 ms, peers saw 5000 FINs, last FIN at 111.6 ms
+close: connects accepted after the kill: 205, last one at 82.9 ms, first refusal at 86.9 ms, peers saw 5000 FINs, last FIN at 105.0 ms
+keep : connects accepted after the kill: 231, last one at 83.5 ms, first refusal at 86.5 ms, peers saw 5000 FINs, last FIN at 84.1 ms

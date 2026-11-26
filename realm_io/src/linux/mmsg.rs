@@ -172,6 +172,11 @@ mod store {
             }
         }
 
+        /// Return the byte count written by the system call.
+        pub const fn nbytes(&self) -> u32 {
+            self.store.msg_len
+        }
+
         /// Get constant accessor.
         #[rustfmt::skip]
         pub fn get_ref<'this>(&'this self) -> MmsgRef<'a, 'b, 'iov, 'ctrl, 'this> {
@@ -229,14 +234,29 @@ mod store {
     impl<'a, 'b, 'iov, 'ctrl> MmsgHdrStore<'a, 'b, 'iov, 'ctrl, Mutable> {
         /// Set storage to accommodate peer address.
         pub fn with_addr(mut self, addr: &'a mut SockAddrStore) -> Self {
-            self.store.msg_hdr.msg_name = addr.0.as_ptr() as *mut _;
             self.store.msg_hdr.msg_namelen = addr.0.len() as _;
+            // The layout of SockAddr is private. Locate its storage with
+            // as_ptr, then derive the writable pointer from the unique borrow.
+            let offset = addr.0.as_ptr().addr() - ptr::from_ref(&addr.0).addr();
+            self.store.msg_hdr.msg_name = ptr::from_mut(&mut addr.0).cast::<u8>().wrapping_add(offset).cast();
             self
         }
 
         /// Set storage to receive data.
         pub fn with_iovec(mut self, iov: &'iov mut [IoSliceMut<'b>]) -> Self {
             self.store.msg_hdr.msg_iov = ptr::from_mut(iov) as *mut _;
+            self.store.msg_hdr.msg_iovlen = iov.len() as _;
+            self
+        }
+
+        /// Set the receive buffers, which may point to uninitialized storage.
+        ///
+        /// # Safety
+        /// Each iovec must point to valid, exclusively writable storage that
+        /// outlives this header. Use the header only for receiving, without
+        /// calling its slice accessors.
+        pub unsafe fn with_raw_iovec(mut self, iov: &'iov mut [libc::iovec]) -> Self {
+            self.store.msg_hdr.msg_iov = iov.as_mut_ptr();
             self.store.msg_hdr.msg_iovlen = iov.len() as _;
             self
         }
@@ -299,6 +319,32 @@ mod store {
     impl From<SockAddrStore> for SocketAddr {
         fn from(store: SockAddrStore) -> Self {
             store.0.as_socket().unwrap()
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn receive_address_pointer_allows_writing_ipv4_and_ipv6() {
+            for peer in ["127.0.0.1:0", "[::1]:0"] {
+                let peer: SocketAddr = peer.parse().unwrap();
+                let source = SockAddr::from(peer);
+                let mut destination = SockAddrStore::new();
+                let header = MmsgHdrStore::<Mutable>::new().with_addr(&mut destination);
+                assert!(header.store.msg_hdr.msg_namelen >= source.len());
+                // SAFETY: Both addresses have live, nonoverlapping storage,
+                // and the destination capacity was checked above.
+                unsafe {
+                    ptr::copy_nonoverlapping(
+                        source.as_ptr().cast::<u8>(),
+                        header.store.msg_hdr.msg_name.cast::<u8>(),
+                        source.len() as usize,
+                    );
+                }
+                assert_eq!(SocketAddr::from(destination), peer);
+            }
         }
     }
 }

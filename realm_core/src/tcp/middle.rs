@@ -35,7 +35,8 @@ pub async fn connect_and_relay(
         #[cfg(feature = "balance")]
         balancer,
 
-        tcp_keepalive,
+        #[cfg(feature = "transport")]
+        connect_timeout,
         ..
     } = conn_opts.as_ref();
 
@@ -104,18 +105,19 @@ pub async fn connect_and_relay(
     }
 
     // relay
+    let half_close_timeout = conn_opts.as_ref().half_close_timeout();
     let res = {
         #[cfg(feature = "transport")]
         {
             if let Some((ac, cc)) = transport {
-                transport::run_relay(local, remote, ac, cc).await
+                transport::run_relay(local, remote, ac, cc, *connect_timeout, half_close_timeout).await
             } else {
-                plain::run_relay(local, remote).await
+                plain::run_relay(local, remote, half_close_timeout).await
             }
         }
         #[cfg(not(feature = "transport"))]
         {
-            plain::run_relay(local, remote).await
+            plain::run_relay(local, remote, half_close_timeout).await
         }
     };
 

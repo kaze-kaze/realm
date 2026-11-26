@@ -1,5 +1,8 @@
 #![allow(clippy::let_and_return)]
 use clap::{Command, Arg, ArgAction};
+use crate::conf::{DnsMode, DnsProtocol, LogLevel};
+
+pub(super) const PIPE_PAGE_SIZE: usize = 0x1000;
 
 pub fn add_all(app: Command) -> Command {
     let app = add_flags(app);
@@ -128,12 +131,16 @@ pub fn add_global_options(app: Command) -> Command {
             .long("nofile")
             .help("set nofile limit")
             .value_name("limit")
+            .value_parser(clap::value_parser!(u64))
             .display_order(0),
         Arg::new("pipe_page")
             .short('p')
             .long("pipe-page")
             .help("set pipe capacity")
             .value_name("number")
+            .value_parser(
+                clap::builder::RangedU64ValueParser::<usize>::new().range(..=(usize::MAX / PIPE_PAGE_SIZE) as u64),
+            )
             .display_order(1),
         Arg::new("pre_conn_hook")
             .short('j')
@@ -149,6 +156,7 @@ pub fn add_global_options(app: Command) -> Command {
             .long("log-level")
             .help("override log level")
             .value_name("level")
+            .value_parser(clap::builder::ValueParser::new(str::parse::<LogLevel>))
             .display_order(0),
         Arg::new("log_output")
             .long("log-output")
@@ -163,26 +171,31 @@ pub fn add_global_options(app: Command) -> Command {
             .long("dns-mode")
             .help("override dns mode")
             .value_name("mode")
+            .value_parser(clap::builder::ValueParser::new(str::parse::<DnsMode>))
             .display_order(0),
         Arg::new("dns_min_ttl")
             .long("dns-min-ttl")
             .help("override dns min ttl")
             .value_name("second")
+            .value_parser(clap::value_parser!(u32))
             .display_order(1),
         Arg::new("dns_max_ttl")
             .long("dns-max-ttl")
             .help("override dns max ttl")
             .value_name("second")
+            .value_parser(clap::value_parser!(u32))
             .display_order(2),
         Arg::new("dns_cache_size")
             .long("dns-cache-size")
             .help("override dns cache size")
             .value_name("number")
+            .value_parser(clap::value_parser!(u64))
             .display_order(3),
         Arg::new("dns_protocol")
             .long("dns-protocol")
             .help("override dns protocol")
             .value_name("protocol")
+            .value_parser(clap::builder::ValueParser::new(str::parse::<DnsProtocol>))
             .display_order(4),
         Arg::new("dns_servers")
             .long("dns-servers")
@@ -196,20 +209,24 @@ pub fn add_global_options(app: Command) -> Command {
         Arg::new("send_proxy")
             .long("send-proxy")
             .help("send proxy protocol header")
+            .value_parser(clap::value_parser!(bool))
             .display_order(0),
         Arg::new("send_proxy_version")
             .long("send-proxy-version")
             .help("send proxy protocol version")
             .value_name("version")
+            .value_parser(clap::builder::RangedU64ValueParser::<usize>::new().range(1..=2))
             .display_order(1),
         Arg::new("accept_proxy")
             .long("accept-proxy")
             .help("accept proxy protocol header")
+            .value_parser(clap::value_parser!(bool))
             .display_order(2),
         Arg::new("accept_proxy_timeout")
             .long("accept-proxy-timeout")
             .help("accept proxy protocol timeout")
             .value_name("second")
+            .value_parser(clap::value_parser!(usize))
             .display_order(3),
     ]);
 
@@ -217,24 +234,44 @@ pub fn add_global_options(app: Command) -> Command {
     let app = app.next_help_heading("TIMEOUT OPTIONS").args([
         Arg::new("tcp_timeout")
             .long("tcp-timeout")
-            .help("override tcp timeout(5s)")
+            .help("override TCP connect and transport handshake timeouts (5s, 0 disables)")
             .value_name("second")
+            .value_parser(clap::value_parser!(usize))
             .display_order(0),
         Arg::new("udp_timeout")
             .long("udp-timeout")
-            .help("override udp timeout(30s)")
+            .help("override UDP association idle timeout (30s, 0 disables)")
             .value_name("second")
+            .value_parser(clap::value_parser!(usize))
             .display_order(1),
         Arg::new("tcp_keepalive")
             .long("tcp-keepalive")
             .help("override default tcp keepalive interval(15s)")
             .value_name("second")
+            .value_parser(clap::value_parser!(usize))
             .display_order(2),
         Arg::new("tcp_keepalive_probe")
             .long("tcp-keepalive-probe")
             .help("override default tcp keepalive count(3)")
             .value_name("count")
+            .value_parser(clap::value_parser!(usize))
             .display_order(3),
+        Arg::new("half_close_timeout")
+            .long("half-close-timeout")
+            .help(if cfg!(feature = "brutal-shutdown") {
+                "TCP idle timeout after a half-close (10s, 0 closes immediately)"
+            } else {
+                "TCP idle timeout after a half-close (unlimited, 0 closes immediately)"
+            })
+            .value_name("second")
+            .value_parser(clap::value_parser!(usize))
+            .display_order(4),
+        Arg::new("tcp_user_timeout")
+            .long("tcp-user-timeout")
+            .help("TCP user timeout on Linux (0 leaves existing socket behavior)")
+            .value_name("second")
+            .value_parser(clap::value_parser!(usize))
+            .display_order(5),
     ]);
 
     app

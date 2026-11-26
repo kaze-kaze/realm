@@ -18,6 +18,7 @@
 //! - when no peer is usable, the current choice is kept.
 
 use std::fmt::{Display, Formatter};
+use std::future::Future;
 use std::io::{Error, ErrorKind};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
@@ -27,6 +28,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use futures::future::join_all;
 use futures::stream::{FuturesUnordered, StreamExt};
+use tokio::net::UdpSocket;
 use tokio::time::{Instant, MissedTickBehavior, interval, sleep_until, timeout_at};
 
 use crate::endpoint::{ConnectOpts, RemoteAddr};
@@ -199,13 +201,6 @@ impl Failover {
         #[cfg(not(feature = "balance"))]
         let balanced = false;
 
-        // probes leave from the `through` ip but never from its fixed port (udp may pin
-        // one): sharing that port would take replies away from the associations
-        let mut conn_opts = conn_opts.clone();
-        if let Some(addr) = conn_opts.bind_address.as_mut() {
-            addr.set_port(0);
-        }
-
         let fsm = Fsm::new(peers.len(), opts);
         let state = Arc::new(AtomicU32::new(fsm.snapshot().0));
         let peers: Box<[SocketAddr]> = peers.into();
@@ -217,7 +212,7 @@ impl Failover {
                 peers: peers.clone(),
                 targets,
                 opts: opts.clone(),
-                conn_opts,
+                conn_opts: probe_conn_opts(conn_opts),
                 state: state.clone(),
                 balanced,
             },
@@ -564,6 +559,16 @@ async fn probe_tcp(target: SocketAddr, opts: &FailoverOpts, conn_opts: &ConnectO
     Probe::Fail
 }
 
+fn probe_conn_opts(conn_opts: &ConnectOpts) -> ConnectOpts {
+    // Sharing a fixed `through` port would take replies away from UDP associations.
+    let mut opts = conn_opts.clone();
+    if let Some(addr) = opts.bind_address.as_mut() {
+        addr.set_port(0);
+    }
+    opts.tcp_user_timeout = 0;
+    opts
+}
+
 /// One probe connection, without a deadline of its own.
 async fn tcp_attempt(target: SocketAddr, opts: &FailoverOpts, conn_opts: &ConnectOpts) -> Probe {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -585,12 +590,13 @@ async fn tcp_attempt(target: SocketAddr, opts: &FailoverOpts, conn_opts: &Connec
         let mut buf = vec![0u8; want.len()];
         let mut n = 0;
         while n < want.len() {
-            match stream.read(&mut buf[n..]).await? {
-                0 => break,
-                k => n += k,
+            let end = n + stream.read(&mut buf[n..]).await?;
+            if end == n || buf[n..end] != want[n..end] {
+                return Ok(false);
             }
+            n = end;
         }
-        Ok::<_, Error>(&buf[..n] == want)
+        Ok::<_, Error>(true)
     };
 
     match run.await {
@@ -639,7 +645,10 @@ fn quic_probe(nonce: &[u8; 16]) -> Vec<u8> {
 /// `reply` is the Version Negotiation packet (RFC 8999, 6) for this probe: a long
 /// header of version 0 that returns both connection ids, swapped.
 fn is_quic_version_negotiation(reply: &[u8], nonce: &[u8; 16]) -> bool {
-    reply.len() >= 23
+    const HEADER: usize = 23;
+    const VERSION: usize = 4;
+    reply.len() >= HEADER + VERSION
+        && (reply.len() - HEADER).is_multiple_of(VERSION)
         && reply[0] & 0x80 != 0
         && reply[1..5] == [0u8; 4]
         && reply[5] == 8
@@ -675,7 +684,7 @@ async fn probe_udp(target: SocketAddr, opts: &FailoverOpts, conn_opts: &ConnectO
         msg
     };
     // echo: one extra byte so that a longer datagram never matches
-    let mut buf = vec![0u8; if quic { 256 } else { msg.len() + 1 }];
+    let mut buf = vec![0u8; if quic { 1500 } else { msg.len() + 1 }];
     let answered = |reply: &[u8]| {
         if quic {
             is_quic_version_negotiation(reply, &nonce)
@@ -686,25 +695,49 @@ async fn probe_udp(target: SocketAddr, opts: &FailoverOpts, conn_opts: &ConnectO
 
     let start = Instant::now();
     for k in 1..=TRIES {
-        let _ = sock.send(&msg).await;
         let until = start + opts.timeout * k / TRIES;
-        loop {
-            match timeout_at(until, sock.recv(&mut buf)).await {
-                Ok(Ok(n)) if answered(&buf[..n]) => return Probe::Ok,
-                // stale or foreign datagram
-                Ok(Ok(_)) => continue,
-                // e.g. icmp unreachable, wait for the next try
-                Ok(Err(e)) => {
-                    log::debug!("[failover][udp]probe {}: {}", target, e);
-                    sleep_until(until).await;
-                    break;
-                }
-                Err(_) => break,
-            }
+        if let Some(result) = udp_attempt(&sock, target, sock.send(&msg), &mut buf, answered, until).await {
+            return result;
         }
     }
     log::debug!("[failover][udp]probe {}: no answer", target);
     Probe::Fail
+}
+
+/// A send and its replies share one deadline. No result means the round can retry.
+async fn udp_attempt(
+    sock: &UdpSocket,
+    target: SocketAddr,
+    send: impl Future<Output = std::io::Result<usize>>,
+    buf: &mut [u8],
+    answered: impl Fn(&[u8]) -> bool,
+    until: Instant,
+) -> Option<Probe> {
+    match timeout_at(until, send).await {
+        Ok(Ok(_)) => {}
+        Ok(Err(e)) => {
+            log::debug!("[failover][udp]probe {}: send error: {}", target, e);
+            if is_local(&e) {
+                return Some(Probe::Unknown);
+            }
+            sleep_until(until).await;
+            return None;
+        }
+        Err(_) => return None,
+    }
+
+    loop {
+        match timeout_at(until, sock.recv(buf)).await {
+            Ok(Ok(n)) if answered(&buf[..n]) => return Some(Probe::Ok),
+            Ok(Ok(_)) => continue,
+            Ok(Err(e)) => {
+                log::debug!("[failover][udp]probe {}: {}", target, e);
+                sleep_until(until).await;
+                return None;
+            }
+            Err(_) => return None,
+        }
+    }
 }
 
 /// Unique per probe round within this process.
@@ -743,6 +776,15 @@ mod tests {
         }
     }
 
+    fn version_negotiation(nonce: &[u8], versions: &[u8]) -> Vec<u8> {
+        let mut vn = vec![0x8f, 0, 0, 0, 0, 8];
+        vn.extend_from_slice(&nonce[8..]);
+        vn.push(8);
+        vn.extend_from_slice(&nonce[..8]);
+        vn.extend_from_slice(versions);
+        vn
+    }
+
     #[test]
     fn quic_probe_and_its_answer() {
         let nonce: [u8; 16] = std::array::from_fn(|i| i as u8 + 1);
@@ -753,12 +795,8 @@ mod tests {
         assert_eq!((pkt[5], &pkt[6..14]), (8, &nonce[..8]));
         assert_eq!((pkt[14], &pkt[15..23]), (8, &nonce[8..]));
 
-        // version negotiation: version 0, both connection ids swapped, then the versions offered
-        let mut vn = vec![0x8f, 0, 0, 0, 0, 8];
-        vn.extend_from_slice(&nonce[8..]);
-        vn.push(8);
-        vn.extend_from_slice(&nonce[..8]);
-        vn.extend_from_slice(&[0, 0, 0, 1]);
+        let versions = [0, 0, 0, 1];
+        let mut vn = version_negotiation(&nonce, &versions);
         assert!(is_quic_version_negotiation(&vn, &nonce));
 
         // not an answer to this probe
@@ -774,7 +812,122 @@ mod tests {
         let mut bad = vn.clone();
         bad[4] = 1;
         assert!(!is_quic_version_negotiation(&bad, &nonce));
-        assert!(!is_quic_version_negotiation(&vn[..22], &nonce));
+        for n in [22, 23, 24, 25, 26] {
+            assert!(!is_quic_version_negotiation(&vn[..n], &nonce));
+        }
+        vn.push(0);
+        assert!(!is_quic_version_negotiation(&vn, &nonce));
+        vn.extend_from_slice(&[0, 0, 2]);
+        assert!(is_quic_version_negotiation(&vn, &nonce));
+    }
+
+    #[tokio::test]
+    async fn probe_connections_leave_the_data_timeout_and_source_port_unset() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let source = listener.local_addr().unwrap();
+        let conn_opts = ConnectOpts {
+            bind_address: Some(source),
+            tcp_user_timeout: 30,
+            ..Default::default()
+        };
+        let probe = probe_conn_opts(&conn_opts);
+        assert_eq!(probe.bind_address, Some(SocketAddr::new(source.ip(), 0)));
+        assert_eq!(probe.tcp_user_timeout, 0);
+        assert_eq!(conn_opts.bind_address, Some(source));
+        assert_eq!(conn_opts.tcp_user_timeout, 30);
+    }
+
+    #[tokio::test]
+    async fn tcp_attempt_rejects_wrong_prefix_before_the_rest_arrives() {
+        use tokio::io::AsyncWriteExt;
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let target = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            stream.write_all(b"!").await.unwrap();
+            std::future::pending::<()>().await;
+        });
+        let opts = FailoverOpts {
+            tcp_expect: b"OK".to_vec(),
+            ..Default::default()
+        };
+        let result = tokio::time::timeout(
+            Duration::from_secs(1),
+            tcp_attempt(target, &opts, &ConnectOpts::default()),
+        )
+        .await;
+        server.abort();
+        let _ = server.await;
+        assert_eq!(result.unwrap(), F);
+    }
+
+    #[tokio::test]
+    async fn udp_attempt_times_out_while_sending() {
+        let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let target = socket.local_addr().unwrap();
+        let until = Instant::now() + Duration::from_millis(20);
+        let mut buf = [0; 1];
+        let attempt = udp_attempt(&socket, target, std::future::pending(), &mut buf, |_| false, until);
+        assert_eq!(
+            tokio::time::timeout(Duration::from_secs(1), attempt).await.unwrap(),
+            None
+        );
+    }
+
+    #[tokio::test]
+    async fn udp_probe_treats_a_local_send_error_as_unknown() {
+        let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let target = socket.local_addr().unwrap();
+        let until = Instant::now() + Duration::from_secs(1);
+        let send = std::future::ready(Err(ErrorKind::AddrNotAvailable.into()));
+        assert_eq!(
+            udp_attempt(&socket, target, send, &mut [0], |_| false, until).await,
+            Some(U)
+        );
+    }
+
+    #[tokio::test]
+    async fn udp_probe_retries_peer_and_path_send_errors_at_the_deadline() {
+        let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let target = socket.local_addr().unwrap();
+        for kind in [
+            ErrorKind::ConnectionRefused,
+            ErrorKind::NetworkUnreachable,
+            ErrorKind::HostUnreachable,
+        ] {
+            let until = Instant::now() + Duration::from_millis(20);
+            let send = std::future::ready(Err(kind.into()));
+            assert_eq!(
+                udp_attempt(&socket, target, send, &mut [0], |_| false, until).await,
+                None
+            );
+            assert!(Instant::now() >= until);
+        }
+    }
+
+    #[tokio::test]
+    async fn udp_probe_accepts_a_large_quic_version_negotiation() {
+        let peer = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let target = peer.local_addr().unwrap();
+        let respond = async {
+            let mut buf = [0; QUIC_PROBE_SIZE];
+            let (_, source) = peer.recv_from(&mut buf).await.unwrap();
+            let nonce: Vec<_> = buf[6..14].iter().chain(&buf[15..23]).copied().collect();
+            let versions: Vec<u8> = (1u32..=350).flat_map(u32::to_be_bytes).collect();
+            let reply = version_negotiation(&nonce, &versions);
+            peer.send_to(&reply, source).await.unwrap();
+        };
+        let opts = FailoverOpts {
+            udp_probe: UdpProbe::Quic,
+            ..Default::default()
+        };
+        let conn_opts = ConnectOpts::default();
+        let result = tokio::time::timeout(Duration::from_secs(1), async {
+            tokio::join!(respond, probe_udp(target, &opts, &conn_opts)).1
+        })
+        .await;
+        assert_eq!(result.unwrap(), O);
     }
 
     #[test]
@@ -842,8 +995,10 @@ mod tests {
             n
         };
 
-        let mut opts = ConnectOpts::default();
-        opts.balancer = Balancer::new(Strategy::RoundRobin, &[1, 1, 1, 1]);
+        let mut opts = ConnectOpts {
+            balancer: Balancer::new(Strategy::RoundRobin, &[1, 1, 1, 1]),
+            ..Default::default()
+        };
         assert_eq!(count(&opts, 0b1111, 400), [100, 100, 100, 100]);
         assert_eq!(count(&opts, 0b1110, 300), [0, 100, 100, 100]);
         assert_eq!(count(&opts, 0b1100, 300), [0, 0, 150, 150]);

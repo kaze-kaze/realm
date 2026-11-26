@@ -9,6 +9,7 @@ use crate::endpoint::{BindOpts, ConnectOpts};
 pub fn bind(laddr: &SocketAddr, bind_opts: BindOpts) -> Result<std::net::UdpSocket> {
     let BindOpts {
         ipv6_only,
+        #[cfg(target_os = "linux")]
         bind_interface,
         ..
     } = bind_opts;

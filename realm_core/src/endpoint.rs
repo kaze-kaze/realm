@@ -44,7 +44,8 @@ pub struct ConnectOpts {
     pub connect_timeout: usize,
     /// Idle seconds after one direction shuts down. Zero closes immediately.
     pub half_close_timeout: Option<usize>,
-    /// Linux TCP user timeout in seconds. Zero leaves the existing behavior.
+    /// Linux TCP user timeout in seconds for both accepted and outbound sockets.
+    /// Zero keeps the socket defaults or the outbound timeout derived from failover keepalive.
     pub tcp_user_timeout: usize,
     pub associate_timeout: usize,
     pub tcp_keepalive: usize,
@@ -87,7 +88,6 @@ impl ConnectOpts {
 pub struct BindOpts {
     pub ipv6_only: bool,
     pub accept_mptcp: bool,
-    pub tcp_user_timeout: usize,
     pub bind_interface: Option<String>,
 }
 

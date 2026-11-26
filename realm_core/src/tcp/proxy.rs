@@ -94,25 +94,39 @@ async fn accept_header(src: &mut TcpStream, timeout: usize) -> Result<ProxyHeade
     timeoutfut(read_header(src), timeout).await?
 }
 
+async fn read_prefix(src: &mut TcpStream, buf: &mut [u8], valid: impl Fn(&[u8]) -> bool) -> Result<()> {
+    let mut len = 0;
+    while len < buf.len() {
+        let n = src.read(&mut buf[len..]).await?;
+        if n == 0 {
+            return Err(ErrorKind::UnexpectedEof.into());
+        }
+        len += n;
+        if !valid(&buf[..len]) {
+            return Err(Error::new(ErrorKind::InvalidData, "invalid PROXY header prefix"));
+        }
+    }
+    Ok(())
+}
+
 async fn read_header(src: &mut TcpStream) -> Result<ProxyHeader> {
     let mut prefix = [0; 6];
-    src.read_exact(&mut prefix).await?;
+    read_prefix(src, &mut prefix, |bytes| {
+        V1_PREFIX.starts_with(bytes) || V2_SIGNATURE.starts_with(bytes)
+    })
+    .await?;
     if &prefix == V1_PREFIX {
         return read_v1_header(src, prefix).await;
-    }
-    if prefix != V2_SIGNATURE[..6] {
-        return Err(Error::new(ErrorKind::InvalidData, "invalid PROXY header signature"));
     }
 
     let mut fixed = [0; 16];
     fixed[..6].copy_from_slice(&prefix);
-    src.read_exact(&mut fixed[6..]).await?;
-    if fixed[..12] != *V2_SIGNATURE || !matches!(fixed[12], 0x20 | 0x21) {
-        return Err(Error::new(
-            ErrorKind::InvalidData,
-            "invalid PROXY v2 signature or command",
-        ));
-    }
+    let signature = &V2_SIGNATURE[6..];
+    read_prefix(src, &mut fixed[6..], |bytes| {
+        signature.starts_with(&bytes[..bytes.len().min(signature.len())])
+            && matches!(bytes.get(signature.len()), None | Some(0x20 | 0x21))
+    })
+    .await?;
     let payload_len = u16::from_be_bytes([fixed[14], fixed[15]]) as usize;
     if payload_len > V2_MAX_PAYLOAD {
         return Err(Error::new(ErrorKind::InvalidData, "PROXY v2 payload is too long"));
@@ -345,6 +359,25 @@ mod tests {
             tx.shutdown().await.unwrap();
             let err = accept_header(&mut rx, 1).await.unwrap_err();
             assert_ne!(err.kind(), ErrorKind::TimedOut, "input {:?}", input);
+        }
+    }
+
+    #[tokio::test]
+    async fn rejects_an_impossible_signature_or_command_without_waiting_for_more_bytes() {
+        for prefix in [
+            b"x".as_slice(),
+            b"PRx",
+            b"\r\nx",
+            b"\r\n\r\n\0\rx",
+            b"\r\n\r\n\0\r\nQUIT\n\x22",
+        ] {
+            let (mut tx, mut rx) = pair().await;
+            tx.write_all(prefix).await.unwrap();
+            let err = timeout(Duration::from_secs(1), accept_header(&mut rx, 0))
+                .await
+                .unwrap()
+                .unwrap_err();
+            assert_eq!(err.kind(), ErrorKind::InvalidData, "prefix {:?}", prefix);
         }
     }
 

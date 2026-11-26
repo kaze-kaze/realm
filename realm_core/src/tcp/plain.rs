@@ -1,4 +1,6 @@
 use std::io::Result;
+#[cfg(target_os = "linux")]
+use std::sync::Once;
 use std::time::Duration;
 use tokio::net::TcpStream;
 
@@ -23,25 +25,17 @@ async fn relay_with_pipes(
     timeout: Option<Duration>,
     mut make_pipe: impl FnMut() -> Result<realm_io::Pipe>,
 ) -> Result<()> {
-    use std::io::ErrorKind;
     use crate::rate_limit::RateLimit;
-    use realm_io::{CopyBuffer, bidi_copy_buf_with_timeout};
+    use realm_io::try_bidi_zero_copy_with_pipes;
 
     let pipes = make_pipe().and_then(|forward| make_pipe().map(|reverse| (forward, reverse)));
     match pipes {
         Ok((forward, reverse)) => {
-            let result = bidi_copy_buf_with_timeout(
-                &mut local,
-                &mut remote,
-                CopyBuffer::new(forward),
-                CopyBuffer::new(reverse),
-                timeout,
-            )
-            .await;
-            match result {
-                Ok(_) => return Ok(()),
-                Err(e) if e.kind() == ErrorKind::InvalidInput => {}
-                Err(e) => return Err(e),
+            if try_bidi_zero_copy_with_pipes(&mut local, &mut remote, forward, reverse, timeout)
+                .await?
+                .is_some()
+            {
+                return Ok(());
             }
         }
         Err(e) => {
@@ -60,20 +54,25 @@ async fn relay_with_pipes(
 
 #[cfg(target_os = "linux")]
 fn new_pipe() -> Result<realm_io::Pipe> {
-    use std::sync::Once;
-
     static SMALL_PIPE: Once = Once::new();
     let pipe = realm_io::Pipe::new()?;
-    let requested = realm_io::pipe_size();
-    if let Ok(actual) = pipe.capacity() {
+    warn_if_small_pipe(&SMALL_PIPE, realm_io::pipe_size(), || pipe.capacity());
+    Ok(pipe)
+}
+
+#[cfg(target_os = "linux")]
+fn warn_if_small_pipe(warned: &Once, requested: usize, capacity: impl FnOnce() -> Result<usize>) {
+    if warned.is_completed() {
+        return;
+    }
+    if let Ok(actual) = capacity() {
         if actual < requested {
-            SMALL_PIPE.call_once(|| log::warn!(
+            warned.call_once(|| log::warn!(
                 "[tcp]relay pipe capacity is {} bytes (requested {}); run with CAP_SYS_RESOURCE or raise fs.pipe-user-pages-soft",
                 actual, requested
             ));
         }
     }
-    Ok(pipe)
 }
 
 #[cfg(all(test, target_os = "linux"))]
@@ -81,6 +80,23 @@ mod tests {
     use super::*;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::TcpListener;
+
+    #[test]
+    fn pipe_capacity_is_checked_until_the_first_shrink_warning() {
+        let warned = Once::new();
+        let requested = 65536;
+        warn_if_small_pipe(&warned, requested, || Ok(requested));
+        warn_if_small_pipe(&warned, requested, || {
+            Err(std::io::Error::from_raw_os_error(libc::EBADF))
+        });
+        assert!(!warned.is_completed());
+
+        warn_if_small_pipe(&warned, requested, || Ok(8192));
+        assert!(warned.is_completed());
+        for _ in 0..2 {
+            warn_if_small_pipe(&warned, requested, || panic!("queried capacity after the warning"));
+        }
+    }
 
     #[tokio::test]
     async fn pipe_creation_failure_falls_back_before_any_data_is_consumed() {

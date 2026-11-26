@@ -5,6 +5,7 @@
 //! ## Example
 //!
 //! ```no_run
+//! #[cfg(target_os = "linux")]
 //! async {
 //!     use tokio::net::TcpStream;
 //!     use realm_io::{bidi_copy, bidi_zero_copy, bidi_copy_buf};
@@ -54,7 +55,11 @@ pub use mem_copy::{bidi_copy, bidi_copy_with_timeout, buf_size, set_buf_size};
 #[cfg(target_os = "linux")]
 mod linux;
 
-#[cfg(any(target_os = "linux", doc))]
+#[cfg(target_os = "linux")]
+#[cfg_attr(doc, doc(cfg(target_os = "linux")))]
+pub use bidi_copy::try_bidi_zero_copy_with_pipes;
+
+#[cfg(target_os = "linux")]
 #[cfg_attr(doc, doc(cfg(target_os = "linux")))]
 pub use linux::{
     AsyncRawIO, mmsg,

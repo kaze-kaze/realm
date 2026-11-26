@@ -43,7 +43,11 @@ impl SockAddrStore {
     /// Decode a kernel-filled address.
     #[inline]
     pub fn to_socket_addr(&self) -> SocketAddr {
-        self.inner.clone().into()
+        #[cfg(all(target_os = "linux", feature = "batched-udp"))]
+        return self.inner.clone().into();
+
+        #[cfg(not(all(target_os = "linux", feature = "batched-udp")))]
+        self.inner
     }
 }
 
@@ -55,13 +59,22 @@ impl Default for SockAddrStore {
 
 impl From<SocketAddr> for SockAddrStore {
     fn from(value: SocketAddr) -> Self {
-        SockAddrStore { inner: value.into() }
+        Self {
+            #[cfg(all(target_os = "linux", feature = "batched-udp"))]
+            inner: value.into(),
+            #[cfg(not(all(target_os = "linux", feature = "batched-udp")))]
+            inner: value,
+        }
     }
 }
 
 impl From<SockAddrStore> for SocketAddr {
     fn from(value: SockAddrStore) -> Self {
-        value.inner.into()
+        #[cfg(all(target_os = "linux", feature = "batched-udp"))]
+        return value.inner.into();
+
+        #[cfg(not(all(target_os = "linux", feature = "batched-udp")))]
+        value.inner
     }
 }
 

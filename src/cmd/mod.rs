@@ -255,7 +255,6 @@ mod tests {
                     let ep = ep.build().endpoint;
                     let half = ep.conn_opts.half_close_timeout;
                     let user = ep.conn_opts.tcp_user_timeout;
-                    assert_eq!(ep.bind_opts.tcp_user_timeout, user);
                     let display = ep.to_string();
                     assert!(
                         display.contains(&format!("half-close-timeout={}s", half.unwrap())),

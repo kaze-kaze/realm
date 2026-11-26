@@ -25,6 +25,7 @@ fn new_socket(addr: &SocketAddr, mptcp: bool) -> Result<Socket> {
 
     #[cfg(not(target_os = "linux"))]
     {
+        let _ = mptcp;
         realm_syscall::new_tcp_socket(addr)
     }
 }
@@ -33,6 +34,7 @@ pub fn bind(laddr: &SocketAddr, bind_opts: BindOpts) -> Result<TcpListener> {
     let BindOpts {
         accept_mptcp,
         ipv6_only,
+        #[cfg(target_os = "linux")]
         bind_interface,
         ..
     } = bind_opts;
@@ -377,11 +379,5 @@ mod tests {
         assert_eq!(timeout_on_socket(true, 21), Some(Duration::from_secs(21)));
         assert_eq!(timeout_on_socket(true, 0), Some(Duration::from_secs(15)));
         assert_eq!(timeout_on_socket(false, 0), None);
-
-        let _client = TcpStream::connect(addr).await.unwrap();
-        let (accepted, _) = listener.accept().await.unwrap();
-        let socket = keepalive::SockRef::from(&accepted);
-        set_tcp_user_timeout(&socket, 21);
-        assert_eq!(socket.tcp_user_timeout().unwrap(), Some(Duration::from_secs(21)));
     }
 }

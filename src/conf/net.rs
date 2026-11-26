@@ -119,7 +119,6 @@ impl Config for NetConf {
         let bind_opts = BindOpts {
             ipv6_only,
             accept_mptcp,
-            tcp_user_timeout,
             bind_interface: None,
         };
         let conn_opts = ConnectOpts {
@@ -275,7 +274,6 @@ mod tests {
     #[test]
     fn tcp_timeout_defaults_follow_the_build_features() {
         let info = NetConf::default().build();
-        assert_eq!(info.bind_opts.tcp_user_timeout, 0);
         assert_eq!(info.conn_opts.tcp_user_timeout, 0);
         let expected = if cfg!(feature = "brutal-shutdown") {
             "10s"

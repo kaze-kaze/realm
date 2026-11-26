@@ -11,7 +11,7 @@ A simple, high performance relay server written in rust.
 
 ## About this fork
 
-This is a fork of [zhboner/realm](https://github.com/zhboner/realm) (v2.9.6). Its own versions start at 3.0.0, and `realm -v` tells the two apart. A config written for upstream runs unchanged, and the new options are off until they are configured. One thing moves on the upgrade: an `iphash` endpoint maps its clients to peers anew, once.
+This is a fork of [zhboner/realm](https://github.com/zhboner/realm) (v2.9.6). Its own versions start at 3.0.0, and `realm -v` tells the two apart. A config written for upstream runs unchanged. The release packages let the remaining TCP direction run until it has been idle for 10 seconds after a half-close. Set `half_close_timeout = 0` to close immediately. On upgrade, an `iphash` endpoint maps its clients to peers anew, once.
 
 What it adds:
 
@@ -95,7 +95,7 @@ The `realm` binary will be available in `target/release`.
 - ~~tfo: enable tcp-fast-open~~ deprecated.
 - ~~trust-dns: enable trust-dns's async dns resolver~~ builtin.
 - ~~zero-copy: enable zero-copy on linux~~ builtin.
-- brutal-shutdown: see [realm_io/brutal-shutdown](realm_io/README.md#about-brutal-shutdown).
+- brutal-shutdown: default to a 10-second idle timeout after a TCP half-close. Set `half_close_timeout = 0` to close immediately. See [network.half_close_timeout](#networkhalf_close_timeout-unsigned-int).
 - hook: see [realm_hook](realm_hook/README.md).
 - proxy: enable proxy-protocol.
 - balance: enable load balance.

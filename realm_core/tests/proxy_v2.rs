@@ -1,3 +1,5 @@
+#![cfg(feature = "proxy")]
+
 use std::net::SocketAddr;
 use std::time::Duration;
 
@@ -6,13 +8,9 @@ use tokio::time::sleep;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use realm_core::tcp::run_tcp;
-use realm_core::endpoint::{Endpoint, RemoteAddr, ConnectOpts};
-
-#[cfg(feature = "proxy")]
-use realm_core::endpoint::ProxyOpts;
+use realm_core::endpoint::{Endpoint, RemoteAddr, ConnectOpts, ProxyOpts};
 
 #[tokio::test]
-#[cfg(feature = "proxy")]
 async fn proxy_v2() {
     env_logger::init();
 

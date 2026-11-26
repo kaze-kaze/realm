@@ -265,6 +265,13 @@ mod registry {
     }
 }
 
+fn select_upstream(mut addrs: impl Iterator<Item = SocketAddr>, through: Option<SocketAddr>) -> Option<SocketAddr> {
+    match through {
+        Some(through) => addrs.find(|addr| addr.is_ipv4() == through.is_ipv4()),
+        None => addrs.next(),
+    }
+}
+
 fn remember_resolution(
     rname: &RemoteAddr,
     last: &mut Option<SocketAddr>,
@@ -324,7 +331,9 @@ pub async fn associate_and_relay(
                 let raddr = match rname.as_ref() {
                     RemoteAddr::SocketAddr(addr) => *addr,
                     RemoteAddr::DomainName(..) => {
-                        let result = resolve_addr(&rname).await.map(|addrs| addrs.iter().next());
+                        let result = resolve_addr(&rname)
+                            .await
+                            .map(|addrs| select_upstream(addrs.iter(), conn_opts.bind_address));
                         let Some(addr) = remember_resolution(&rname, &mut last_resolved, result) else {
                             continue;
                         };
@@ -579,6 +588,34 @@ async fn send_back(
 mod tests {
     use super::*;
     use crate::failover::{FailoverOpts, Proto};
+
+    #[test]
+    fn selects_the_first_upstream_matching_through() {
+        let ipv4 = "127.0.0.1:0".parse().unwrap();
+        let ipv6 = "[::1]:0".parse().unwrap();
+        let other_ipv4 = "127.0.0.2:0".parse().unwrap();
+        let other_ipv6 = "[::2]:0".parse().unwrap();
+        let ipv4_first = [ipv4, ipv6, other_ipv4, other_ipv6];
+        let ipv6_first = [ipv6, ipv4, other_ipv6, other_ipv4];
+        assert_eq!(select_upstream(ipv4_first.into_iter(), None), Some(ipv4));
+        assert_eq!(select_upstream(ipv6_first.into_iter(), None), Some(ipv6));
+        assert_eq!(select_upstream(ipv4_first.into_iter(), Some(ipv6)), Some(ipv6));
+        assert_eq!(select_upstream(ipv6_first.into_iter(), Some(ipv4)), Some(ipv4));
+    }
+
+    #[test]
+    fn only_remembers_addresses_that_match_through() {
+        let rname = RemoteAddr::DomainName("localhost".into(), 0);
+        let ipv4 = "127.0.0.1:0".parse().unwrap();
+        let ipv6 = "[::1]:0".parse().unwrap();
+        let through = Some(ipv6);
+        let mut last = None;
+        let opposite_family = || Ok(select_upstream([ipv4].into_iter(), through));
+        assert_eq!(remember_resolution(&rname, &mut last, opposite_family()), None);
+        let both = Ok(select_upstream([ipv4, ipv6].into_iter(), through));
+        assert_eq!(remember_resolution(&rname, &mut last, both), Some(ipv6));
+        assert_eq!(remember_resolution(&rname, &mut last, opposite_family()), Some(ipv6));
+    }
 
     #[test]
     fn resolution_failure_or_empty_result_preserves_last_address() {

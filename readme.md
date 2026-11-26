@@ -199,10 +199,12 @@ PROXY OPTIONS:
       --accept-proxy-timeout <second>  accept proxy protocol timeout
 
 TIMEOUT OPTIONS:
-      --tcp-timeout <second>         override tcp timeout(5s)
-      --udp-timeout <second>         override udp timeout(30s)
+      --tcp-timeout <second>         override TCP connect and transport handshake timeouts (5s, 0 disables)
+      --udp-timeout <second>         override UDP association idle timeout (30s, 0 disables)
       --tcp-keepalive <second>       override default tcp keepalive interval(15s)
       --tcp-keepalive-probe <count>  override default tcp keepalive count(3)
+      --half-close-timeout <second>  TCP idle timeout after a half-close (10s, 0 closes immediately)
+      --tcp-user-timeout <second>    TCP user timeout on Linux (0 leaves existing socket behavior)
 ```
 
 Start from command line arguments:
@@ -324,6 +326,8 @@ remote = "www.google.com:443"
 │   ├── use_udp
 │   ├── ipv6_only
 │   ├── tcp_timeout
+│   ├── half_close_timeout
+│   ├── tcp_user_timeout
 │   ├── udp_timeout
 │   ├── udp_no_fragment
 │   ├── tcp_keepalive
@@ -423,7 +427,7 @@ A background task probes every peer per protocol. Traffic only moves on probe re
 
 Behavior:
 
-- TCP: new connections dial the active peer. If that dial fails, the same client connection retries on other ready peers before any data is relayed: up to three dials in all, so two peers failing at the same moment cost no connection while a third is ready. All dials share `tcp_timeout`, and one that can be retried elsewhere gets half of what is left of it. Established connections are never moved. On Linux, a connection whose peer stops acknowledging (or stops reading while data is pending) is closed after `tcp_keepalive` x (`tcp_keepalive_probe` + 1) seconds (60 by default), idle or not, so its client can reconnect to the active peer. Without this, a connection with data in flight to a dead peer hangs for about 15 minutes. `tcp_keepalive = 0` turns both off.
+- TCP: new connections dial the active peer. If that dial fails, the same client connection retries on other ready peers before any data is relayed: up to three dials in all, so two peers failing at the same moment cost no connection while a third is ready. All dials share `tcp_timeout`, and one that can be retried elsewhere gets half of what is left of it. Established connections are never moved. On Linux, a connection whose peer stops acknowledging (or stops reading while data is pending) is closed after `tcp_keepalive` x (`tcp_keepalive_probe` + 1) seconds (60 by default), idle or not, so its client can reconnect to the active peer. Without this, a connection with data in flight to a dead peer hangs for about 15 minutes. `tcp_keepalive = 0` turns off keepalive and its derived timeout. A positive `tcp_user_timeout` overrides the derived timeout and still applies when keepalive is disabled.
 - UDP: new associations use the active peer. An existing association keeps its peer until that peer is down, then its next datagram goes to the active peer through the same upstream socket (client and relay ports stay the same). After such a move, late replies from the old peer are dropped.
 
 Probes (from this host, with the same `interface` and `through` ip; a port in `through` is never used by probes):
@@ -447,11 +451,11 @@ A key in the `failover` table that is not one of these is an error at startup, s
 | tcp_expect | none | expected prefix of the TCP probe reply |
 | udp_send | empty | prefix of the UDP probe datagram (`echo` only) |
 | udp_probe | echo | `echo` or `quic` |
-| interval | 3 | seconds between probe rounds |
-| timeout | 1.5 | seconds per probe |
+| interval | 3 | seconds between probe rounds, at most 86400 |
+| timeout | 1.5 | seconds per probe, at most 86400 |
 | fall / window | 3 / 5 | failures within the last rounds to mark a peer down (window <= 8) |
 | rise | 5 | consecutive successes to mark a peer up again |
-| hold | 30 | seconds before failing back |
+| hold | 30 | seconds before failing back, at most 86400 |
 
 With the defaults, a silently failing primary is detected in about 7.5-10.5s. Keep `tcp_timeout` at 3-5s on failover endpoints.
 
@@ -597,6 +601,8 @@ values:
 
 default: ipv4_and_ipv6
 
+The resolver keeps system options such as `ndots`, `timeout`, and `attempts`, including when individual Realm DNS settings are overridden.
+
 #### dns.protocol: string
 
 Dns transport protocol.
@@ -637,9 +643,9 @@ default: 86400 (1 day)
 
 #### dns.cache_size: unsigned int
 
-The maximum count of dns cache.
+The maximum number of DNS cache entries.
 
-default: 32
+default: 8192
 
 ### network
 
@@ -692,11 +698,23 @@ default: false
 
 #### network.tcp_timeout: unsigned int
 
-This is **connect** timeout. An attempt to connect to a remote peer fails after waiting for a period of time.
-
-To disable timeout, you need to explicitly set timeout value to 0.
+Time in seconds allowed for an outbound TCP connection attempt. The two transport handshakes share a separate timeout of the same duration. Set it to `0` to disable both timeouts.
 
 default: 5
+
+#### network.half_close_timeout: unsigned int
+
+After one direction reaches EOF, sends all its data, and shuts down the other socket's write side, the remaining direction can keep forwarding. The relay closes both sockets if that direction makes no write progress for this many seconds. Set it to `0` to close both sockets as soon as either direction finishes.
+
+Builds with `brutal-shutdown`, including the release binaries, default to 10 seconds. Builds without that feature wait for both directions to finish by default. An endpoint can override the global setting.
+
+#### network.tcp_user_timeout: unsigned int
+
+Linux only. Sets `TCP_USER_TIMEOUT` on accepted and outbound data sockets. This limits how long sent data may go unacknowledged or buffered data may remain unsent when the peer advertises a zero window. It applies with keepalive disabled and overrides the timeout derived from keepalive for outbound failover sockets. Failover probes do not use it.
+
+With keepalive enabled, Linux uses this timeout to decide when to close an idle connection once it has sent at least one probe. The keepalive probe count no longer controls this decision. Realm warns at startup when a positive `tcp_user_timeout` is at most `tcp_keepalive`, since one unanswered probe can then close an idle connection. Use at least `tcp_keepalive × (tcp_keepalive_probe + 1)` seconds to preserve the keepalive window.
+
+Defaults to `0`, which leaves the existing socket behavior in place, including the derived timeout on outbound failover sockets. An endpoint can override the global setting.
 
 #### network.udp_timeout: unsigned int
 

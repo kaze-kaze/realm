@@ -80,23 +80,20 @@ impl EndpointConf {
 
     fn build_send_through(&self) -> Option<SocketAddr> {
         let through = self.through.as_deref()?;
+        if let Some(addr) = through.to_socket_addrs().ok().and_then(|mut addrs| addrs.next()) {
+            return Some(addr);
+        }
         let ip = through
             .strip_prefix('[')
             .and_then(|s| s.strip_suffix(']'))
-            .unwrap_or(through);
-        if let Ok(ip) = ip.parse::<IpAddr>() {
-            return Some(SocketAddr::new(ip, 0));
-        }
-        let addr = through
-            .to_socket_addrs()
-            .ok()
-            .and_then(|mut addrs| addrs.next())
-            .unwrap_or_else(|| panic!("endpoint {}: invalid through address {:?}", self.listen, through));
-        Some(addr)
+            .unwrap_or(through)
+            .parse::<IpAddr>()
+            .unwrap_or_else(|_| panic!("endpoint {}: invalid through address {:?}", self.listen, through));
+        Some(SocketAddr::new(ip, 0))
     }
 
     #[cfg(feature = "balance")]
-    fn build_balancer(&self) -> Balancer {
+    fn build_balancer(&self, warn: &mut impl FnMut(String)) -> Balancer {
         let Some(balance) = &self.balance else {
             return Balancer::default();
         };
@@ -213,14 +210,8 @@ pub struct EndpointInfo {
     pub endpoint: Endpoint,
 }
 
-impl Config for EndpointConf {
-    type Output = EndpointInfo;
-
-    fn is_empty(&self) -> bool {
-        false
-    }
-
-    fn build(self) -> Self::Output {
+impl EndpointConf {
+    fn build_with_warnings(self, mut warn: impl FnMut(String)) -> EndpointInfo {
         let laddr = self.build_local();
         let raddr = self.build_remote();
 
@@ -270,9 +261,20 @@ impl Config for EndpointConf {
             conn_opts.tcp_keepalive_probe = 1;
         }
 
+        #[cfg(target_os = "linux")]
+        if conn_opts.tcp_keepalive > 0
+            && conn_opts.tcp_user_timeout > 0
+            && conn_opts.tcp_user_timeout <= conn_opts.tcp_keepalive
+        {
+            warn(format!(
+                "endpoint {}: tcp_user_timeout <= tcp_keepalive; one unanswered probe can close an idle connection",
+                self.listen
+            ));
+        }
+
         #[cfg(feature = "balance")]
         {
-            conn_opts.balancer = self.build_balancer();
+            conn_opts.balancer = self.build_balancer(&mut warn);
         }
 
         #[cfg(not(feature = "balance"))]
@@ -331,6 +333,18 @@ impl Config for EndpointConf {
             },
         }
     }
+}
+
+impl Config for EndpointConf {
+    type Output = EndpointInfo;
+
+    fn is_empty(&self) -> bool {
+        false
+    }
+
+    fn build(self) -> Self::Output {
+        self.build_with_warnings(warn)
+    }
 
     fn rst_field(&mut self, _: &Self) -> &mut Self {
         unreachable!()
@@ -373,15 +387,16 @@ mod tests {
         toml::from_str::<EndpointConf>(conf).unwrap().build()
     }
 
+    fn config_with(options: &str) -> EndpointConf {
+        toml::from_str(&format!("listen = '127.0.0.1:0'\nremote = '127.0.0.1:0'\n{}", options)).unwrap()
+    }
+
     fn build_with(options: &str) -> EndpointInfo {
-        build(&format!(
-            "listen = '127.0.0.1:39305'\nremote = '127.0.0.1:39309'\n{}",
-            options
-        ))
+        config_with(options).build()
     }
 
     #[test]
-    #[should_panic(expected = "endpoint 127.0.0.1:39305: invalid through address")]
+    #[should_panic(expected = "endpoint 127.0.0.1:0: invalid through address")]
     fn rejects_invalid_through_address() {
         build_with("through = '10.300.1.1'");
     }
@@ -390,13 +405,14 @@ mod tests {
     fn accepts_through_addresses_with_or_without_a_port() {
         for (input, expected) in [
             ("127.0.0.1", "127.0.0.1:0"),
-            ("127.0.0.1:39309", "127.0.0.1:39309"),
             ("[::1]", "[::1]:0"),
             ("::1", "[::1]:0"),
-            ("[::1]:39309", "[::1]:39309"),
+            ("::1:4040", "[::1]:4040"),
+            ("[::1]:4040", "[::1]:4040"),
+            ("[::1:4040]", "[::1:4040]:0"),
         ] {
             let opts = build(&format!(
-                "listen = '127.0.0.1:39305'\nremote = '{}'\nthrough = '{}'",
+                "listen = '127.0.0.1:0'\nremote = '{}'\nthrough = '{}'",
                 expected, input
             ))
             .endpoint
@@ -406,40 +422,46 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "through address [::1]:0 and remote 127.0.0.1:39309 must share one address family")]
+    #[should_panic(expected = "through address [::1]:0 and remote 127.0.0.1:0 must share one address family")]
     fn rejects_through_address_from_another_family() {
         build_with("through = '::1'");
     }
 
     #[test]
-    #[should_panic(expected = "through address 127.0.0.1:0 and remote [::1]:39308 must share one address family")]
+    #[should_panic(expected = "through address 127.0.0.1:0 and remote [::1]:0 must share one address family")]
     fn rejects_extra_remote_from_another_through_address_family() {
-        build_with("through = '127.0.0.1'\nextra_remotes = ['[::1]:39308']");
+        build_with("through = '127.0.0.1'\nextra_remotes = ['[::1]:0']");
     }
 
     #[test]
     fn leaves_domain_family_to_resolution() {
-        build_with("through = '127.0.0.1'\nextra_remotes = ['localhost:39308']");
+        build_with("through = '127.0.0.1'\nextra_remotes = ['localhost:0']");
     }
 
     #[cfg(feature = "balance")]
     #[test]
     #[should_panic(expected = "invalid balance weight")]
     fn rejects_nonnumeric_balance_weight() {
-        build_with("extra_remotes = ['127.0.0.1:39308']\nbalance = 'roundrobin: 1, x'");
+        build_with("extra_remotes = ['127.0.0.2:0']\nbalance = 'roundrobin: 1, x'");
     }
 
     #[cfg(feature = "balance")]
     #[test]
     #[should_panic(expected = "balance has 3 weights for 2 peers")]
     fn rejects_excess_balance_weights() {
-        build_with("extra_remotes = ['127.0.0.1:39308']\nbalance = 'roundrobin: 1, 1, 1'");
+        build_with("extra_remotes = ['127.0.0.2:0']\nbalance = 'roundrobin: 1, 1, 1'");
     }
 
     #[cfg(feature = "balance")]
     #[test]
     fn missing_balance_weights_leave_peer_selection_unchanged() {
-        let ep = build_with("extra_remotes = ['127.0.0.1:39308']\nbalance = 'roundrobin: 1,'");
+        let mut warnings = Vec::new();
+        let ep = config_with("extra_remotes = ['127.0.0.2:0']\nbalance = 'roundrobin: 1,'")
+            .build_with_warnings(|msg| warnings.push(msg));
+        assert_eq!(
+            warnings,
+            ["endpoint 127.0.0.1:0: balance has only 1 weight(s) for 2 peers"]
+        );
         assert_eq!(ep.endpoint.conn_opts.balancer.total(), 1);
         assert_eq!(ep.endpoint.extra_raddrs.len(), 1);
     }
@@ -452,8 +474,28 @@ mod tests {
 
     #[test]
     fn allows_a_rule_with_no_listeners() {
-        let ep = build_with("network = { no_tcp = true }");
+        let mut warnings = Vec::new();
+        let ep = config_with("network = { no_tcp = true }").build_with_warnings(|msg| warnings.push(msg));
+        assert_eq!(warnings, ["endpoint 127.0.0.1:0: no TCP or UDP listener is enabled"]);
         assert!(ep.no_tcp && !ep.use_udp);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn warns_when_tcp_user_timeout_allows_one_unanswered_keepalive_probe() {
+        for (user_timeout, keepalive, warn) in [(15, 15, true), (16, 15, false), (0, 15, false), (15, 0, false)] {
+            let mut warnings = Vec::new();
+            config_with(&format!(
+                "network = {{ tcp_user_timeout = {}, tcp_keepalive = {} }}",
+                user_timeout, keepalive
+            ))
+            .build_with_warnings(|msg| warnings.push(msg));
+            if warn {
+                assert_eq!(warnings, ["endpoint 127.0.0.1:0: tcp_user_timeout <= tcp_keepalive; one unanswered probe can close an idle connection"]);
+            } else {
+                assert!(warnings.is_empty(), "{:?}", warnings);
+            }
+        }
     }
 
     /// A keepalive of zero probes is no keepalive the kernel accepts.
@@ -461,7 +503,7 @@ mod tests {
     fn keepalive_probe_is_at_least_one() {
         let ep = |network: &str| {
             let conf = format!(
-                "listen = \"127.0.0.1:1\"\nremote = \"10.0.0.1:1\"\nnetwork = {{ {} }}",
+                "listen = \"127.0.0.1:0\"\nremote = \"127.0.0.1:0\"\nnetwork = {{ {} }}",
                 network
             );
             let opts = build(&conf).endpoint.conn_opts;

@@ -166,7 +166,7 @@ mod tests {
 
     #[tokio::test]
     async fn association_has_a_local_port_before_sending() {
-        let raddr = "127.0.0.1:39319".parse().unwrap();
+        let raddr = "127.0.0.1:0".parse().unwrap();
         let sock = associate(&raddr, &ConnectOpts::default()).unwrap();
         assert_ne!(sock.local_addr().unwrap().port(), 0);
     }

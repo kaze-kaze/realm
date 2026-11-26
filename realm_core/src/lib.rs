@@ -8,6 +8,8 @@ pub mod trick;
 pub mod endpoint;
 pub mod failover;
 
+mod rate_limit;
+
 pub use realm_io;
 pub use realm_syscall;
 

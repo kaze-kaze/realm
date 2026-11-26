@@ -1,22 +1,240 @@
 use std::io::Result;
+use std::time::Duration;
 use tokio::net::TcpStream;
 
-#[inline]
-pub async fn run_relay(mut local: TcpStream, mut remote: TcpStream) -> Result<()> {
+pub async fn run_relay(local: TcpStream, remote: TcpStream, timeout: Option<Duration>) -> Result<()> {
     #[cfg(target_os = "linux")]
-    {
-        use std::io::ErrorKind;
-        match realm_io::bidi_zero_copy(&mut local, &mut remote).await {
-            Ok(_) => Ok(()),
-            Err(ref e) if e.kind() == ErrorKind::InvalidInput => {
-                realm_io::bidi_copy(&mut local, &mut remote).await.map(|_| ())
+    return relay_with_pipes(local, remote, timeout, new_pipe).await;
+
+    #[cfg(not(target_os = "linux"))]
+    relay_in_memory(local, remote, timeout).await
+}
+
+async fn relay_in_memory(mut local: TcpStream, mut remote: TcpStream, timeout: Option<Duration>) -> Result<()> {
+    realm_io::bidi_copy_with_timeout(&mut local, &mut remote, timeout)
+        .await
+        .map(|_| ())
+}
+
+#[cfg(target_os = "linux")]
+async fn relay_with_pipes(
+    mut local: TcpStream,
+    mut remote: TcpStream,
+    timeout: Option<Duration>,
+    mut make_pipe: impl FnMut() -> Result<realm_io::Pipe>,
+) -> Result<()> {
+    use std::io::ErrorKind;
+    use crate::rate_limit::RateLimit;
+    use realm_io::{CopyBuffer, bidi_copy_buf_with_timeout};
+
+    let pipes = make_pipe().and_then(|forward| make_pipe().map(|reverse| (forward, reverse)));
+    match pipes {
+        Ok((forward, reverse)) => {
+            let result = bidi_copy_buf_with_timeout(
+                &mut local,
+                &mut remote,
+                CopyBuffer::new(forward),
+                CopyBuffer::new(reverse),
+                timeout,
+            )
+            .await;
+            match result {
+                Ok(_) => return Ok(()),
+                Err(e) if e.kind() == ErrorKind::InvalidInput => {}
+                Err(e) => return Err(e),
             }
-            Err(e) => Err(e),
+        }
+        Err(e) => {
+            static PIPE_FAILURE: RateLimit = RateLimit::new();
+            if let Some(suppressed) = PIPE_FAILURE.allow() {
+                log::warn!(
+                    "[tcp]failed to create relay pipes: {}; using memory copy ({} suppressed)",
+                    e,
+                    suppressed
+                );
+            }
+        }
+    }
+    relay_in_memory(local, remote, timeout).await
+}
+
+#[cfg(target_os = "linux")]
+fn new_pipe() -> Result<realm_io::Pipe> {
+    use std::sync::Once;
+
+    static SMALL_PIPE: Once = Once::new();
+    let pipe = realm_io::Pipe::new()?;
+    let requested = realm_io::pipe_size();
+    if let Ok(actual) = pipe.capacity() {
+        if actual < requested {
+            SMALL_PIPE.call_once(|| log::warn!(
+                "[tcp]relay pipe capacity is {} bytes (requested {}); run with CAP_SYS_RESOURCE or raise fs.pipe-user-pages-soft",
+                actual, requested
+            ));
+        }
+    }
+    Ok(pipe)
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod tests {
+    use super::*;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::TcpListener;
+
+    #[tokio::test]
+    async fn pipe_creation_failure_falls_back_before_any_data_is_consumed() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let mut client = TcpStream::connect(addr).await.unwrap();
+        let (local, _) = listener.accept().await.unwrap();
+        let remote = TcpStream::connect(addr).await.unwrap();
+        let (mut server, _) = listener.accept().await.unwrap();
+        let mut pipes = 0;
+        let relay = relay_with_pipes(local, remote, None, || {
+            pipes += 1;
+            match pipes {
+                1 => realm_io::Pipe::new(),
+                _ => Err(std::io::Error::from_raw_os_error(libc::EMFILE)),
+            }
+        });
+        let exchange = async {
+            client.write_all(b"request").await.unwrap();
+            client.shutdown().await.unwrap();
+            let mut request = Vec::new();
+            server.read_to_end(&mut request).await.unwrap();
+            assert_eq!(request, b"request");
+            server.write_all(b"reply").await.unwrap();
+            server.shutdown().await.unwrap();
+            let mut reply = Vec::new();
+            client.read_to_end(&mut reply).await.unwrap();
+            assert_eq!(reply, b"reply");
+        };
+        let (result, ()) = tokio::time::timeout(Duration::from_secs(2), async { tokio::join!(relay, exchange) })
+            .await
+            .unwrap();
+        result.unwrap();
+        assert_eq!(pipes, 2);
+    }
+}
+
+#[cfg(test)]
+mod half_close_tests {
+    use std::io::Result;
+    use std::pin::Pin;
+    use std::task::{Context, Poll};
+    use std::time::Duration;
+    use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, DuplexStream, ReadBuf, duplex};
+    use tokio::time::{Instant, sleep, timeout};
+
+    #[tokio::test(start_paused = true)]
+    async fn progress_restarts_the_half_close_idle_timer() {
+        let (mut client, mut local) = duplex(64);
+        let (mut remote, mut server) = duplex(64);
+        let grace = Duration::from_millis(100);
+        let relay = tokio::spawn(async move {
+            realm_io::bidi_copy_with_timeout(&mut local, &mut remote, Some(grace))
+                .await
+                .unwrap()
+        });
+
+        server.write_all(b"a").await.unwrap();
+        assert_eq!(client.read_u8().await.unwrap(), b'a');
+        client.shutdown().await.unwrap();
+        assert_eq!(server.read(&mut [0]).await.unwrap(), 0);
+        // Start from a direction that has already forwarded data, then make progress
+        // over more than one grace period before letting the connection go idle.
+        for byte in b"bc" {
+            sleep(Duration::from_millis(70)).await;
+            server.write_all(&[*byte]).await.unwrap();
+            assert_eq!(client.read_u8().await.unwrap(), *byte);
+        }
+        let start = Instant::now();
+        assert_eq!(client.read(&mut [0]).await.unwrap(), 0);
+        assert!((grace..grace + Duration::from_millis(20)).contains(&start.elapsed()));
+        assert_eq!(relay.await.unwrap(), (0, 3));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn half_close_timeout_applies_when_the_remaining_writer_is_blocked() {
+        let (mut client, mut local) = duplex(1);
+        let (mut remote, mut server) = duplex(64);
+        let grace = Duration::from_millis(100);
+        let relay = tokio::spawn(async move {
+            realm_io::bidi_copy_with_timeout(&mut local, &mut remote, Some(grace))
+                .await
+                .unwrap()
+        });
+        client.shutdown().await.unwrap();
+        assert_eq!(server.read(&mut [0]).await.unwrap(), 0);
+        server.write_all(b"reply").await.unwrap();
+        let start = Instant::now();
+        let copied = timeout(Duration::from_secs(1), relay).await.unwrap().unwrap();
+        assert!((grace..grace + Duration::from_millis(20)).contains(&start.elapsed()));
+        assert_eq!(copied, (0, 1));
+        assert_eq!(client.read_u8().await.unwrap(), b'r');
+        assert_eq!(client.read(&mut [0]).await.unwrap(), 0);
+    }
+
+    struct StalledWriter {
+        stream: DuplexStream,
+        stall_flush: bool,
+    }
+
+    impl AsyncRead for StalledWriter {
+        fn poll_read(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut ReadBuf<'_>) -> Poll<Result<()>> {
+            Pin::new(&mut self.stream).poll_read(cx, buf)
         }
     }
 
-    #[cfg(not(target_os = "linux"))]
-    {
-        realm_io::bidi_copy(&mut local, &mut remote).await.map(|_| ())
+    impl AsyncWrite for StalledWriter {
+        fn poll_write(mut self: Pin<&mut Self>, cx: &mut Context<'_>, data: &[u8]) -> Poll<Result<usize>> {
+            Pin::new(&mut self.stream).poll_write(cx, data)
+        }
+
+        fn poll_flush(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<()>> {
+            if self.stall_flush {
+                Poll::Pending
+            } else {
+                Poll::Ready(Ok(()))
+            }
+        }
+
+        fn poll_shutdown(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Result<()>> {
+            Poll::Pending
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn half_close_timeout_applies_during_flush_and_shutdown() {
+        for stall_flush in [true, false] {
+            let (mut client, local) = duplex(64);
+            let mut local = StalledWriter {
+                stream: local,
+                stall_flush,
+            };
+            let (mut remote, mut server) = duplex(64);
+            let grace = Duration::from_millis(100);
+            let relay = async {
+                realm_io::bidi_copy_with_timeout(&mut local, &mut remote, Some(grace))
+                    .await
+                    .unwrap()
+            };
+            let exchange = async {
+                client.shutdown().await.unwrap();
+                assert_eq!(server.read(&mut [0]).await.unwrap(), 0);
+                server.write_all(b"reply").await.unwrap();
+                server.shutdown().await.unwrap();
+                let mut reply = [0; 5];
+                client.read_exact(&mut reply).await.unwrap();
+                assert_eq!(&reply, b"reply");
+            };
+            let start = Instant::now();
+            let (copied, ()) = timeout(Duration::from_secs(1), async { tokio::join!(relay, exchange) })
+                .await
+                .unwrap();
+            assert!((grace..grace + Duration::from_millis(20)).contains(&start.elapsed()));
+            assert_eq!(copied, (0, 5));
+        }
     }
 }

@@ -20,11 +20,31 @@ pub enum CmdInput {
 #[derive(Default)]
 pub struct Startup {
     daemon: bool,
+    #[cfg(all(unix, not(target_os = "android")))]
+    nofile: Option<u64>,
     #[cfg(feature = "hook")]
     pre_conn_hook: Option<String>,
 }
 
 impl Startup {
+    pub fn setup_nofile(&self) {
+        #[cfg(all(unix, not(target_os = "android")))]
+        {
+            use realm_core::realm_syscall::{set_nofile_limit, bump_nofile_limit, get_nofile_limit};
+
+            if let Some(nofile) = self.nofile {
+                if let Err(e) = set_nofile_limit(nofile) {
+                    eprintln!("warning: failed to set nofile limit to {}: {}", nofile, e);
+                }
+            } else if let Err(e) = bump_nofile_limit() {
+                eprintln!("warning: failed to raise nofile limit: {}", e);
+            }
+            if let Ok((soft, hard)) = get_nofile_limit() {
+                println!("fd: soft={}, hard={}", soft, hard);
+            }
+        }
+    }
+
     pub fn daemon(&self) -> bool {
         cfg!(unix) && self.daemon
     }
@@ -45,6 +65,9 @@ impl Startup {
 
 pub fn scan() -> CmdInput {
     let (input, startup) = scan_startup();
+    if !matches!(input, CmdInput::None) {
+        startup.setup_nofile();
+    }
     startup.enter();
     input
 }
@@ -89,6 +112,8 @@ pub fn scan_startup() -> (CmdInput, Startup) {
 
     let startup = Startup {
         daemon: matches.get_flag("daemon"),
+        #[cfg(all(unix, not(target_os = "android")))]
+        nofile: matches.get_one::<u64>("nofile").copied(),
         #[cfg(feature = "hook")]
         pre_conn_hook: matches.get_one("pre_conn_hook").cloned(),
     };
@@ -96,13 +121,6 @@ pub fn scan_startup() -> (CmdInput, Startup) {
 }
 
 fn handle_matches(matches: ArgMatches) -> CmdInput {
-    #[cfg(all(unix, not(target_os = "android")))]
-    if let Some(&nofile) = matches.get_one::<u64>("nofile") {
-        if let Err(e) = realm_core::realm_syscall::set_nofile_limit(nofile) {
-            eprintln!("warning: failed to set nofile limit to {}: {}", nofile, e);
-        }
-    }
-
     #[cfg(target_os = "linux")]
     if let Some(page) = matches.get_one::<usize>("pipe_page") {
         let size = page * flag::PIPE_PAGE_SIZE;
@@ -147,6 +165,8 @@ mod tests {
             "--send-proxy-version",
             "--accept-proxy-timeout",
             "--tcp-timeout",
+            "--half-close-timeout",
+            "--tcp-user-timeout",
             "--udp-timeout",
             "--tcp-keepalive",
             "--tcp-keepalive-probe",
@@ -210,6 +230,54 @@ mod tests {
         assert!(matches!(opts.dns.mode, Some(crate::conf::DnsMode::Ipv6Only)));
         assert_eq!(opts.dns.protocol, Some(crate::conf::DnsProtocol::TcpAndUdp));
         assert!(matches!(opts.log.level, Some(crate::conf::LogLevel::Debug)));
+    }
+
+    #[test]
+    fn tcp_timeouts_are_inherited_overridden_and_displayed() {
+        use crate::conf::FullConf;
+
+        let input = r#"
+            [network]
+            half_close_timeout = 12
+            tcp_user_timeout = 40
+            [[endpoints]]
+            listen = "127.0.0.1:0"
+            remote = "127.0.0.1:0"
+            [[endpoints]]
+            listen = "127.0.0.2:0"
+            remote = "127.0.0.1:0"
+            network = { half_close_timeout = 0, tcp_user_timeout = 0 }
+        "#;
+        let read = |conf: FullConf| -> Vec<_> {
+            conf.endpoints
+                .into_iter()
+                .map(|ep| {
+                    let ep = ep.build().endpoint;
+                    let half = ep.conn_opts.half_close_timeout;
+                    let user = ep.conn_opts.tcp_user_timeout;
+                    assert_eq!(ep.bind_opts.tcp_user_timeout, user);
+                    let display = ep.to_string();
+                    assert!(
+                        display.contains(&format!("half-close-timeout={}s", half.unwrap())),
+                        "{}",
+                        display
+                    );
+                    assert!(display.contains(&format!("tcp-user-timeout={}s", user)), "{}", display);
+                    (half, user)
+                })
+                .collect()
+        };
+        let mut config = FullConf::from_conf_str(input).unwrap();
+        config.apply_global_opts();
+        assert_eq!(read(config), [(Some(12), 40), (Some(0), 0)]);
+
+        let app = flag::add_all(Command::new("realm").disable_help_flag(true).disable_version_flag(true));
+        let args = app
+            .try_get_matches_from(["realm", "--half-close-timeout", "7", "--tcp-user-timeout", "30"])
+            .unwrap();
+        let mut config = FullConf::from_conf_str(input).unwrap();
+        config.apply_global_opts().apply_cmd_opts(parse_global_opts(&args));
+        assert_eq!(read(config), [(Some(7), 30), (Some(7), 30)]);
     }
 
     /// `--tcp-keepalive` once set the probe count as well, and `--tcp-keepalive-probe` did nothing.

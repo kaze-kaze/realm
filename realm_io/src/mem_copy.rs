@@ -1,4 +1,5 @@
 use std::io::Result;
+use std::time::Duration;
 use std::pin::Pin;
 use std::task::{Poll, Context};
 
@@ -6,7 +7,7 @@ use tokio::io::ReadBuf;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use super::{CopyBuffer, AsyncIOBuf};
-use super::bidi_copy_buf;
+use super::bidi_copy_buf_with_timeout;
 
 impl<B, SR, SW> AsyncIOBuf for CopyBuffer<B, SR, SW>
 where
@@ -40,9 +41,19 @@ where
     A: AsyncRead + AsyncWrite + Unpin,
     B: AsyncRead + AsyncWrite + Unpin,
 {
+    let timeout = cfg!(feature = "brutal-shutdown").then_some(Duration::ZERO);
+    bidi_copy_with_timeout(a, b, timeout).await
+}
+
+/// Copy bidirectionally with userspace buffers and the given half-close idle timeout.
+pub async fn bidi_copy_with_timeout<A, B>(a: &mut A, b: &mut B, timeout: Option<Duration>) -> Result<(u64, u64)>
+where
+    A: AsyncRead + AsyncWrite + Unpin,
+    B: AsyncRead + AsyncWrite + Unpin,
+{
     let a_to_b_buf = CopyBuffer::new(vec![0u8; buf_size()].into_boxed_slice());
     let b_to_a_buf = CopyBuffer::new(vec![0u8; buf_size()].into_boxed_slice());
-    bidi_copy_buf(a, b, a_to_b_buf, b_to_a_buf).await
+    bidi_copy_buf_with_timeout(a, b, a_to_b_buf, b_to_a_buf, timeout).await
 }
 
 mod buf_ctl {

@@ -47,4 +47,4 @@ multi-thread = []
 
 [dev-dependencies]
 env_logger = "0.11"
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "test-util"] }

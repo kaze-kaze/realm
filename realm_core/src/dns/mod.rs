@@ -37,11 +37,12 @@ pub struct DnsConf {
 impl Default for DnsConf {
     fn default() -> Self {
         #[cfg(any(all(unix, not(target_os = "android")), windows))]
-        let (conf, opts) = read_system_conf().unwrap_or_default();
+        let (conf, mut opts) = read_system_conf().unwrap_or_default();
 
         #[cfg(not(any(all(unix, not(target_os = "android")), windows)))]
-        let (conf, opts) = (ResolverConfig::udp_and_tcp(&config::GOOGLE), Default::default());
+        let (conf, mut opts): (_, ResolverOpts) = (ResolverConfig::udp_and_tcp(&config::GOOGLE), Default::default());
 
+        opts.ip_strategy = config::LookupIpStrategy::Ipv4AndIpv6;
         Self { conf, opts }
     }
 }

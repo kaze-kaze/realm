@@ -1,6 +1,7 @@
 use std::io::{Result, Error, ErrorKind};
 use std::net::{SocketAddr, TcpListener};
 use std::time::Duration;
+use std::future::Future;
 
 use realm_syscall::socket2::Socket;
 use tokio::net::{TcpSocket, TcpStream};
@@ -33,6 +34,7 @@ pub fn bind(laddr: &SocketAddr, bind_opts: BindOpts) -> Result<TcpListener> {
         accept_mptcp,
         ipv6_only,
         bind_interface,
+        ..
     } = bind_opts;
     let socket = new_socket(laddr, accept_mptcp)?;
 
@@ -47,7 +49,8 @@ pub fn bind(laddr: &SocketAddr, bind_opts: BindOpts) -> Result<TcpListener> {
         realm_syscall::bind_to_device(&socket, &iface)?;
     }
 
-    // ignore error
+    // Winsock also allows a second listener when address reuse is set.
+    #[cfg(unix)]
     let _ = socket.set_reuse_address(true);
 
     socket.bind(&(*laddr).into())?;
@@ -88,42 +91,83 @@ pub fn prepare(
 
     if let Some(kpa) = keepalive {
         socket.set_tcp_keepalive(kpa)?;
+    }
 
-        // Keepalive only detects a dead peer on an idle connection. With data in
-        // flight the kernel keeps retransmitting for about 15 minutes, and the client
-        // never reconnects to the peer that took over. Give up after the same time
-        // keepalive would. This also ends a connection whose peer stops reading for
-        // that long while data is pending. Best effort, e.g. not on mptcp sockets.
-        #[cfg(target_os = "linux")]
-        if conn_opts.failover.is_some() {
-            let _ = socket.set_tcp_user_timeout(Some(keepalive::dead_after(conn_opts)));
-        }
+    #[cfg(target_os = "linux")]
+    if conn_opts.tcp_user_timeout > 0 {
+        set_tcp_user_timeout(&socket, conn_opts.tcp_user_timeout);
+    } else if keepalive.is_some() && conn_opts.failover.is_some() {
+        // Give up on unacknowledged data after the same time as an idle peer.
+        let _ = socket.set_tcp_user_timeout(Some(keepalive::dead_after(conn_opts)));
     }
 
     Ok(TcpSocket::from_std_stream(socket.into()))
 }
 
+#[cfg(target_os = "linux")]
+pub fn set_tcp_user_timeout(socket: &Socket, seconds: usize) {
+    use crate::rate_limit::RateLimit;
+
+    static USER_TIMEOUT_FAILURE: RateLimit = RateLimit::new();
+    if let Err(e) = socket.set_tcp_user_timeout(Some(Duration::from_secs(seconds as u64))) {
+        if let Some(suppressed) = USER_TIMEOUT_FAILURE.allow() {
+            log::warn!(
+                "[tcp]failed to set TCP_USER_TIMEOUT to {}s: {} ({} suppressed)",
+                seconds,
+                e,
+                suppressed
+            );
+        }
+    }
+}
+
 pub async fn connect(raddr: &RemoteAddr, conn_opts: &ConnectOpts) -> Result<TcpStream> {
+    connect_addrs(raddr, resolve_addr(raddr).await?.iter(), conn_opts, TcpSocket::connect).await
+}
+
+async fn connect_addrs<F>(
+    raddr: &RemoteAddr,
+    addresses: impl IntoIterator<Item = SocketAddr>,
+    conn_opts: &ConnectOpts,
+    mut dial: impl FnMut(TcpSocket, SocketAddr) -> F,
+) -> Result<TcpStream>
+where
+    F: Future<Output = Result<TcpStream>>,
+{
+    use crate::rate_limit::RateLimit;
+
+    static DIAL_FAILURE: RateLimit = RateLimit::new();
     let connect_timeout = conn_opts.connect_timeout;
 
     let mut last_err = None;
     let keepalive = keepalive::build(conn_opts);
 
-    for addr in resolve_addr(raddr).await?.iter() {
+    for addr in addresses {
         log::debug!("[tcp]{} resolved as {}", raddr, addr);
 
-        let socket = prepare(&addr, conn_opts, keepalive.as_ref())?;
-
-        match timeoutfut(socket.connect(addr), connect_timeout).await {
-            Ok(Ok(stream)) => {
-                log::debug!("[tcp]connect to {} as {}", raddr, addr,);
-                return Ok(stream);
-            }
-            Ok(Err(e)) => {
-                log::warn!("[tcp]connect to {} as {}: {}, try next ip", raddr, addr, e);
-                last_err = Some(e);
-            }
-            Err(_) => log::warn!("[tcp]connect to {} as {} timeout, try next ip", raddr, addr),
+        let (err, deadline_elapsed) = match prepare(&addr, conn_opts, keepalive.as_ref()) {
+            Ok(socket) => match timeoutfut(dial(socket, addr), connect_timeout).await {
+                Ok(Ok(stream)) => {
+                    log::debug!("[tcp]connect to {} as {}", raddr, addr);
+                    return Ok(stream);
+                }
+                Ok(Err(e)) => (e, false),
+                Err(e) => (e, true),
+            },
+            Err(e) => (e, false),
+        };
+        if let Some(suppressed) = DIAL_FAILURE.allow() {
+            log::warn!(
+                "[tcp]connect to {} as {}: {}, try next ip ({} suppressed)",
+                raddr,
+                addr,
+                err,
+                suppressed
+            );
+        }
+        // Keep a concrete socket error when another address only exhausted its deadline.
+        if last_err.is_none() || !deadline_elapsed {
+            last_err = Some(err);
         }
     }
 
@@ -242,5 +286,102 @@ pub(crate) mod keepalive {
     #[cfg(target_os = "linux")]
     pub fn dead_after(conn_opts: &ConnectOpts) -> Duration {
         Duration::from_secs(conn_opts.tcp_keepalive as u64) * (probes(conn_opts) + 1)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn connect_tries_another_address_if_socket_preparation_fails() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let wrong_family = SocketAddr::new(std::net::Ipv6Addr::LOCALHOST.into(), addr.port());
+        let opts = ConnectOpts {
+            bind_address: Some("127.0.0.1:0".parse().unwrap()),
+            ..Default::default()
+        };
+        assert!(prepare(&wrong_family, &opts, None).is_err());
+        let stream = tokio::time::timeout(
+            Duration::from_secs(1),
+            connect_addrs(
+                &RemoteAddr::SocketAddr(addr),
+                [wrong_family, addr],
+                &opts,
+                TcpSocket::connect,
+            ),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert_eq!(stream.peer_addr().unwrap(), addr);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn connect_returns_timed_out_when_every_dial_times_out() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let opts = ConnectOpts {
+            connect_timeout: 1,
+            ..Default::default()
+        };
+        let mut dials = 0;
+        let err = connect_addrs(&RemoteAddr::SocketAddr(addr), [addr, addr], &opts, |_, _| {
+            dials += 1;
+            std::future::pending()
+        })
+        .await
+        .unwrap_err();
+        assert_eq!(dials, 2);
+        assert_eq!(err.kind(), ErrorKind::TimedOut);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn connect_reports_a_socket_error_when_another_dial_times_out() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let wrong_family = SocketAddr::new(std::net::Ipv6Addr::LOCALHOST.into(), addr.port());
+        let opts = ConnectOpts {
+            connect_timeout: 1,
+            bind_address: Some("127.0.0.1:0".parse().unwrap()),
+            ..Default::default()
+        };
+        let expected = prepare(&wrong_family, &opts, None).unwrap_err().kind();
+        let err = connect_addrs(&RemoteAddr::SocketAddr(addr), [wrong_family, addr], &opts, |_, _| {
+            std::future::pending()
+        })
+        .await
+        .unwrap_err();
+        assert_eq!(err.kind(), expected);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[tokio::test]
+    async fn explicit_tcp_user_timeout_is_independent_of_keepalive() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let timeout_on_socket = |keepalive_enabled, tcp_user_timeout| {
+            let opts = ConnectOpts {
+                tcp_keepalive: if keepalive_enabled { 5 } else { 0 },
+                tcp_keepalive_probe: 2,
+                failover: Some(Default::default()),
+                tcp_user_timeout,
+                ..Default::default()
+            };
+            let keepalive = keepalive::build(&opts);
+            let socket = prepare(&addr, &opts, keepalive.as_ref()).unwrap();
+            keepalive::SockRef::from(&socket).tcp_user_timeout().unwrap()
+        };
+        assert_eq!(timeout_on_socket(false, 21), Some(Duration::from_secs(21)));
+        assert_eq!(timeout_on_socket(true, 21), Some(Duration::from_secs(21)));
+        assert_eq!(timeout_on_socket(true, 0), Some(Duration::from_secs(15)));
+        assert_eq!(timeout_on_socket(false, 0), None);
+
+        let _client = TcpStream::connect(addr).await.unwrap();
+        let (accepted, _) = listener.accept().await.unwrap();
+        let socket = keepalive::SockRef::from(&accepted);
+        set_tcp_user_timeout(&socket, 21);
+        assert_eq!(socket.tcp_user_timeout().unwrap(), Some(Duration::from_secs(21)));
     }
 }

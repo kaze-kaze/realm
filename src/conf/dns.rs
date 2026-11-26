@@ -182,7 +182,7 @@ impl Display for DnsConf {
 
         let max_ttl = default!(max_ttl, config::MAX_TTL);
 
-        let cache_size = default!(cache_size, 32_u64);
+        let cache_size = default!(cache_size, ResolverOpts::default().cache_size);
 
         let protocol = default!(protocol);
 
@@ -222,36 +222,22 @@ impl Config for DnsConf {
         let max = max_ttl.unwrap_or(config::MAX_TTL);
         assert!(min <= max, "dns.min_ttl ({}) exceeds dns.max_ttl ({})", min, max);
 
-        // parse into ResolverOpts
-        // default value:
-        // https://docs.rs/trust-dns-resolver/latest/src/trust_dns_resolver/config.rs.html#681-737
-
         let opts = if empty![mode, min_ttl, max_ttl, cache_size] {
             None
         } else {
-            let ip_strategy: LookupIpStrategy = mode.map(|x| x.into()).unwrap_or_default();
-
-            let positive_min_ttl = min_ttl.map(|x| Duration::from_secs(x as u64));
-
-            let positive_max_ttl = max_ttl.map(|x| Duration::from_secs(x as u64));
-
-            let cache_size = cache_size.unwrap_or({
-                let ResolverOpts { cache_size, .. } = Default::default();
-                cache_size
-            });
-
-            let mut opts = ResolverOpts::default();
-
-            macro_rules! replace {
-                ($($x: ident, )+) => {
-                    $(
-                        opts.$x = $x;
-                    )+
-                }
+            let mut opts = realm_core::dns::DnsConf::default().opts;
+            if let Some(mode) = mode {
+                opts.ip_strategy = mode.into();
             }
-
-            replace!(ip_strategy, positive_min_ttl, positive_max_ttl, cache_size,);
-
+            if let Some(ttl) = min_ttl {
+                opts.positive_min_ttl = Some(Duration::from_secs(ttl.into()));
+            }
+            if let Some(ttl) = max_ttl {
+                opts.positive_max_ttl = Some(Duration::from_secs(ttl.into()));
+            }
+            if let Some(cache_size) = cache_size {
+                opts.cache_size = cache_size;
+            }
             Some(opts)
         };
 
@@ -344,13 +330,63 @@ impl Config for DnsConf {
     }
 
     fn is_empty(&self) -> bool {
-        crate::empty![self => mode, min_ttl, max_ttl, cache_size]
+        crate::empty![self => mode, min_ttl, max_ttl, cache_size, protocol, nameservers]
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn default_dns_uses_both_address_families_with_system_settings() {
+        let config = DnsConf::default();
+        assert!(config.is_empty());
+        assert!(config
+            .to_string()
+            .contains(&format!("cache-size={}", ResolverOpts::default().cache_size)));
+        let (servers, opts) = config.build();
+        assert!(servers.is_none() && opts.is_none());
+        let defaults = realm_core::dns::DnsConf::default().opts;
+        assert_eq!(defaults.ip_strategy, LookupIpStrategy::Ipv4AndIpv6);
+    }
+
+    #[test]
+    fn partial_dns_config_overrides_only_the_specified_resolver_options() {
+        let expected = realm_core::dns::DnsConf::default().opts;
+        let (_, opts) = DnsConf {
+            cache_size: Some(16),
+            ..Default::default()
+        }
+        .build();
+        let opts = opts.unwrap();
+        assert_eq!(opts.ip_strategy, LookupIpStrategy::Ipv4AndIpv6);
+        assert_eq!(
+            (opts.ndots, opts.timeout, opts.attempts),
+            (expected.ndots, expected.timeout, expected.attempts)
+        );
+        assert_eq!(opts.cache_size, 16);
+        let (_, opts) = DnsConf {
+            mode: Some(DnsMode::Ipv4Only),
+            ..Default::default()
+        }
+        .build();
+        assert_eq!(opts.unwrap().ip_strategy, LookupIpStrategy::Ipv4Only);
+    }
+
+    #[test]
+    fn protocol_only_and_nameservers_only_are_not_empty() {
+        assert!(!DnsConf {
+            protocol: Some(DnsProtocol::Tcp),
+            ..Default::default()
+        }
+        .is_empty());
+        assert!(!DnsConf {
+            nameservers: Some(Vec::new()),
+            ..Default::default()
+        }
+        .is_empty());
+    }
 
     #[test]
     #[should_panic(expected = "dns.min_ttl (11) exceeds dns.max_ttl (10)")]

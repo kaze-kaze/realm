@@ -1,11 +1,11 @@
 use std::fs;
 use std::io::{Result, Error};
-use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 
 use walkdir::WalkDir;
 use clap::ArgMatches;
 use serde::{Serialize, Deserialize};
-use serde::de::IgnoredAny;
+use serde::de::{self, IgnoredAny, MapAccess, Visitor};
 
 mod log;
 pub use self::log::{LogLevel, LogConf};
@@ -74,43 +74,118 @@ pub struct FullConf {
     pub endpoints: Vec<EndpointConf>,
 }
 
-type UnknownKeys = BTreeMap<String, IgnoredAny>;
+type UnknownKeys = BTreeSet<String>;
 
-// Keep diagnostics on the input side so they cannot be inherited by other rules
-// or written back by configuration serialization.
-#[derive(Default, Deserialize)]
+// Keep diagnostics separate from settings so they cannot be merged or serialized.
+#[derive(Default)]
 struct Checked<T> {
-    #[serde(flatten)]
     values: T,
-    #[serde(flatten)]
     unknown: UnknownKeys,
 }
 
-#[derive(Deserialize)]
 struct CheckedEndpoint {
-    #[serde(default)]
     network: Checked<NetConf>,
-    #[serde(flatten)]
     endpoint: Checked<EndpointConf>,
 }
 
-#[derive(Deserialize)]
 struct CheckedConf {
-    #[serde(default)]
     log: Checked<LogConf>,
-    #[serde(default)]
     dns: Checked<DnsConf>,
-    #[serde(default)]
     network: Checked<NetConf>,
     endpoints: Vec<CheckedEndpoint>,
-    #[serde(flatten)]
     unknown: UnknownKeys,
 }
+
+// Read directly from the input map. Flattening a struct buffers unknown values
+// before IgnoredAny can skip them, including arbitrarily nested metadata.
+macro_rules! checked_table {
+    ($table:ty, required [$($required:ident),*], default [$($default:ident),*], |$unknown:ident| $build:expr) => {
+        impl<'de> Deserialize<'de> for $table {
+            fn deserialize<D: serde::Deserializer<'de>>(input: D) -> std::result::Result<Self, D::Error> {
+                struct Table;
+
+                impl<'de> Visitor<'de> for Table {
+                    type Value = $table;
+
+                    fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                        f.write_str("a configuration table")
+                    }
+
+                    fn visit_map<M: MapAccess<'de>>(self, mut map: M) -> std::result::Result<Self::Value, M::Error> {
+                        $(let mut $required = None;)*
+                        $(let mut $default = None;)*
+                        let mut $unknown = UnknownKeys::new();
+                        macro_rules! read_field {
+                            ($field:ident) => {{
+                                if $field.is_some() {
+                                    return Err(de::Error::duplicate_field(stringify!($field)));
+                                }
+                                $field = Some(map.next_value()?);
+                            }};
+                        }
+                        while let Some(key) = map.next_key::<String>()? {
+                            match key.as_str() {
+                                $(stringify!($required) => read_field!($required),)*
+                                $(stringify!($default) => read_field!($default),)*
+                                _ => {
+                                    map.next_value::<IgnoredAny>()?;
+                                    $unknown.insert(key);
+                                }
+                            }
+                        }
+                        $(let $required = $required.ok_or_else(|| de::Error::missing_field(stringify!($required)))?;)*
+                        $(let $default = $default.unwrap_or_default();)*
+                        Ok($build)
+                    }
+                }
+
+                input.deserialize_map(Table)
+            }
+        }
+    };
+}
+
+checked_table!(CheckedConf, required [endpoints], default [log, dns, network], |unknown| {
+    CheckedConf { log, dns, network, endpoints, unknown }
+});
+checked_table!(CheckedEndpoint, required [listen, remote], default [
+    network, extra_remotes, balance, failover, through, interface, listen_interface, listen_transport, remote_transport
+], |unknown| {
+    CheckedEndpoint {
+        network,
+        endpoint: Checked {
+            values: EndpointConf {
+                listen, remote, extra_remotes, balance, failover, through, interface, listen_interface,
+                listen_transport, remote_transport, network: NetConf::default(),
+            },
+            unknown,
+        },
+    }
+});
+checked_table!(Checked<LogConf>, required [], default [level, output], |unknown| {
+    Checked { values: LogConf { level, output }, unknown }
+});
+checked_table!(Checked<DnsConf>, required [], default [mode, min_ttl, max_ttl, cache_size, protocol, nameservers], |unknown| {
+    Checked { values: DnsConf { mode, min_ttl, max_ttl, cache_size, protocol, nameservers }, unknown }
+});
+checked_table!(Checked<NetConf>, required [], default [
+    no_tcp, use_udp, ipv6_only, send_mptcp, accept_mptcp, send_proxy, accept_proxy, send_proxy_version, accept_proxy_timeout,
+    tcp_keepalive, tcp_keepalive_probe, tcp_timeout, half_close_timeout, tcp_user_timeout, udp_timeout, udp_no_fragment
+], |unknown| {
+    Checked {
+        values: NetConf {
+            no_tcp, use_udp, ipv6_only, send_mptcp, accept_mptcp, send_proxy, accept_proxy, send_proxy_version,
+            accept_proxy_timeout, tcp_keepalive, tcp_keepalive_probe, tcp_timeout, half_close_timeout, tcp_user_timeout,
+            udp_timeout, udp_no_fragment,
+        },
+        unknown,
+    }
+});
 
 impl CheckedConf {
     fn into_config(self, mut warn: impl FnMut(String)) -> FullConf {
         let mut report = |keys: UnknownKeys, context: &str, prefix: &str| {
-            for key in keys.into_keys() {
+            for key in keys {
                 warn(format!("{}unknown key {}{}, ignored", context, prefix, key));
             }
         };
@@ -263,9 +338,9 @@ mod tests {
             "dns": {"cache_size": 18446744073709551615, "max_ttls": 1},
             "network": {"use_udp": true, "use_udpp": true},
             "endpoints": [
-                {"listen": "127.0.0.1:39305", "remote": "127.0.0.1:39309", "remotte": 3,
+                {"listen": "127.0.0.1:0", "remote": "127.0.0.1:0", "remotte": 3,
                  "network": {"use_udp": false, "use_udpp": true}},
-                {"listen": "127.0.0.1:39306", "remote": "127.0.0.1:39309"}
+                {"listen": "127.0.0.2:0", "remote": "127.0.0.1:0"}
             ]
         }"#;
         let toml = r#"
@@ -274,13 +349,13 @@ mod tests {
             dns = { cache_size = 18446744073709551615, max_ttls = 1 }
             network = { use_udp = true, use_udpp = true }
             [[endpoints]]
-            listen = "127.0.0.1:39305"
-            remote = "127.0.0.1:39309"
+            listen = "127.0.0.1:0"
+            remote = "127.0.0.1:0"
             remotte = 3
             network = { use_udp = false, use_udpp = true }
             [[endpoints]]
-            listen = "127.0.0.1:39306"
-            remote = "127.0.0.1:39309"
+            listen = "127.0.0.2:0"
+            remote = "127.0.0.1:0"
         "#;
         for input in [json, toml] {
             let mut warnings = Vec::new();
@@ -293,8 +368,8 @@ mod tests {
                     "unknown key log.outpuut, ignored",
                     "unknown key dns.max_ttls, ignored",
                     "unknown key network.use_udpp, ignored",
-                    "endpoint 127.0.0.1:39305: unknown key remotte, ignored",
-                    "endpoint 127.0.0.1:39305: unknown key network.use_udpp, ignored",
+                    "endpoint 127.0.0.1:0: unknown key remotte, ignored",
+                    "endpoint 127.0.0.1:0: unknown key network.use_udpp, ignored",
                 ]
             );
             assert_eq!(config.dns.cache_size, Some(u64::MAX));
@@ -304,14 +379,36 @@ mod tests {
     }
 
     #[test]
+    fn skips_deep_unknown_json_values_without_buffering() {
+        let deep = format!("{}0{}", "[".repeat(256), "]".repeat(256));
+        let input = format!(
+            r#"{{
+            "metadata": {deep},
+            "endpoints": [{{"listen": "127.0.0.1:0", "remote": "127.0.0.1:0",
+                            "network": {{"metadata": {deep}, "use_udp": true}}}}]
+        }}"#
+        );
+        let mut warnings = Vec::new();
+        let config = FullConf::parse(&input, |msg| warnings.push(msg)).unwrap();
+        assert_eq!(config.endpoints[0].network.use_udp, Some(true));
+        assert_eq!(
+            warnings,
+            [
+                "top level: unknown key metadata, ignored",
+                "endpoint 127.0.0.1:0: unknown key network.metadata, ignored",
+            ]
+        );
+    }
+
+    #[test]
     fn reads_legacy_config() {
         let input = r#"{
-            "listening_addresses":["127.0.0.1"], "listening_ports":["39307"],
-            "remote_addresses":["127.0.0.1"], "remote_ports":["39309"]
+            "listening_addresses":["127.0.0.1"], "listening_ports":["0"],
+            "remote_addresses":["127.0.0.1"], "remote_ports":["0"]
         }"#;
         let config = FullConf::parse(input, |msg| panic!("unexpected warning: {}", msg)).unwrap();
-        assert_eq!(config.endpoints[0].listen, "127.0.0.1:39307");
-        assert_eq!(config.endpoints[0].remote, "127.0.0.1:39309");
+        assert_eq!(config.endpoints[0].listen, "127.0.0.1:0");
+        assert_eq!(config.endpoints[0].remote, "127.0.0.1:0");
     }
 }
 

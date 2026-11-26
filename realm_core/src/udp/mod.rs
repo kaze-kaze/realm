@@ -4,7 +4,6 @@ pub(crate) mod socket;
 mod sockmap;
 mod middle;
 mod batched;
-mod rate_limit;
 
 use std::io::Result;
 use std::net::UdpSocket;
@@ -15,7 +14,7 @@ use crate::failover::{Failover, Proto, literal_peers};
 
 use sockmap::SockMap;
 use middle::associate_and_relay;
-use rate_limit::RateLimit;
+use crate::rate_limit::RateLimit;
 
 /// Bind a UDP relay to its listening address without starting the runtime.
 pub fn bind(endpoint: &Endpoint) -> Result<UdpSocket> {

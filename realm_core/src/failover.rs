@@ -201,13 +201,6 @@ impl Failover {
         #[cfg(not(feature = "balance"))]
         let balanced = false;
 
-        // probes leave from the `through` ip but never from its fixed port (udp may pin
-        // one): sharing that port would take replies away from the associations
-        let mut conn_opts = conn_opts.clone();
-        if let Some(addr) = conn_opts.bind_address.as_mut() {
-            addr.set_port(0);
-        }
-
         let fsm = Fsm::new(peers.len(), opts);
         let state = Arc::new(AtomicU32::new(fsm.snapshot().0));
         let peers: Box<[SocketAddr]> = peers.into();
@@ -219,7 +212,7 @@ impl Failover {
                 peers: peers.clone(),
                 targets,
                 opts: opts.clone(),
-                conn_opts,
+                conn_opts: probe_conn_opts(conn_opts),
                 state: state.clone(),
                 balanced,
             },
@@ -566,6 +559,16 @@ async fn probe_tcp(target: SocketAddr, opts: &FailoverOpts, conn_opts: &ConnectO
     Probe::Fail
 }
 
+fn probe_conn_opts(conn_opts: &ConnectOpts) -> ConnectOpts {
+    // Sharing a fixed `through` port would take replies away from UDP associations.
+    let mut opts = conn_opts.clone();
+    if let Some(addr) = opts.bind_address.as_mut() {
+        addr.set_port(0);
+    }
+    opts.tcp_user_timeout = 0;
+    opts
+}
+
 /// One probe connection, without a deadline of its own.
 async fn tcp_attempt(target: SocketAddr, opts: &FailoverOpts, conn_opts: &ConnectOpts) -> Probe {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -819,10 +822,26 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn probe_connections_leave_the_data_timeout_and_source_port_unset() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let source = listener.local_addr().unwrap();
+        let conn_opts = ConnectOpts {
+            bind_address: Some(source),
+            tcp_user_timeout: 30,
+            ..Default::default()
+        };
+        let probe = probe_conn_opts(&conn_opts);
+        assert_eq!(probe.bind_address, Some(SocketAddr::new(source.ip(), 0)));
+        assert_eq!(probe.tcp_user_timeout, 0);
+        assert_eq!(conn_opts.bind_address, Some(source));
+        assert_eq!(conn_opts.tcp_user_timeout, 30);
+    }
+
+    #[tokio::test]
     async fn tcp_attempt_rejects_wrong_prefix_before_the_rest_arrives() {
         use tokio::io::AsyncWriteExt;
 
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:39313").await.unwrap();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let target = listener.local_addr().unwrap();
         let server = tokio::spawn(async move {
             let (mut stream, _) = listener.accept().await.unwrap();
@@ -845,8 +864,8 @@ mod tests {
 
     #[tokio::test]
     async fn udp_attempt_times_out_while_sending() {
-        let socket = UdpSocket::bind("127.0.0.1:39314").await.unwrap();
-        let target = "127.0.0.1:39315".parse().unwrap();
+        let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let target = socket.local_addr().unwrap();
         let until = Instant::now() + Duration::from_millis(20);
         let mut buf = [0; 1];
         let attempt = udp_attempt(&socket, target, std::future::pending(), &mut buf, |_| false, until);
@@ -858,7 +877,7 @@ mod tests {
 
     #[tokio::test]
     async fn udp_probe_treats_a_local_send_error_as_unknown() {
-        let socket = UdpSocket::bind("127.0.0.1:39316").await.unwrap();
+        let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
         let target = socket.local_addr().unwrap();
         let until = Instant::now() + Duration::from_secs(1);
         let send = std::future::ready(Err(ErrorKind::AddrNotAvailable.into()));
@@ -870,7 +889,7 @@ mod tests {
 
     #[tokio::test]
     async fn udp_probe_retries_peer_and_path_send_errors_at_the_deadline() {
-        let socket = UdpSocket::bind("127.0.0.1:39318").await.unwrap();
+        let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
         let target = socket.local_addr().unwrap();
         for kind in [
             ErrorKind::ConnectionRefused,
@@ -889,7 +908,7 @@ mod tests {
 
     #[tokio::test]
     async fn udp_probe_accepts_a_large_quic_version_negotiation() {
-        let peer = UdpSocket::bind("127.0.0.1:39317").await.unwrap();
+        let peer = UdpSocket::bind("127.0.0.1:0").await.unwrap();
         let target = peer.local_addr().unwrap();
         let respond = async {
             let mut buf = [0; QUIC_PROBE_SIZE];

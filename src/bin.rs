@@ -30,8 +30,10 @@ cfg_if! {
 fn main() -> ExitCode {
     let (conf, startup) = 'blk: {
         if let Ok(conf_str) = env::var(ENV_CONFIG) {
+            let startup = cmd::Startup::default();
+            startup.setup_nofile();
             match conf_from_env(&conf_str) {
-                Ok(conf) => break 'blk (conf, cmd::Startup::default()),
+                Ok(conf) => break 'blk (conf, startup),
                 // the command line is used instead, as before, but not without a word
                 Err(e) => eprintln!("warning: {} is not a valid config, ignored: {}", ENV_CONFIG, e),
             }
@@ -39,6 +41,9 @@ fn main() -> ExitCode {
 
         use cmd::CmdInput;
         let (input, startup) = cmd::scan_startup();
+        if !matches!(input, CmdInput::None) {
+            startup.setup_nofile();
+        }
         let conf = match input {
             CmdInput::Endpoint(ep, opts) => {
                 let mut conf = FullConf::default();
@@ -55,7 +60,6 @@ fn main() -> ExitCode {
         (conf, startup)
     };
 
-    setup_nofile();
     start_from_conf(conf, startup)
 }
 
@@ -86,7 +90,7 @@ fn start_from_conf(full: FullConf, startup: cmd::Startup) -> ExitCode {
     setup_transport();
 
     let endpoints = build_endpoints(endpoints_conf);
-    let Some(listeners) = bind_listeners(&endpoints) else {
+    let Some(listeners) = bind_listeners(&endpoints, Listener::bind) else {
         return ExitCode::FAILURE;
     };
 
@@ -107,20 +111,6 @@ fn build_endpoints(configs: Vec<EndpointConf>) -> Vec<EndpointInfo> {
         "no endpoints listen on TCP or UDP"
     );
     endpoints
-}
-
-fn setup_nofile() {
-    #[cfg(all(unix, not(target_os = "android")))]
-    {
-        use realm::core::realm_syscall::{bump_nofile_limit, get_nofile_limit};
-
-        if let Err(e) = bump_nofile_limit() {
-            eprintln!("warning: failed to raise nofile limit: {}", e);
-        }
-        if let Ok((soft, hard)) = get_nofile_limit() {
-            println!("fd: soft={}, hard={}", soft, hard);
-        }
-    }
 }
 
 fn setup_log(log: LogConf) {
@@ -183,6 +173,13 @@ enum Listener {
 }
 
 impl Listener {
+    fn bind(proto: Proto, endpoint: &Endpoint) -> io::Result<Self> {
+        match proto {
+            Proto::Tcp => tcp::bind(endpoint).map(Self::Tcp),
+            Proto::Udp => udp::bind(endpoint).map(Self::Udp),
+        }
+    }
+
     async fn run(self, endpoint: Endpoint) -> io::Result<()> {
         match self {
             Self::Tcp(lis) => tcp::run(lis, endpoint).await,
@@ -191,9 +188,12 @@ impl Listener {
     }
 }
 
-type BoundListeners<'a> = Vec<(Proto, &'a Endpoint, Listener)>;
+type BoundListeners<'a, L = Listener> = Vec<(Proto, &'a Endpoint, L)>;
 
-fn bind_listeners(endpoints: &[EndpointInfo]) -> Option<BoundListeners<'_>> {
+fn bind_listeners<'a, L>(
+    endpoints: &'a [EndpointInfo],
+    mut bind: impl FnMut(Proto, &Endpoint) -> io::Result<L>,
+) -> Option<BoundListeners<'a, L>> {
     let mut listeners = Vec::new();
     let mut failed = false;
 
@@ -203,18 +203,15 @@ fn bind_listeners(endpoints: &[EndpointInfo]) -> Option<BoundListeners<'_>> {
         use_udp,
     } in endpoints
     {
-        let bindings = [
-            (Proto::Udp, use_udp.then(|| udp::bind(endpoint).map(Listener::Udp))),
-            (Proto::Tcp, (!no_tcp).then(|| tcp::bind(endpoint).map(Listener::Tcp))),
-        ];
-        for (proto, binding) in bindings {
-            match binding {
-                Some(Ok(listener)) => listeners.push((proto, endpoint, listener)),
-                Some(Err(e)) => {
-                    eprintln!("[{}] failed to bind {}: {}", proto, endpoint.laddr, e);
-                    failed = true;
+        for (proto, enabled) in [(Proto::Udp, *use_udp), (Proto::Tcp, !no_tcp)] {
+            if enabled {
+                match bind(proto, endpoint) {
+                    Ok(listener) => listeners.push((proto, endpoint, listener)),
+                    Err(e) => {
+                        eprintln!("[{}] failed to bind {}: {}", proto, endpoint.laddr, e);
+                        failed = true;
+                    }
                 }
-                None => {}
             }
         }
     }
@@ -240,11 +237,13 @@ async fn supervise(workers: impl IntoIterator<Item = ListenerTask>) -> ! {
         .collect();
 
     let (proto, addr, result) = workers.next().await.expect("no listeners to supervise");
-    match result {
-        Ok(Ok(())) => eprintln!("[{}] listener {} exited", proto, addr),
-        Ok(Err(e)) => eprintln!("[{}] listener {} exited: {}", proto, addr, e),
-        Err(e) => eprintln!("[{}] listener {} exited: {}", proto, addr, e),
-    }
+    let message = match result {
+        Ok(Ok(())) => format!("[{}] listener {} exited", proto, addr),
+        Ok(Err(e)) => format!("[{}] listener {} exited: {}", proto, addr, e),
+        Err(e) => format!("[{}] listener {} exited: {}", proto, addr, e),
+    };
+    eprintln!("{}", message);
+    log::error!("{}", message);
     // The service manager must restart the whole process when any listener exits.
     std::process::exit(1);
 }
@@ -253,41 +252,64 @@ async fn supervise(workers: impl IntoIterator<Item = ListenerTask>) -> ! {
 mod tests {
     use super::*;
 
-    fn endpoint(port: u16) -> EndpointInfo {
-        let conf = format!("listen = '127.0.0.1:{}'\nremote = '127.0.0.1:39309'", port);
-        toml::from_str::<EndpointConf>(&conf).unwrap().build()
+    fn endpoint() -> EndpointInfo {
+        toml::from_str::<EndpointConf>("listen = '127.0.0.1:0'\nremote = '127.0.0.1:0'")
+            .unwrap()
+            .build()
     }
 
     #[tokio::test]
     async fn tcp_binding_failure_is_returned() {
-        let ep = endpoint(39300).endpoint;
-        let _listener = tcp::bind(&ep).unwrap();
-        let error = tcp::run_tcp(ep).await.unwrap_err();
+        let mut ep = endpoint().endpoint;
+        let listener = tcp::bind(&ep).unwrap();
+        ep.laddr = listener.local_addr().unwrap();
+        let error = tokio::time::timeout(std::time::Duration::from_secs(1), tcp::run_tcp(ep))
+            .await
+            .expect("the listener accepted a duplicate binding")
+            .unwrap_err();
         assert_eq!(error.kind(), io::ErrorKind::AddrInUse);
     }
 
     #[tokio::test]
     async fn udp_listeners_cannot_share_an_address() {
-        let ep = endpoint(39301).endpoint;
-        let _listener = udp::bind(&ep).unwrap();
-        let error = udp::run_udp(ep).await.unwrap_err();
+        let mut ep = endpoint().endpoint;
+        let listener = udp::bind(&ep).unwrap();
+        ep.laddr = listener.local_addr().unwrap();
+        let error = tokio::time::timeout(std::time::Duration::from_secs(1), udp::run_udp(ep))
+            .await
+            .expect("the listener accepted a duplicate binding")
+            .unwrap_err();
         assert_eq!(error.kind(), io::ErrorKind::AddrInUse);
     }
 
     #[test]
     fn failed_startup_releases_successful_bindings() {
-        let available = endpoint(39302);
-        let occupied = endpoint(39303);
-        let _listener = tcp::bind(&occupied.endpoint).unwrap();
-        let ep = available.endpoint.clone();
-        assert!(bind_listeners(&[available, occupied]).is_none());
-        assert!(tcp::bind(&ep).is_ok());
+        use std::sync::Arc;
+
+        let available = endpoint();
+        let mut occupied = endpoint();
+        let occupied_socket = tcp::bind(&occupied.endpoint).unwrap();
+        occupied.endpoint.laddr = occupied_socket.local_addr().unwrap();
+        let mut bound = None;
+        assert!(bind_listeners(&[available, occupied], |proto, ep| {
+            let listener = Arc::new(Listener::bind(proto, ep)?);
+            bound = Some(Arc::downgrade(&listener));
+            Ok(listener)
+        })
+        .is_none());
+        assert!(bound.expect("the first bind should succeed").upgrade().is_none());
     }
 
     #[test]
     fn listener_exit_stops_process() {
         const EXIT_MODE: &str = "REALM_TEST_LISTENER_EXIT";
+        const TCP_ADDR: &str = "REALM_TEST_LISTENER_TCP";
+        const UDP_ADDR: &str = "REALM_TEST_LISTENER_UDP";
         if let Ok(mode) = env::var(EXIT_MODE) {
+            setup_log(LogConf {
+                level: Some(realm::conf::LogLevel::Error),
+                output: Some("stdout".into()),
+            });
             tokio::runtime::Builder::new_current_thread()
                 .enable_time()
                 .build()
@@ -302,8 +324,8 @@ mod tests {
                         }
                     });
                     let workers = [
-                        (Proto::Udp, "127.0.0.1:39310".parse().unwrap(), pending),
-                        (Proto::Tcp, "127.0.0.1:39311".parse().unwrap(), finished),
+                        (Proto::Udp, env::var(UDP_ADDR).unwrap().parse().unwrap(), pending),
+                        (Proto::Tcp, env::var(TCP_ADDR).unwrap().parse().unwrap(), finished),
                     ];
                     tokio::time::timeout(std::time::Duration::from_secs(1), supervise(workers))
                         .await
@@ -311,15 +333,24 @@ mod tests {
                 });
         }
 
+        let tcp = TcpListener::bind("127.0.0.1:0").unwrap();
+        let udp = UdpSocket::bind("127.0.0.1:0").unwrap();
+        let tcp_addr = tcp.local_addr().unwrap();
+        let udp_addr = udp.local_addr().unwrap();
+        let message = format!("[tcp] listener {} exited", tcp_addr);
         for mode in ["return", "error", "panic"] {
             let child = std::process::Command::new(env::current_exe().unwrap())
                 .args(["--exact", "tests::listener_exit_stops_process", "--nocapture"])
                 .env(EXIT_MODE, mode)
+                .env(TCP_ADDR, tcp_addr.to_string())
+                .env(UDP_ADDR, udp_addr.to_string())
                 .output()
                 .unwrap();
             let stderr = String::from_utf8_lossy(&child.stderr);
             assert_eq!(child.status.code(), Some(1), "{}: {}", mode, stderr);
-            assert!(stderr.contains("[tcp] listener 127.0.0.1:39311 exited"), "{}", stderr);
+            assert!(stderr.contains(&message), "{}", stderr);
+            let stdout = String::from_utf8_lossy(&child.stdout);
+            assert!(stdout.contains(&format!("[ERROR]{}", message)), "{}", stdout);
         }
     }
 
@@ -327,7 +358,7 @@ mod tests {
     #[should_panic(expected = "no endpoints listen on TCP or UDP")]
     fn rejects_config_without_listeners() {
         let conf = conf_from_env(
-            r#"{"network":{"no_tcp":true},"endpoints":[{"listen":"127.0.0.1:39304","remote":"127.0.0.1:39309"}]}"#,
+            r#"{"network":{"no_tcp":true},"endpoints":[{"listen":"127.0.0.1:0","remote":"127.0.0.1:0"}]}"#,
         )
         .unwrap();
         build_endpoints(conf.endpoints);
@@ -341,8 +372,8 @@ mod tests {
             r#"{
                 "network": { "use_udp": true, "tcp_timeout": 4 },
                 "endpoints": [
-                    { "listen": "127.0.0.1:1", "remote": "10.0.0.1:1" },
-                    { "listen": "127.0.0.1:2", "remote": "10.0.0.1:2", "network": { "tcp_timeout": 7 } }
+                    { "listen": "127.0.0.1:0", "remote": "127.0.0.1:0" },
+                    { "listen": "127.0.0.2:0", "remote": "127.0.0.1:0", "network": { "tcp_timeout": 7 } }
                 ]
             }"#,
         )

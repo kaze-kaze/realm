@@ -46,6 +46,8 @@ pub async fn run(lis: TcpListener, endpoint: Endpoint) -> Result<()> {
         raddr,
         conn_opts,
         extra_raddrs,
+        #[cfg(target_os = "linux")]
+        bind_opts,
         ..
     } = endpoint;
 
@@ -88,6 +90,12 @@ pub async fn run(lis: TcpListener, endpoint: Endpoint) -> Result<()> {
             if let Err(e) = SockRef::from(&local).set_tcp_keepalive(kpa) {
                 log::warn!("[tcp]failed to set keepalive for {}: {}", addr, e);
             }
+        }
+
+        #[cfg(target_os = "linux")]
+        if bind_opts.tcp_user_timeout > 0 {
+            use socket::keepalive::SockRef;
+            socket::set_tcp_user_timeout(&SockRef::from(&local), bind_opts.tcp_user_timeout);
         }
 
         tokio::spawn(async move {

@@ -71,7 +71,9 @@ impl FailoverConf {
             s.parse::<SocketAddr>()
                 .unwrap_or_else(|_| fail(format!("{} must be an ip:port literal", s)))
         };
+        const MAX_SECONDS: f64 = 86_400.0;
         let secs = |name: &str, v: Option<f64>, default: Duration| match v {
+            Some(x) if x > MAX_SECONDS => fail(format!("{} must be at most {} seconds, got {}", name, MAX_SECONDS, x)),
             None => default,
             Some(x) => Duration::try_from_secs_f64(x)
                 .ok()
@@ -275,20 +277,42 @@ mod tests {
     #[should_panic(expected = "interval rounds to zero")]
     fn rejects_subnanosecond_interval() {
         let conf: FailoverConf = toml::from_str("interval = 1e-12").unwrap();
-        conf.build("127.0.0.1:39305", &["127.0.0.1:39308", "127.0.0.1:39309"], false);
+        conf.build("127.0.0.1:0", &["127.0.0.1:0", "127.0.0.2:0"], false);
     }
 
     #[test]
     #[should_panic(expected = "timeout rounds to zero")]
     fn rejects_subnanosecond_timeout() {
         let conf: FailoverConf = serde_json::from_str(r#"{"timeout":1e-12}"#).unwrap();
-        conf.build("127.0.0.1:39305", &["127.0.0.1:39308", "127.0.0.1:39309"], false);
+        conf.build("127.0.0.1:0", &["127.0.0.1:0", "127.0.0.2:0"], false);
     }
 
     #[test]
-    #[should_panic(expected = "duplicate data address [::1]:39308")]
+    #[should_panic(expected = "duplicate data address [::1]:0")]
     fn rejects_duplicate_peer_addresses() {
-        FailoverConf::default().build("127.0.0.1:39305", &["[::1]:39308", "[0:0:0:0:0:0:0:1]:39308"], false);
+        FailoverConf::default().build("127.0.0.1:0", &["[::1]:0", "[0:0:0:0:0:0:0:1]:0"], false);
+    }
+
+    #[test]
+    fn failover_durations_are_capped_at_one_day() {
+        for key in ["interval", "timeout", "hold"] {
+            let build = |secs| {
+                let conf: FailoverConf = toml::from_str(&format!("{} = {}", key, secs)).unwrap();
+                conf.build("127.0.0.1:0", &["127.0.0.1:0", "127.0.0.2:0"], false)
+            };
+            build("86400.0");
+            for seconds in ["86400.000001", "1e19"] {
+                let message = std::panic::catch_unwind(|| build(seconds))
+                    .unwrap_err()
+                    .downcast::<String>()
+                    .unwrap();
+                assert!(
+                    message.contains(&format!("{} must be at most 86400 seconds", key)),
+                    "{}",
+                    message
+                );
+            }
+        }
     }
 
     #[test]

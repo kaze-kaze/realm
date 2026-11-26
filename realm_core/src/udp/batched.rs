@@ -549,7 +549,7 @@ mod linux {
         #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
         async fn concurrent_sends_with_a_small_socket_buffer_return() {
             const TASKS: usize = 12;
-            let rx = UdpSocket::bind("127.0.0.1:39321").await.unwrap();
+            let rx = UdpSocket::bind("127.0.0.1:0").await.unwrap();
             let to: SockAddrStore = rx.local_addr().unwrap().into();
             let tx = Arc::new(UdpSocket::bind("127.0.0.1:0").await.unwrap());
             let size: libc::c_int = 1;
@@ -598,7 +598,7 @@ mod linux {
 
         #[tokio::test]
         async fn would_block_drops_at_the_deadline_and_next_groups_do_not_wait() {
-            let sock = UdpSocket::bind("127.0.0.1:39322").await.unwrap();
+            let sock = UdpSocket::bind("127.0.0.1:0").await.unwrap();
             sock.writable().await.unwrap();
             let started = Instant::now();
             let duration = Duration::from_millis(5);
@@ -724,7 +724,7 @@ mod tests {
 
     #[tokio::test]
     async fn an_invalid_datagram_does_not_discard_the_following_one() {
-        let rx = UdpSocket::bind("127.0.0.1:39323").await.unwrap();
+        let rx = UdpSocket::bind("127.0.0.1:0").await.unwrap();
         let tx = UdpSocket::bind("127.0.0.1:0").await.unwrap();
         let to = rx.local_addr().unwrap().into();
         let invalid = SocketAddr::from(([127, 0, 0, 1], 0)).into();

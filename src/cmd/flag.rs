@@ -234,13 +234,13 @@ pub fn add_global_options(app: Command) -> Command {
     let app = app.next_help_heading("TIMEOUT OPTIONS").args([
         Arg::new("tcp_timeout")
             .long("tcp-timeout")
-            .help("override tcp timeout(5s)")
+            .help("override TCP connect and transport handshake timeouts (5s, 0 disables)")
             .value_name("second")
             .value_parser(clap::value_parser!(usize))
             .display_order(0),
         Arg::new("udp_timeout")
             .long("udp-timeout")
-            .help("override udp timeout(30s)")
+            .help("override UDP association idle timeout (30s, 0 disables)")
             .value_name("second")
             .value_parser(clap::value_parser!(usize))
             .display_order(1),
@@ -256,6 +256,22 @@ pub fn add_global_options(app: Command) -> Command {
             .value_name("count")
             .value_parser(clap::value_parser!(usize))
             .display_order(3),
+        Arg::new("half_close_timeout")
+            .long("half-close-timeout")
+            .help(if cfg!(feature = "brutal-shutdown") {
+                "TCP idle timeout after a half-close (10s, 0 closes immediately)"
+            } else {
+                "TCP idle timeout after a half-close (unlimited, 0 closes immediately)"
+            })
+            .value_name("second")
+            .value_parser(clap::value_parser!(usize))
+            .display_order(4),
+        Arg::new("tcp_user_timeout")
+            .long("tcp-user-timeout")
+            .help("TCP user timeout on Linux (0 leaves existing socket behavior)")
+            .value_name("second")
+            .value_parser(clap::value_parser!(usize))
+            .display_order(5),
     ]);
 
     app

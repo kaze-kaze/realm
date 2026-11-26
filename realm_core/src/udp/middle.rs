@@ -526,9 +526,9 @@ mod tests {
 
     #[test]
     fn resolution_failure_or_empty_result_preserves_last_address() {
-        let rname = RemoteAddr::DomainName("localhost".into(), 39320);
-        let first = "127.0.0.1:39320".parse().unwrap();
-        let next = "127.0.0.2:39320".parse().unwrap();
+        let rname = RemoteAddr::DomainName("localhost".into(), 0);
+        let first = "127.0.0.1:0".parse().unwrap();
+        let next = "127.0.0.2:0".parse().unwrap();
         let mut last = None;
         let failure = || Err(ErrorKind::TimedOut.into());
         assert_eq!(remember_resolution(&rname, &mut last, failure()), None);

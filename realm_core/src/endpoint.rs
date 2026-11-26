@@ -2,6 +2,7 @@
 
 use std::fmt::{Display, Formatter};
 use std::net::SocketAddr;
+use std::time::Duration;
 
 #[cfg(feature = "transport")]
 use kaminari::mix::{MixAccept, MixConnect};
@@ -41,6 +42,10 @@ impl ProxyOpts {
 pub struct ConnectOpts {
     pub send_mptcp: bool,
     pub connect_timeout: usize,
+    /// Idle seconds after one direction shuts down. Zero closes immediately.
+    pub half_close_timeout: Option<usize>,
+    /// Linux TCP user timeout in seconds. Zero leaves the existing behavior.
+    pub tcp_user_timeout: usize,
     pub associate_timeout: usize,
     pub tcp_keepalive: usize,
     pub tcp_keepalive_probe: usize,
@@ -64,10 +69,25 @@ pub struct ConnectOpts {
     pub failover: Option<FailoverOpts>,
 }
 
+impl ConnectOpts {
+    pub const DEFAULT_HALF_CLOSE_TIMEOUT: Option<usize> = if cfg!(feature = "brutal-shutdown") {
+        Some(10)
+    } else {
+        None
+    };
+
+    pub(crate) fn half_close_timeout(&self) -> Option<Duration> {
+        self.half_close_timeout
+            .or(Self::DEFAULT_HALF_CLOSE_TIMEOUT)
+            .map(|secs| Duration::from_secs(secs as u64))
+    }
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct BindOpts {
     pub ipv6_only: bool,
     pub accept_mptcp: bool,
+    pub tcp_user_timeout: usize,
     pub bind_interface: Option<String>,
 }
 
@@ -109,6 +129,7 @@ impl Display for BindOpts {
             accept_mptcp,
             ipv6_only,
             bind_interface,
+            ..
         } = self;
         if let Some(iface) = bind_interface {
             write!(f, "listen-iface={}, ", iface)?;
@@ -124,6 +145,7 @@ impl Display for ConnectOpts {
         let ConnectOpts {
             send_mptcp,
             connect_timeout,
+            tcp_user_timeout,
             associate_timeout,
             tcp_keepalive,
             tcp_keepalive_probe,
@@ -141,6 +163,7 @@ impl Display for ConnectOpts {
             balancer,
 
             failover,
+            ..
         } = self;
 
         if let Some(iface) = bind_interface {
@@ -173,6 +196,12 @@ impl Display for ConnectOpts {
             "tcp-keepalive={}s[{}] connect-timeout={}s, associate-timeout={}s; ",
             tcp_keepalive, tcp_keepalive_probe, connect_timeout, associate_timeout
         )?;
+
+        match self.half_close_timeout() {
+            Some(timeout) => write!(f, "half-close-timeout={}s, ", timeout.as_secs())?,
+            None => write!(f, "half-close-timeout=unlimited, ")?,
+        }
+        write!(f, "tcp-user-timeout={}s; ", tcp_user_timeout)?;
 
         if *udp_no_fragment {
             write!(f, "udp-no-fragment; ")?;

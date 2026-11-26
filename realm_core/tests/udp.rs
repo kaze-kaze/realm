@@ -160,10 +160,9 @@ async fn burst(sock: &UdpSocket, relay: SocketAddr, rounds: u8) {
 
 #[tokio::test]
 async fn udp_upload_to_a_silent_upstream_keeps_the_source_port_until_idle() {
-    let relay = "127.0.0.1:39324".parse().unwrap();
-    let upstream = UdpSocket::bind("127.0.0.1:39325").await.unwrap();
+    let upstream = UdpSocket::bind("127.0.0.1:0").await.unwrap();
     let endpoint = Endpoint {
-        laddr: relay,
+        laddr: "127.0.0.1:0".parse().unwrap(),
         raddr: RemoteAddr::SocketAddr(upstream.local_addr().unwrap()),
         conn_opts: realm_core::endpoint::ConnectOpts {
             associate_timeout: 1,
@@ -173,6 +172,7 @@ async fn udp_upload_to_a_silent_upstream_keeps_the_source_port_until_idle() {
         extra_raddrs: Vec::new(),
     };
     let listener = udp::bind(&endpoint).unwrap();
+    let relay = listener.local_addr().unwrap();
     let task = tokio::spawn(udp::run(listener, endpoint));
     let client = UdpSocket::bind("127.0.0.1:0").await.unwrap();
     let mut source = None;
